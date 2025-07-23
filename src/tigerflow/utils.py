@@ -1,31 +1,28 @@
 import os
 import tempfile
 from contextlib import contextmanager
+from pathlib import Path
 
 
 @contextmanager
-def atomic_write(
-    filepath: os.PathLike,
-    mode: str = "w",
-    encoding: str | None = None,
-    newline: str | None = None,
-):
+def atomic_write(filepath: os.PathLike):
     """
-    Atomically write to a file by writing to a temporary file and then replacing the target.
+    Context manager for atomic writing:
+    1. Creates a temporary file
+    2. Yields its path for writing
+    3. Atomically replaces the target file on success
     """
-    dir_name = os.path.dirname(filepath) or "."
+    filepath = Path(filepath)
 
-    # Create temporary file in the same directory
-    with tempfile.NamedTemporaryFile(
-        mode=mode, encoding=encoding, newline=newline, dir=dir_name, delete=False
-    ) as tmp_file:
-        temp_path = tmp_file.name
-        try:
-            yield tmp_file  # Give control to the caller to write into the file
-            tmp_file.flush()
-            os.fsync(tmp_file.fileno())  # Ensure all data is written to disk
-        except Exception:
-            os.remove(temp_path)
-            raise
-        else:
-            os.replace(temp_path, filepath)  # Atomic move
+    fd, temp_path = tempfile.mkstemp(dir=filepath.parent)
+    os.close(fd)
+
+    temp_path = Path(temp_path)
+
+    try:
+        yield temp_path
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
+    else:
+        temp_path.replace(filepath)

@@ -34,11 +34,12 @@ class SlurmTask(ABC):
         def task(input_file: Path, output_file: Path):
             worker = get_worker()
             try:
-                with atomic_write(output_file, "w") as f:
-                    run_func(worker, input_file, Path(f.name))
+                with atomic_write(output_file) as temp_file:
+                    run_func(worker, input_file, temp_file)
             except Exception as e:
-                with atomic_write(output_file.with_suffix(".err"), "w") as f:
-                    f.write(e)
+                with atomic_write(output_file.with_suffix(".err")) as temp_file:
+                    with open(temp_file, "w") as f:
+                        f.write(e)
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
