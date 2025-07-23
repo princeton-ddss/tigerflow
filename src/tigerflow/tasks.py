@@ -2,7 +2,7 @@ import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from dask.distributed import Client, Future, Worker, WorkerPlugin
+from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
 from dask_jobqueue import SLURMCluster
 
 from .config import SlurmTaskConfig
@@ -32,8 +32,10 @@ class SlurmTask(ABC):
                 setup_func(worker)
 
         def task(input_file: Path, output_file: Path):
+            worker = get_worker()
             try:
-                run_func(input_file, output_file)
+                with atomic_write(output_file, "w") as f:
+                    run_func(worker, input_file, Path(f.name))
             except Exception as e:
                 with atomic_write(output_file.with_suffix(".err"), "w") as f:
                     f.write(e)
@@ -101,7 +103,7 @@ class SlurmTask(ABC):
 
     @staticmethod
     @abstractmethod
-    def run(input_file: Path, output_file: Path):
+    def run(worker: Worker, input_file: Path, output_file: Path):
         """
         Specify the processing logic to be applied to each input file.
         """
