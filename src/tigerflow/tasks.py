@@ -52,7 +52,11 @@ class SlurmTask(ABC):
                 if self.config.resources.gpus
                 else None
             ),
-            job_script_prologue=self.config.setup_commands.strip().split("\n"),
+            job_script_prologue=(
+                self.config.setup_commands.strip().split("\n")
+                if self.config.setup_commands
+                else None
+            ),
             local_directory=output_dir,
             log_directory=output_dir,
         )

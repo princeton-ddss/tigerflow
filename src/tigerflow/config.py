@@ -12,9 +12,9 @@ class SlurmResourceConfig(BaseModel):
 
 class TaskConfig(BaseModel):
     name: str
-    depends_on: str | None
+    depends_on: str | None = None
     module: str
-    setup_commands: str
+    setup_commands: str | None = None
 
 
 class LocalTaskConfig(TaskConfig):
