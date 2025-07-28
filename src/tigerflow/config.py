@@ -7,7 +7,7 @@ class SlurmResourceConfig(BaseModel):
     gpus: int | None = None
     memory: str
     time: str
-    autoscale_max: int
+    max_workers: int
 
 
 class TaskConfig(BaseModel):

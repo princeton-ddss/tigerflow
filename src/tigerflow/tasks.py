@@ -64,7 +64,7 @@ class SlurmTask(ABC):
         # Enable autoscaling
         cluster.adapt(
             minimum_jobs=0,
-            maximum_jobs=self.config.resources.autoscale_max,
+            maximum_jobs=self.config.resources.max_workers,
         )
 
         # Instantiate a cluster client
