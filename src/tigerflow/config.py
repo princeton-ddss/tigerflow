@@ -18,6 +18,15 @@ class TaskConfig(BaseModel):
     module: Path
     setup_commands: str | None = None
 
+    @field_validator("module")
+    @classmethod
+    def validate_module(cls, module: Path) -> Path:
+        if not module.exists():
+            raise ValueError(f"Module does not exist: {module}")
+        if not module.is_file():
+            raise ValueError(f"Module is not a file: {module}")
+        return module
+
 
 class LocalTaskConfig(TaskConfig):
     pass
