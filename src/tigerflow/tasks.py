@@ -36,9 +36,9 @@ class SlurmTask(Task):
         self.setup_commands = setup_commands
 
     def start(self, input_dir: Path, output_dir: Path):
-        if not input_dir.exists():
-            raise FileNotFoundError(f"Input directory {input_dir} does not exist")
-        output_dir.mkdir(parents=True, exist_ok=True)
+        for p in [input_dir, output_dir]:
+            if not p.exists():
+                raise FileNotFoundError(p)
 
         # Reference methods that must be implemented in subclass
         setup_func = type(self).setup
