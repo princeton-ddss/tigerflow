@@ -2,8 +2,10 @@ import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import typer
 from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
 from dask_jobqueue import SLURMCluster
+from typing_extensions import Annotated
 
 from .config import SlurmResourceConfig
 from .utils import atomic_write
@@ -98,6 +100,85 @@ class SlurmTask(ABC):
                     del active_futures[key]
 
             time.sleep(3)
+
+    @classmethod
+    def cli(cls):
+        """
+        Run the task as a CLI application
+        """
+
+        def main(
+            input_dir: Annotated[
+                Path,
+                typer.Argument(
+                    help="Input directory to read data",
+                    show_default=False,
+                ),
+            ],
+            output_dir: Annotated[
+                Path,
+                typer.Argument(
+                    help="Output directory to store results",
+                    show_default=False,
+                ),
+            ],
+            cpus: Annotated[
+                int,
+                typer.Option(
+                    help="Number of CPUs per worker",
+                    show_default=False,
+                ),
+            ],
+            memory: Annotated[
+                str,
+                typer.Option(
+                    help="Memory per worker",
+                    show_default=False,
+                ),
+            ],
+            time: Annotated[
+                str,
+                typer.Option(
+                    help="Wall time per worker",
+                    show_default=False,
+                ),
+            ],
+            max_workers: Annotated[
+                int,
+                typer.Option(
+                    help="Max number of workers for autoscaling",
+                    show_default=False,
+                ),
+            ],
+            gpus: Annotated[
+                int | None,
+                typer.Option(
+                    help="Number of GPUs per worker",
+                ),
+            ] = None,
+            setup_commands: Annotated[
+                str | None,
+                typer.Option(
+                    help="Commands to run before the task starts (e.g., activating virtual environment)",
+                ),
+            ] = None,
+        ):
+            """
+            Run the task as a CLI application
+            """
+            resources = SlurmResourceConfig(
+                cpus=cpus,
+                gpus=gpus,
+                memory=memory,
+                time=time,
+                max_workers=max_workers,
+            )
+
+            task = cls(resources, setup_commands)
+
+            task.start()
+
+        typer.run(main)
 
     @staticmethod
     @abstractmethod
