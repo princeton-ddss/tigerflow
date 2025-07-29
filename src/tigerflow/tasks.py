@@ -5,7 +5,7 @@ from pathlib import Path
 from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
 from dask_jobqueue import SLURMCluster
 
-from .config import SlurmTaskConfig
+from .config import SlurmResourceConfig
 from .utils import atomic_write
 
 
@@ -15,8 +15,13 @@ class SlurmTask(ABC):
     the workload across Slurm jobs acting as cluster workers.
     """
 
-    def __init__(self, config: SlurmTaskConfig):
-        self.config = config
+    def __init__(
+        self,
+        resources: SlurmResourceConfig,
+        setup_commands: str | None = None,
+    ):
+        self.resources = resources
+        self.setup_commands = setup_commands
 
     def start(self, input_dir: Path, output_dir: Path):
         if not input_dir.exists():
@@ -43,19 +48,15 @@ class SlurmTask(ABC):
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
-            cores=self.config.resources.cpus,
-            memory=self.config.resources.memory,
-            walltime=self.config.resources.time,
+            cores=self.resources.cpus,
+            memory=self.resources.memory,
+            walltime=self.resources.time,
             processes=1,
             worker_extra_args=(
-                [f"--gres=gpu:{self.config.resources.gpus}"]
-                if self.config.resources.gpus
-                else None
+                [f"--gres=gpu:{self.resources.gpus}"] if self.resources.gpus else None
             ),
             job_script_prologue=(
-                self.config.setup_commands.strip().split("\n")
-                if self.config.setup_commands
-                else None
+                self.setup_commands.strip().split("\n") if self.setup_commands else None
             ),
             local_directory=output_dir,
             log_directory=output_dir,
@@ -64,7 +65,7 @@ class SlurmTask(ABC):
         # Enable autoscaling
         cluster.adapt(
             minimum_jobs=0,
-            maximum_jobs=self.config.resources.max_workers,
+            maximum_jobs=self.resources.max_workers,
         )
 
         # Instantiate a cluster client
