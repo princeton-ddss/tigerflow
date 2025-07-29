@@ -176,7 +176,7 @@ class SlurmTask(ABC):
 
             task = cls(resources, setup_commands)
 
-            task.start()
+            task.start(input_dir, output_dir)
 
         typer.run(main)
 
