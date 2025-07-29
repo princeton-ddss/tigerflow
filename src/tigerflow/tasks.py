@@ -11,7 +11,17 @@ from .config import SlurmResourceConfig
 from .utils import atomic_write
 
 
-class SlurmTask(ABC):
+class Task(ABC):
+    @classmethod
+    @abstractmethod
+    def cli(cls):
+        """
+        Run the task as a CLI application
+        """
+        pass
+
+
+class SlurmTask(Task):
     """
     Execute the user-defined task in parallel by distributing
     the workload across Slurm jobs acting as cluster workers.
