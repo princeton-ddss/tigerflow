@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import networkx as nx
 from pydantic import BaseModel, Field, field_validator
 
@@ -13,7 +15,7 @@ class SlurmResourceConfig(BaseModel):
 class TaskConfig(BaseModel):
     name: str
     depends_on: str | None = None
-    module: str
+    module: Path
     setup_commands: str | None = None
 
 

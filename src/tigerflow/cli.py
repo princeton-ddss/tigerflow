@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import typer
 from rich import print
 from typing_extensions import Annotated
@@ -8,21 +10,21 @@ app = typer.Typer()
 @app.command()
 def run(
     config_file: Annotated[
-        str,
+        Path,
         typer.Argument(
             help="Configuration file",
             show_default=False,
         ),
     ],
     input_dir: Annotated[
-        str,
+        Path,
         typer.Argument(
             help="Directory containing input data for the pipeline",
             show_default=False,
         ),
     ],
     output_dir: Annotated[
-        str,
+        Path,
         typer.Argument(
             help="Directory to store pipeline scripts and intermediate data",
             show_default=False,
