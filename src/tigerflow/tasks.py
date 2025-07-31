@@ -93,7 +93,7 @@ class SlurmTask(Task):
                 [f"--gres=gpu:{self.resources.gpus}"] if self.resources.gpus else None
             ),
             job_script_prologue=(
-                self.setup_commands.strip().split("\n") if self.setup_commands else None
+                self.setup_commands.splitlines() if self.setup_commands else None
             ),
             local_directory=output_dir,
             log_directory=output_dir,
