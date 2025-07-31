@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Annotated, Literal
 
 import networkx as nx
 from pydantic import BaseModel, Field, field_validator
@@ -12,7 +13,7 @@ class SlurmResourceConfig(BaseModel):
     max_workers: int
 
 
-class TaskConfig(BaseModel):
+class BaseTaskConfig(BaseModel):
     name: str
     depends_on: str | None = None
     module: Path
@@ -28,23 +29,28 @@ class TaskConfig(BaseModel):
         return module
 
 
-class LocalTaskConfig(TaskConfig):
-    pass
+class LocalTaskConfig(BaseTaskConfig):
+    type: Literal["local"]
 
 
-class SlurmTaskConfig(TaskConfig):
+class SlurmTaskConfig(BaseTaskConfig):
+    type: Literal["slurm"]
     resources: SlurmResourceConfig
+
+
+TaskConfig = Annotated[LocalTaskConfig | SlurmTaskConfig, Field(discriminator="type")]
 
 
 class PipelineConfig(BaseModel):
     name: str
-    tasks: list[LocalTaskConfig | SlurmTaskConfig] = Field(min_length=1)
+    tasks: list[TaskConfig] = Field(min_length=1)
 
     @field_validator("tasks")
     @classmethod
     def validate_task_dependency_graph(
-        cls, tasks: list[LocalTaskConfig | SlurmTaskConfig]
-    ) -> list[LocalTaskConfig | SlurmTaskConfig]:
+        cls,
+        tasks: list[TaskConfig],
+    ) -> list[TaskConfig]:
         # Validate each dependency is on a known task
         task_names = {task.name for task in tasks}
         for task in tasks:
