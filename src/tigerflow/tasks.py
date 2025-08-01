@@ -189,7 +189,10 @@ class SlurmTask(Task):
             setup_commands: Annotated[
                 str | None,
                 typer.Option(
-                    help="Commands to run before the task starts (e.g., activating virtual environment)",
+                    help="""
+                    Shell commands to run before the task starts
+                    (separate commands with a semicolon)
+                    """,
                 ),
             ] = None,
         ):

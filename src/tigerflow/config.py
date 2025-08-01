@@ -28,6 +28,11 @@ class BaseTaskConfig(BaseModel):
             raise ValueError(f"Module is not a file: {module}")
         return module
 
+    @field_validator("setup_commands")
+    @classmethod
+    def transform_setup_commands(cls, setup_commands: str | None) -> str | None:
+        return ";".join(setup_commands.splitlines()) if setup_commands else None
+
 
 class LocalTaskConfig(BaseTaskConfig):
     type: Literal["local"]
