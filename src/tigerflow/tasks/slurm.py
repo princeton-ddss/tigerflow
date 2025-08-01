@@ -182,7 +182,7 @@ class SlurmTask(Task):
 
     @staticmethod
     @abstractmethod
-    def setup(worker: Worker):
+    def setup(context: Worker):
         """
         Establish a shared processing setup (e.g., model loading).
         """
@@ -190,7 +190,7 @@ class SlurmTask(Task):
 
     @staticmethod
     @abstractmethod
-    def run(worker: Worker, input_file: Path, output_file: Path):
+    def run(context: Worker, input_file: Path, output_file: Path):
         """
         Specify the processing logic to be applied to each input file.
         """
