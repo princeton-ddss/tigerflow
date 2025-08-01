@@ -1,5 +1,5 @@
 import time
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from pathlib import Path
 
 import typer
@@ -7,43 +7,10 @@ from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
 from dask_jobqueue import SLURMCluster
 from typing_extensions import Annotated
 
-from .config import SlurmResourceConfig
-from .utils import atomic_write
+from tigerflow.config import SlurmResourceConfig
+from tigerflow.utils import atomic_write
 
-
-class Task(ABC):
-    @classmethod
-    @abstractmethod
-    def cli(cls):
-        """
-        Run the task as a CLI application
-        """
-        pass
-
-    @staticmethod
-    def _get_unprocessed_files(input_dir: Path, output_dir: Path) -> list[Path]:
-        """
-        Compare input and output directories to identify
-        files that have not yet been fully processed.
-
-        Note that the files returned by this function as
-        "unprocessed" may include ones still undergoing
-        processing. Additional tracking is required to
-        exclude such in-progress files.
-        """
-        processed_ids = {
-            f.stem
-            for f in output_dir.iterdir()
-            if f.is_file() and f.suffix in {".out", ".err"}
-        }
-
-        unprocessed_files = [
-            f
-            for f in input_dir.iterdir()
-            if f.is_file() and f.suffix == ".out" and f.stem not in processed_ids
-        ]
-
-        return unprocessed_files
+from ._base import Task
 
 
 class SlurmTask(Task):
