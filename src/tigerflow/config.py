@@ -60,12 +60,20 @@ class LocalTaskConfig(BaseTaskConfig):
     type: Literal["local"]
 
 
+class LocalAsyncTaskConfig(BaseTaskConfig):
+    type: Literal["local_async"]
+    concurrency_limit: int
+
+
 class SlurmTaskConfig(BaseTaskConfig):
     type: Literal["slurm"]
     resources: SlurmResourceConfig
 
 
-TaskConfig = Annotated[LocalTaskConfig | SlurmTaskConfig, Field(discriminator="type")]
+TaskConfig = Annotated[
+    LocalTaskConfig | LocalAsyncTaskConfig | SlurmTaskConfig,
+    Field(discriminator="type"),
+]
 
 
 class PipelineConfig(BaseModel):
