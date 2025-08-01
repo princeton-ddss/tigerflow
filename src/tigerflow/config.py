@@ -18,6 +18,8 @@ class BaseTaskConfig(BaseModel):
     depends_on: str | None = None
     module: Path
     setup_commands: str | None = None
+    _input_dir: Path
+    _output_dir: Path
 
     @field_validator("module")
     @classmethod
@@ -32,6 +34,26 @@ class BaseTaskConfig(BaseModel):
     @classmethod
     def transform_setup_commands(cls, setup_commands: str | None) -> str | None:
         return ";".join(setup_commands.splitlines()) if setup_commands else None
+
+    @property
+    def input_dir(self) -> Path:
+        return self._input_dir
+
+    @input_dir.setter
+    def input_dir(self, value: Path):
+        self._input_dir = value
+
+    @property
+    def output_dir(self) -> Path:
+        return self._output_dir
+
+    @output_dir.setter
+    def output_dir(self, value: Path):
+        self._output_dir = value
+
+    @property
+    def log_dir(self) -> Path:
+        return self._output_dir.parent / "logs"
 
 
 class LocalTaskConfig(BaseTaskConfig):
