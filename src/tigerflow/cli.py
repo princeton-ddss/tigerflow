@@ -1,8 +1,9 @@
 from pathlib import Path
 
 import typer
-from rich import print
 from typing_extensions import Annotated
+
+from .pipeline import Pipeline
 
 app = typer.Typer()
 
@@ -34,9 +35,8 @@ def run(
     """
     Run a pipeline based on the given specification.
     """
-    print(config_file)
-    print(input_dir)
-    print(output_dir)
+    pipeline = Pipeline(config_file, input_dir, output_dir)
+    pipeline.run()
 
 
 @app.callback()
