@@ -48,7 +48,7 @@ class SlurmTask(Task):
             except Exception as e:
                 with atomic_write(output_file.with_suffix(".err")) as temp_file:
                     with open(temp_file, "w") as f:
-                        f.write(e)
+                        f.write(str(e))
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(

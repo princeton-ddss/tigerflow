@@ -35,7 +35,7 @@ class LocalAsyncTask(Task):
             except Exception as e:
                 with atomic_write(output_file.with_suffix(".err")) as temp_file:
                     async with aiofiles.open(temp_file, "w") as f:
-                        await f.write(e)
+                        await f.write(str(e))
 
         async def worker():
             while True:
