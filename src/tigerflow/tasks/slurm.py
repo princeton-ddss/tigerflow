@@ -1,6 +1,7 @@
 import time
 from abc import abstractmethod
 from pathlib import Path
+from types import SimpleNamespace
 
 import typer
 from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
@@ -38,13 +39,14 @@ class SlurmTask(Task):
 
         class TaskWorkerPlugin(WorkerPlugin):
             def setup(self, worker: Worker):
-                setup_func(worker)
+                worker.context = SimpleNamespace()
+                setup_func(worker.context)
 
         def task(input_file: Path, output_file: Path):
             worker = get_worker()
             try:
                 with atomic_write(output_file) as temp_file:
-                    run_func(worker, input_file, temp_file)
+                    run_func(worker.context, input_file, temp_file)
             except Exception as e:
                 with atomic_write(output_file.with_suffix(".err")) as temp_file:
                     with open(temp_file, "w") as f:
@@ -182,7 +184,7 @@ class SlurmTask(Task):
 
     @staticmethod
     @abstractmethod
-    def setup(context: Worker):
+    def setup(context: SimpleNamespace):
         """
         Establish a shared processing setup (e.g., model loading).
         """
@@ -190,7 +192,7 @@ class SlurmTask(Task):
 
     @staticmethod
     @abstractmethod
-    def run(context: Worker, input_file: Path, output_file: Path):
+    def run(context: SimpleNamespace, input_file: Path, output_file: Path):
         """
         Specify the processing logic to be applied to each input file.
         """
