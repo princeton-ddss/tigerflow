@@ -6,6 +6,7 @@ import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import TimeoutExpired
+from types import SimpleNamespace
 
 
 def is_valid_cli(file: Path) -> bool:
@@ -51,6 +52,35 @@ def get_slurm_max_array_size() -> int:
     max_array_size = int(match.group(1))
 
     return max_array_size
+
+
+class SetupContext(SimpleNamespace):
+    """
+    Namespace for user-defined setup variables.
+
+    It can be frozen for read-only access.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._frozen = False
+
+    def __setattr__(self, key, value):
+        if getattr(self, "_frozen", False):
+            raise AttributeError(
+                f"Cannot modify frozen SetupContext: tried to set '{key}'"
+            )
+        super().__setattr__(key, value)
+
+    def __delattr__(self, key):
+        if getattr(self, "_frozen", False):
+            raise AttributeError(
+                f"Cannot modify frozen SetupContext: tried to delete '{key}'"
+            )
+        super().__delattr__(key)
+
+    def freeze(self):
+        self._frozen = True
 
 
 @contextmanager

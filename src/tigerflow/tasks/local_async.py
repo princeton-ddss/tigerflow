@@ -1,13 +1,12 @@
 import asyncio
 from abc import abstractmethod
 from pathlib import Path
-from types import SimpleNamespace
 
 import aiofiles
 import typer
 from typing_extensions import Annotated
 
-from tigerflow.utils import atomic_write
+from tigerflow.utils import SetupContext, atomic_write
 
 from ._base import Task
 
@@ -15,7 +14,7 @@ from ._base import Task
 class LocalAsyncTask(Task):
     def __init__(self, concurrency_limit: int):
         self.concurrency_limit = concurrency_limit
-        self.context = SimpleNamespace()
+        self.context = SetupContext()
         self.queue = asyncio.Queue()
         self.in_queue: set[str] = set()  # Track file IDs in queue
 
@@ -74,6 +73,7 @@ class LocalAsyncTask(Task):
 
         # Run the common setup
         setup_func(self.context)
+        self.context.freeze()  # Make it read-only
 
         # Start coroutines
         asyncio.run(main())
@@ -121,7 +121,7 @@ class LocalAsyncTask(Task):
 
     @staticmethod
     @abstractmethod
-    def setup(context: SimpleNamespace):
+    def setup(context: SetupContext):
         """
         Establish a shared processing setup (e.g., model loading).
         """
@@ -129,7 +129,7 @@ class LocalAsyncTask(Task):
 
     @staticmethod
     @abstractmethod
-    async def run(context: SimpleNamespace, input_file: Path, output_file: Path):
+    async def run(context: SetupContext, input_file: Path, output_file: Path):
         """
         Specify the processing logic to be applied to each input file.
         """

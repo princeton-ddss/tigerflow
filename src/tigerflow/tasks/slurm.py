@@ -1,7 +1,6 @@
 import time
 from abc import abstractmethod
 from pathlib import Path
-from types import SimpleNamespace
 
 import typer
 from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
@@ -9,7 +8,7 @@ from dask_jobqueue import SLURMCluster
 from typing_extensions import Annotated
 
 from tigerflow.config import SlurmResourceConfig
-from tigerflow.utils import atomic_write
+from tigerflow.utils import SetupContext, atomic_write
 
 from ._base import Task
 
@@ -39,8 +38,9 @@ class SlurmTask(Task):
 
         class TaskWorkerPlugin(WorkerPlugin):
             def setup(self, worker: Worker):
-                worker.context = SimpleNamespace()
+                worker.context = SetupContext()
                 setup_func(worker.context)
+                worker.context.freeze()  # Make it read-only
 
         def task(input_file: Path, output_file: Path):
             worker = get_worker()
@@ -184,7 +184,7 @@ class SlurmTask(Task):
 
     @staticmethod
     @abstractmethod
-    def setup(context: SimpleNamespace):
+    def setup(context: SetupContext):
         """
         Establish a shared processing setup (e.g., model loading).
         """
@@ -192,7 +192,7 @@ class SlurmTask(Task):
 
     @staticmethod
     @abstractmethod
-    def run(context: SimpleNamespace, input_file: Path, output_file: Path):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         """
         Specify the processing logic to be applied to each input file.
         """
