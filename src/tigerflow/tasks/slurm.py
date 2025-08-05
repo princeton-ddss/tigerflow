@@ -83,9 +83,7 @@ class SlurmTask(Task):
         client.register_plugin(TaskWorkerPlugin())
 
         # Clean up incomplete temporary files left behind by a prior cluster instance
-        for f in output_dir.iterdir():
-            if f.is_file() and f.suffix == "":
-                f.unlink()
+        self._remove_temporary_files(output_dir)
 
         # Monitor for new files and enqueue them for processing
         active_futures: dict[str, Future] = dict()

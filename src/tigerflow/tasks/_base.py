@@ -12,6 +12,15 @@ class Task(ABC):
         pass
 
     @staticmethod
+    def _remove_temporary_files(dirpath: Path):
+        """
+        Remove any files with no file extension.
+        """
+        for f in dirpath.iterdir():
+            if f.is_file() and f.suffix == "":
+                f.unlink()
+
+    @staticmethod
     def _get_unprocessed_files(input_dir: Path, output_dir: Path) -> list[Path]:
         """
         Compare input and output directories to identify
