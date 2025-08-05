@@ -186,7 +186,13 @@ class SlurmTask(Task):
     @abstractmethod
     def setup(context: SetupContext):
         """
-        Establish a shared processing setup (e.g., model loading).
+        Establish a shared setup to be used across different runs.
+
+        Parameters
+        ----------
+        context : SetupContext
+            Namespace to store any common, reusable data/objects
+            (e.g., large language models).
         """
         pass
 
@@ -194,6 +200,21 @@ class SlurmTask(Task):
     @abstractmethod
     def run(context: SetupContext, input_file: Path, output_file: Path):
         """
-        Specify the processing logic to be applied to each input file.
+        Define the processing logic to be applied to each input file.
+
+        Parameters
+        ----------
+        context : SetupContext
+            Read-only namespace for retrieving setup data/objects
+            (e.g., large language models).
+        input_file : Path
+            Path to the input file to be processed
+        output_file : Path
+            Path to the output file to be generated
+
+        Notes
+        -----
+        Unlike during setup, the `context` here is read-only
+        and will raise an error if modified.
         """
         pass
