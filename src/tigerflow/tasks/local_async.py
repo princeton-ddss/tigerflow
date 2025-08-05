@@ -57,6 +57,11 @@ class LocalAsyncTask(Task):
                 await asyncio.sleep(3)
 
         async def main():
+            # Run the setup logic
+            await setup_func(self.context)
+            self.context.freeze()  # Make it read-only
+
+            # Run the main processing logic
             workers = [
                 asyncio.create_task(worker()) for _ in range(self.concurrency_limit)
             ]
@@ -70,10 +75,6 @@ class LocalAsyncTask(Task):
         for f in output_dir.iterdir():
             if f.is_file() and f.suffix == "":
                 f.unlink()
-
-        # Run the common setup
-        setup_func(self.context)
-        self.context.freeze()  # Make it read-only
 
         # Start coroutines
         asyncio.run(main())
@@ -121,7 +122,7 @@ class LocalAsyncTask(Task):
 
     @staticmethod
     @abstractmethod
-    def setup(context: SetupContext):
+    async def setup(context: SetupContext):
         """
         Establish a shared setup to be used across different runs.
 
