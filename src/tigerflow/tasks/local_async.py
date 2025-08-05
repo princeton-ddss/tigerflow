@@ -26,6 +26,7 @@ class LocalAsyncTask(Task):
         # Reference methods that must be implemented in subclass
         setup_func = type(self).setup
         run_func = type(self).run
+        teardown_func = type(self).teardown
 
         async def task(input_file: Path, output_file: Path):
             try:
@@ -57,19 +58,20 @@ class LocalAsyncTask(Task):
                 await asyncio.sleep(3)
 
         async def main():
-            # Run the setup logic
             await setup_func(self.context)
             self.context.freeze()  # Make it read-only
 
-            # Run the main processing logic
             workers = [
                 asyncio.create_task(worker()) for _ in range(self.concurrency_limit)
             ]
             poller = asyncio.create_task(poll())
+
             try:
                 await asyncio.gather(poller, *workers)
             except asyncio.CancelledError:
                 print("Shutting down...")
+            finally:
+                await teardown_func(self.context)
 
         # Clean up incomplete temporary files left behind by a prior process instance
         for f in output_dir.iterdir():
@@ -154,5 +156,20 @@ class LocalAsyncTask(Task):
         -----
         Unlike during setup, the `context` here is read-only
         and will raise an error if modified.
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    async def teardown(context: SetupContext):
+        """
+        Define cleanup logic (e.g., closing an HTTP client session)
+        to be executed upon termination.
+
+        Parameters
+        ----------
+        context : SetupContext
+            Read-only namespace for retrieving setup data/objects
+            (e.g., HTTP client session, DB connection).
         """
         pass

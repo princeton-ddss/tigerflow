@@ -35,12 +35,16 @@ class SlurmTask(Task):
         # Reference methods that must be implemented in subclass
         setup_func = type(self).setup
         run_func = type(self).run
+        teardown_func = type(self).teardown
 
         class TaskWorkerPlugin(WorkerPlugin):
             def setup(self, worker: Worker):
                 worker.context = SetupContext()
                 setup_func(worker.context)
                 worker.context.freeze()  # Make it read-only
+
+            def teardown(self, worker: Worker):
+                teardown_func(worker.context)
 
         def task(input_file: Path, output_file: Path):
             worker = get_worker()
@@ -192,7 +196,7 @@ class SlurmTask(Task):
         ----------
         context : SetupContext
             Namespace to store any common, reusable data/objects
-            (e.g., large language models).
+            (e.g., large language model, DB connection).
         """
         pass
 
@@ -206,7 +210,7 @@ class SlurmTask(Task):
         ----------
         context : SetupContext
             Read-only namespace for retrieving setup data/objects
-            (e.g., large language models).
+            (e.g., large language model, DB connection).
         input_file : Path
             Path to the input file to be processed
         output_file : Path
@@ -216,5 +220,20 @@ class SlurmTask(Task):
         -----
         Unlike during setup, the `context` here is read-only
         and will raise an error if modified.
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def teardown(context: SetupContext):
+        """
+        Define cleanup logic (e.g., closing a DB connection)
+        to be executed upon termination.
+
+        Parameters
+        ----------
+        context : SetupContext
+            Read-only namespace for retrieving setup data/objects
+            (e.g., large language model, DB connection).
         """
         pass
