@@ -46,7 +46,7 @@ class Pipeline:
             elif isinstance(task, LocalTaskConfig):
                 pass  # TODO: Start the task as a subprocess
             else:
-                raise ValueError(f"Unsupported task type: {type(task)}")
+                raise ValueError(f"Unsupported task kind: {type(task)}")
 
         # while True:
         #     # TODO: Check status of each task
