@@ -185,7 +185,6 @@ class SlurmTask(Task):
         typer.run(main)
 
     @staticmethod
-    @abstractmethod
     def setup(context: SetupContext):
         """
         Establish a shared setup to be used across different runs.
@@ -222,7 +221,6 @@ class SlurmTask(Task):
         pass
 
     @staticmethod
-    @abstractmethod
     def teardown(context: SetupContext):
         """
         Define cleanup logic (e.g., closing a DB connection)

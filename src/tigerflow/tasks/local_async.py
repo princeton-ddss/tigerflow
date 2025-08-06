@@ -121,7 +121,6 @@ class LocalAsyncTask(Task):
         typer.run(main)
 
     @staticmethod
-    @abstractmethod
     async def setup(context: SetupContext):
         """
         Establish a shared setup to be used across different runs.
@@ -158,7 +157,6 @@ class LocalAsyncTask(Task):
         pass
 
     @staticmethod
-    @abstractmethod
     async def teardown(context: SetupContext):
         """
         Define cleanup logic (e.g., closing an HTTP client session)
