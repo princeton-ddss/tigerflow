@@ -24,7 +24,7 @@ def is_valid_cli(file: Path) -> bool:
             [sys.executable, str(file), "--help"],
             capture_output=True,
             text=True,
-            timeout=1,
+            timeout=60,
         )
         if result.stderr:
             raise Exception(result.stderr)
