@@ -62,7 +62,7 @@ class SlurmTask(Task):
             memory=self.resources.memory,
             walltime=self.resources.time,
             processes=1,
-            worker_extra_args=(
+            job_extra_directives=(
                 [f"--gres=gpu:{self.resources.gpus}"] if self.resources.gpus else None
             ),
             job_script_prologue=(
