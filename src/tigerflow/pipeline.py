@@ -101,6 +101,7 @@ class Pipeline:
         task_command = " ".join(
             [
                 "python",
+                f"{task.module}",
                 f"{task.input_dir}",
                 f"{task.output_dir}",
                 f"--cpus {task.resources.cpus}",
