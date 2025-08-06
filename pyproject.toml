@@ -1,6 +1,6 @@
 [project]
 name = "tigerflow"
-version = "0.1.0-alpha.1"
+version = "0.1.0a0"
 description = "A pipeline framework optimized for HPC with Slurm integration"
 readme = "README.md"
 authors = [
