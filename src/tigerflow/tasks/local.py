@@ -82,7 +82,7 @@ class LocalTask(Task):
         typer.run(main)
 
     @staticmethod
-    async def setup(context: SetupContext):
+    def setup(context: SetupContext):
         """
         Establish a shared setup to be used across different runs.
 
@@ -96,7 +96,7 @@ class LocalTask(Task):
 
     @staticmethod
     @abstractmethod
-    async def run(context: SetupContext, input_file: Path, output_file: Path):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         """
         Define the processing logic to be applied to each input file.
 
@@ -118,7 +118,7 @@ class LocalTask(Task):
         pass
 
     @staticmethod
-    async def teardown(context: SetupContext):
+    def teardown(context: SetupContext):
         """
         Define cleanup logic (e.g., closing a DB connection)
         to be executed upon termination.
