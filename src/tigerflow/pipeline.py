@@ -20,27 +20,33 @@ class Pipeline:
             yaml.safe_load(config_file.read_text())
         )
 
+        self.input_dir = input_dir.absolute()
+        self.output_dir = output_dir.absolute() / self.config.name
+        self.symlinks_dir = self.output_dir / ".symlinks"  # Symlinks to input files
+
         for task in self.config.tasks:
             if not is_valid_cli(task.module):
                 raise ValueError(f"Invalid CLI: {task.module}")
 
         # Map task I/O directories from the dependency graph
-        pipeline_dir = output_dir.absolute() / self.config.name
         for task in self.config.tasks:
             task.input_dir = (
-                pipeline_dir / task.depends_on / "results"
+                self.output_dir / task.depends_on
                 if task.depends_on
-                else input_dir.absolute()
+                else self.symlinks_dir
             )
-            task.output_dir = pipeline_dir / task.name / "results"
+            task.output_dir = self.output_dir / task.name
+
+        # Create task directories
+        for task in self.config.tasks:
+            for p in [task.input_dir, task.output_dir, task.log_dir]:
+                p.mkdir(parents=True, exist_ok=True)
 
         # Initialize a set to track Slurm task clusters
         self.slurm_task_ids: set[int] = set()
 
     def run(self):
         for task in self.config.tasks:
-            for p in [task.output_dir, task.log_dir]:
-                p.mkdir(parents=True, exist_ok=True)
             if isinstance(task, SlurmTaskConfig):
                 self._start_slurm_task(task)
             elif isinstance(task, LocalTaskConfig):
@@ -95,8 +101,6 @@ class Pipeline:
         except Exception:
             array_size = 300  # Default
 
-        job_name = f"{task.name}-client"
-        log_dir = task.log_dir
         setup_command = task.setup_commands if task.setup_commands else ""
         task_command = " ".join(
             [
@@ -117,9 +121,9 @@ class Pipeline:
 
         slurm_script = textwrap.dedent(f"""\
             #!/bin/bash
-            #SBATCH --job-name={job_name}
-            #SBATCH --output={log_dir}/{job_name}-slurm-%A-%a.out
-            #SBATCH --error={log_dir}/{job_name}-slurm-%A-%a.err
+            #SBATCH --job-name=dask-client
+            #SBATCH --output={task.log_dir}/dask-client-%A-%a.log
+            #SBATCH --error={task.log_dir}/dask-client-%A-%a.log
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=1
@@ -127,7 +131,7 @@ class Pipeline:
             #SBATCH --time=72:00:00
             #SBATCH --array=1-{array_size}%1
 
-            echo "Starting Slurm job: {job_name}"
+            echo "Starting Dask client for: {task.name}"
             echo "With SLURM_ARRAY_JOB_ID: $SLURM_ARRAY_JOB_ID"
             echo "With SLURM_ARRAY_TASK_ID: $SLURM_ARRAY_TASK_ID"
             echo "On machine:" $(hostname)

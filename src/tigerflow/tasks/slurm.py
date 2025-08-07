@@ -32,6 +32,10 @@ class SlurmTask(Task):
             if not p.exists():
                 raise FileNotFoundError(p)
 
+        # Create subdirectory to store log files
+        log_dir = output_dir / "logs"
+        log_dir.mkdir(exist_ok=True)
+
         # Reference methods that must be implemented in subclass
         setup_func = type(self).setup
         run_func = type(self).run
@@ -62,14 +66,14 @@ class SlurmTask(Task):
             memory=self.resources.memory,
             walltime=self.resources.time,
             processes=1,
-            job_extra_directives=(
-                [f"--gres=gpu:{self.resources.gpus}"] if self.resources.gpus else None
-            ),
+            job_extra_directives=[
+                f"--output={log_dir}/dask-worker-%J.log",
+                f"--error={log_dir}/dask-worker-%J.log",
+                f"--gres=gpu:{self.resources.gpus}" if self.resources.gpus else "",
+            ],
             job_script_prologue=(
                 self.setup_commands.splitlines() if self.setup_commands else None
             ),
-            local_directory=output_dir,
-            log_directory=output_dir,
         )
 
         # Enable autoscaling

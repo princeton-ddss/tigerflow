@@ -53,7 +53,7 @@ class BaseTaskConfig(BaseModel):
 
     @property
     def log_dir(self) -> Path:
-        return self._output_dir.parent / "logs"
+        return self._output_dir / "logs"
 
 
 class LocalTaskConfig(BaseTaskConfig):
