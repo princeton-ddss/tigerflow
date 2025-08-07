@@ -20,8 +20,8 @@ class Pipeline:
             yaml.safe_load(config_file.read_text())
         )
 
-        self.input_dir = input_dir.absolute()
-        self.output_dir = output_dir.absolute() / self.config.name
+        self.input_dir = input_dir.resolve()
+        self.output_dir = output_dir.resolve() / self.config.name
         self.symlinks_dir = self.output_dir / ".symlinks"  # Symlinks to input files
 
         for task in self.config.tasks:

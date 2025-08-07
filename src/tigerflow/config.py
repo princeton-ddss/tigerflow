@@ -28,7 +28,7 @@ class BaseTaskConfig(BaseModel):
             raise ValueError(f"Module does not exist: {module}")
         if not module.is_file():
             raise ValueError(f"Module is not a file: {module}")
-        return module
+        return module.resolve()  # Use absolute path for clarity
 
     @field_validator("setup_commands")
     @classmethod
