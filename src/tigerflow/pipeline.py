@@ -6,7 +6,12 @@ from pathlib import Path
 
 import yaml
 
-from .config import LocalTaskConfig, PipelineConfig, SlurmTaskConfig
+from .config import (
+    LocalAsyncTaskConfig,
+    LocalTaskConfig,
+    PipelineConfig,
+    SlurmTaskConfig,
+)
 from .utils import get_slurm_max_array_size, is_valid_cli
 
 
@@ -46,23 +51,23 @@ class Pipeline:
         self.slurm_task_ids: set[int] = set()
 
     def run(self):
+        try:
+            self._start_tasks()
+            # TODO: Periodically check for any new input files to process (and create corresponding symlinks)
+            # TODO: Periodically clean up files that have successfully completed all steps of the pipeline
+        finally:
+            pass  # TODO: Cancel Slurm tasks
+
+    def _start_tasks(self):
         for task in self.config.tasks:
-            if isinstance(task, SlurmTaskConfig):
-                self._start_slurm_task(task)
-            elif isinstance(task, LocalTaskConfig):
+            if isinstance(task, LocalTaskConfig):
                 pass  # TODO: Start the task as a subprocess
+            elif isinstance(task, LocalAsyncTaskConfig):
+                pass  # TODO: Start the task as a subprocess
+            elif isinstance(task, SlurmTaskConfig):
+                self._start_slurm_task(task)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
-
-        # while True:
-        #     # TODO: Check status of each task
-        #     pass
-
-        #     # TODO: Clean up files that have successfully completed all steps of the pipeline
-        #     pass
-
-        #     # TODO: Handle collective shutdown (i.e., bring down all tasks when the main process terminates)
-        #     pass
 
     def _start_slurm_task(self, task: SlurmTaskConfig):
         script = self._compose_slurm_script(task)
