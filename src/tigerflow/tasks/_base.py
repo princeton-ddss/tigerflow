@@ -21,7 +21,12 @@ class Task(ABC):
                 f.unlink()
 
     @staticmethod
-    def _get_unprocessed_files(input_dir: Path, output_dir: Path) -> list[Path]:
+    def _get_unprocessed_files(
+        input_dir: Path,
+        input_ext: str,
+        output_dir: Path,
+        output_ext: str,
+    ) -> list[Path]:
         """
         Compare input and output directories to identify
         files that have not yet been fully processed.
@@ -32,15 +37,17 @@ class Task(ABC):
         exclude such in-progress files.
         """
         processed_ids = {
-            f.stem
+            f.name.removesuffix(output_ext)
             for f in output_dir.iterdir()
-            if f.is_file() and f.suffix in {".out", ".err"}
+            if f.is_file() and f.name.endswith(output_ext)
         }
 
         unprocessed_files = [
             f
             for f in input_dir.iterdir()
-            if f.is_file() and f.suffix == ".out" and f.stem not in processed_ids
+            if f.is_file()
+            and f.name.endswith(input_ext)
+            and f.name.removesuffix(input_ext) not in processed_ids
         ]
 
         return unprocessed_files

@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 from typing_extensions import Annotated
 
-from tigerflow.utils import SetupContext, atomic_write
+from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
 
 from ._base import Task
 
@@ -14,10 +14,18 @@ class LocalTask(Task):
     def __init__(self):
         self.context = SetupContext()
 
-    def start(self, input_dir: Path, output_dir: Path):
+    def start(
+        self,
+        input_dir: Path,
+        input_ext: str,
+        output_dir: Path,
+        output_ext: str,
+    ):
         for p in [input_dir, output_dir]:
             if not p.exists():
                 raise FileNotFoundError(p)
+        for s in [input_ext, output_ext]:
+            validate_file_ext(s)
 
         # Reference methods that must be implemented in subclass
         setup_func = type(self).setup
@@ -29,7 +37,9 @@ class LocalTask(Task):
                 with atomic_write(output_file) as temp_file:
                     run_func(self.context, input_file, temp_file)
             except Exception as e:
-                with atomic_write(output_file.with_suffix(".err")) as temp_file:
+                error_fname = output_file.name.removesuffix(output_ext) + ".err"
+                error_file = output_dir / error_fname
+                with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
                         f.write(str(e))
 
@@ -43,10 +53,18 @@ class LocalTask(Task):
         # Monitor for new files and process them sequentially
         try:
             while True:
-                unprocessed_files = self._get_unprocessed_files(input_dir, output_dir)
+                unprocessed_files = self._get_unprocessed_files(
+                    input_dir,
+                    input_ext,
+                    output_dir,
+                    output_ext,
+                )
+
                 for file in unprocessed_files:
-                    output_file = output_dir / file.with_suffix(".out").name
+                    output_fname = file.name.removesuffix(input_ext) + output_ext
+                    output_file = output_dir / output_fname
                     task(file, output_file)
+
                 time.sleep(3)
         finally:
             teardown_func(self.context)
@@ -60,15 +78,29 @@ class LocalTask(Task):
         def main(
             input_dir: Annotated[
                 Path,
-                typer.Argument(
+                typer.Option(
                     help="Input directory to read data",
+                    show_default=False,
+                ),
+            ],
+            input_ext: Annotated[
+                str,
+                typer.Option(
+                    help="Input file extension",
                     show_default=False,
                 ),
             ],
             output_dir: Annotated[
                 Path,
-                typer.Argument(
+                typer.Option(
                     help="Output directory to store results",
+                    show_default=False,
+                ),
+            ],
+            output_ext: Annotated[
+                str,
+                typer.Option(
+                    help="Output file extension",
                     show_default=False,
                 ),
             ],
@@ -77,7 +109,7 @@ class LocalTask(Task):
             Run the task as a CLI application
             """
             task = cls()
-            task.start(input_dir, output_dir)
+            task.start(input_dir, input_ext, output_dir, output_ext)
 
         typer.run(main)
 

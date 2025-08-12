@@ -4,6 +4,8 @@ from typing import Annotated, Literal
 import networkx as nx
 from pydantic import BaseModel, Field, field_validator
 
+from tigerflow.utils import validate_file_ext
+
 
 class SlurmResourceConfig(BaseModel):
     cpus: int
@@ -17,6 +19,8 @@ class BaseTaskConfig(BaseModel):
     name: str
     depends_on: str | None = None
     module: Path
+    input_ext: str
+    output_ext: str = ".out"
     setup_commands: str | None = None
     _input_dir: Path
     _output_dir: Path
@@ -29,6 +33,16 @@ class BaseTaskConfig(BaseModel):
         if not module.is_file():
             raise ValueError(f"Module is not a file: {module}")
         return module.resolve()  # Use absolute path for clarity
+
+    @field_validator("input_ext")
+    @classmethod
+    def validate_input_ext(cls, input_ext: str) -> str:
+        return validate_file_ext(input_ext)
+
+    @field_validator("output_ext")
+    @classmethod
+    def validate_output_ext(cls, output_ext: str) -> str:
+        return validate_file_ext(output_ext)
 
     @field_validator("setup_commands")
     @classmethod

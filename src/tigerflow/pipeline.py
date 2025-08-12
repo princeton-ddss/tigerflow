@@ -111,8 +111,10 @@ class Pipeline:
             [
                 "python",
                 f"{task.module}",
-                f"{task.input_dir}",
-                f"{task.output_dir}",
+                f"--input-dir {task.input_dir}",
+                f"--input-ext {task.input_ext}",
+                f"--output-dir {task.output_dir}",
+                f"--output-ext {task.output_ext}",
                 f"--cpus {task.resources.cpus}",
                 f"--memory {task.resources.memory}",
                 f"--time {task.resources.time}",

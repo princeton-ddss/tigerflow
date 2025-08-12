@@ -6,7 +6,7 @@ import aiofiles
 import typer
 from typing_extensions import Annotated
 
-from tigerflow.utils import SetupContext, atomic_write
+from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
 
 from ._base import Task
 
@@ -16,12 +16,20 @@ class LocalAsyncTask(Task):
         self.concurrency_limit = concurrency_limit
         self.context = SetupContext()
         self.queue = asyncio.Queue()
-        self.in_queue: set[str] = set()  # Track file IDs in queue
+        self.in_queue: set[Path] = set()  # Track files in queue
 
-    def start(self, input_dir: Path, output_dir: Path):
+    def start(
+        self,
+        input_dir: Path,
+        input_ext: str,
+        output_dir: Path,
+        output_ext: str,
+    ):
         for p in [input_dir, output_dir]:
             if not p.exists():
                 raise FileNotFoundError(p)
+        for s in [input_ext, output_ext]:
+            validate_file_ext(s)
 
         # Reference methods that must be implemented in subclass
         setup_func = type(self).setup
@@ -33,7 +41,9 @@ class LocalAsyncTask(Task):
                 with atomic_write(output_file) as temp_file:
                     await run_func(self.context, input_file, temp_file)
             except Exception as e:
-                with atomic_write(output_file.with_suffix(".err")) as temp_file:
+                error_fname = output_file.name.removesuffix(output_ext) + ".err"
+                error_file = output_dir / error_fname
+                with atomic_write(error_file) as temp_file:
                     async with aiofiles.open(temp_file, "w") as f:
                         await f.write(str(e))
 
@@ -41,20 +51,30 @@ class LocalAsyncTask(Task):
             while True:
                 file = await self.queue.get()
                 assert isinstance(file, Path)
-                output_file = output_dir / file.with_suffix(".out").name
+
+                output_fname = file.name.removesuffix(input_ext) + output_ext
+                output_file = output_dir / output_fname
+
                 try:
                     await task(file, output_file)
                 finally:
                     self.queue.task_done()
-                    self.in_queue.remove(file.stem)
+                    self.in_queue.remove(file)
 
         async def poll():
             while True:
-                unprocessed_files = self._get_unprocessed_files(input_dir, output_dir)
+                unprocessed_files = self._get_unprocessed_files(
+                    input_dir,
+                    input_ext,
+                    output_dir,
+                    output_ext,
+                )
+
                 for file in unprocessed_files:
-                    if file.stem not in self.in_queue:
-                        self.in_queue.add(file.stem)
+                    if file not in self.in_queue:
+                        self.in_queue.add(file)
                         await self.queue.put(file)
+
                 await asyncio.sleep(3)
 
         async def main():
@@ -88,15 +108,29 @@ class LocalAsyncTask(Task):
         def main(
             input_dir: Annotated[
                 Path,
-                typer.Argument(
+                typer.Option(
                     help="Input directory to read data",
+                    show_default=False,
+                ),
+            ],
+            input_ext: Annotated[
+                str,
+                typer.Option(
+                    help="Input file extension",
                     show_default=False,
                 ),
             ],
             output_dir: Annotated[
                 Path,
-                typer.Argument(
+                typer.Option(
                     help="Output directory to store results",
+                    show_default=False,
+                ),
+            ],
+            output_ext: Annotated[
+                str,
+                typer.Option(
+                    help="Output file extension",
                     show_default=False,
                 ),
             ],
@@ -116,7 +150,7 @@ class LocalAsyncTask(Task):
             Run the task as a CLI application
             """
             task = cls(concurrency_limit)
-            task.start(input_dir, output_dir)
+            task.start(input_dir, input_ext, output_dir, output_ext)
 
         typer.run(main)
 

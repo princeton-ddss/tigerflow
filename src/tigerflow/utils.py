@@ -9,6 +9,17 @@ from subprocess import TimeoutExpired
 from types import SimpleNamespace
 
 
+def validate_file_ext(ext: str) -> str:
+    """
+    Return the string if it is a valid file extension.
+    """
+    if not re.fullmatch(r"(\.[a-zA-Z0-9_]+)+", ext):
+        raise ValueError(f"Invalid file extension: {ext}")
+    if ext.lower().endswith(".err"):
+        raise ValueError(f"'.err' extension is reserved: {ext}")
+    return ext
+
+
 def is_valid_cli(file: Path) -> bool:
     """
     Check if the given file is a Typer CLI application.

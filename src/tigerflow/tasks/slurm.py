@@ -8,7 +8,7 @@ from dask_jobqueue import SLURMCluster
 from typing_extensions import Annotated
 
 from tigerflow.config import SlurmResourceConfig
-from tigerflow.utils import SetupContext, atomic_write
+from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
 
 from ._base import Task
 
@@ -27,10 +27,18 @@ class SlurmTask(Task):
         self.resources = resources
         self.setup_commands = setup_commands
 
-    def start(self, input_dir: Path, output_dir: Path):
+    def start(
+        self,
+        input_dir: Path,
+        input_ext: str,
+        output_dir: Path,
+        output_ext: str,
+    ):
         for p in [input_dir, output_dir]:
             if not p.exists():
                 raise FileNotFoundError(p)
+        for s in [input_ext, output_ext]:
+            validate_file_ext(s)
 
         # Create subdirectory to store log files
         log_dir = output_dir / "logs"
@@ -56,7 +64,9 @@ class SlurmTask(Task):
                 with atomic_write(output_file) as temp_file:
                     run_func(worker.context, input_file, temp_file)
             except Exception as e:
-                with atomic_write(output_file.with_suffix(".err")) as temp_file:
+                error_fname = output_file.name.removesuffix(output_ext) + ".err"
+                error_file = output_dir / error_fname
+                with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
                         f.write(str(e))
 
@@ -90,15 +100,21 @@ class SlurmTask(Task):
         self._remove_temporary_files(output_dir)
 
         # Monitor for new files and enqueue them for processing
-        active_futures: dict[str, Future] = dict()
+        active_futures: dict[Path, Future] = dict()
         while True:
-            unprocessed_files = self._get_unprocessed_files(input_dir, output_dir)
+            unprocessed_files = self._get_unprocessed_files(
+                input_dir,
+                input_ext,
+                output_dir,
+                output_ext,
+            )
 
             for file in unprocessed_files:
-                if file.stem not in active_futures:  # Exclude in-progress files
-                    output_file = output_dir / file.with_suffix(".out").name
+                if file not in active_futures:  # Exclude in-progress files
+                    output_fname = file.name.removesuffix(input_ext) + output_ext
+                    output_file = output_dir / output_fname
                     future = client.submit(task, file, output_file)
-                    active_futures[file.stem] = future
+                    active_futures[file] = future
 
             for key in list(active_futures.keys()):
                 if active_futures[key].done():
@@ -115,15 +131,29 @@ class SlurmTask(Task):
         def main(
             input_dir: Annotated[
                 Path,
-                typer.Argument(
+                typer.Option(
                     help="Input directory to read data",
+                    show_default=False,
+                ),
+            ],
+            input_ext: Annotated[
+                str,
+                typer.Option(
+                    help="Input file extension",
                     show_default=False,
                 ),
             ],
             output_dir: Annotated[
                 Path,
-                typer.Argument(
+                typer.Option(
                     help="Output directory to store results",
+                    show_default=False,
+                ),
+            ],
+            output_ext: Annotated[
+                str,
+                typer.Option(
+                    help="Output file extension",
                     show_default=False,
                 ),
             ],
@@ -184,7 +214,7 @@ class SlurmTask(Task):
 
             task = cls(resources, setup_commands)
 
-            task.start(input_dir, output_dir)
+            task.start(input_dir, input_ext, output_dir, output_ext)
 
         typer.run(main)
 
