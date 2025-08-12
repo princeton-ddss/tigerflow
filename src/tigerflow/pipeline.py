@@ -52,7 +52,7 @@ class Pipeline:
                 p.mkdir(parents=True, exist_ok=True)
 
         # Initialize a set to track Slurm task clusters
-        self.slurm_task_ids: set[int] = set()
+        self.slurm_task_ids: set[str] = set()
 
     def run(self):
         try:
@@ -60,7 +60,8 @@ class Pipeline:
             # TODO: Periodically check for any new input files to process (and create corresponding symlinks)
             # TODO: Periodically clean up files that have successfully completed all steps of the pipeline
         finally:
-            pass  # TODO: Cancel Slurm tasks
+            job_ids = " ".join(self.slurm_task_ids)
+            subprocess.run(["scancel", job_ids])
 
     def _start_tasks(self):
         for task in self.config.tasks:
@@ -92,7 +93,7 @@ class Pipeline:
             # Extract and store the job ID
             match = re.search(r"Submitted batch job (\d+)", result.stdout)
             if match:
-                job_id = int(match.group(1))
+                job_id = match.group(1).strip()
                 self.slurm_task_ids.add(job_id)
             else:
                 raise ValueError("Failed to extract job ID from sbatch output")
