@@ -37,32 +37,23 @@ def is_valid_cli(file: Path) -> bool:
             text=True,
             timeout=60,
         )
-        if result.stderr:
-            raise Exception(result.stderr)
         return expected_phrase in result.stdout
     except TimeoutExpired:
         return False
 
 
 def get_slurm_max_array_size() -> int:
-    try:
-        result = subprocess.run(
-            ["scontrol", "show", "config"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to run 'scontrol show config': {e.stderr}")
-    except Exception as e:
-        raise RuntimeError(f"Unexpected error: {e}")
+    result = subprocess.run(
+        ["scontrol", "show", "config"],
+        capture_output=True,
+        text=True,
+    )
 
     match = re.search(r"MaxArraySize\s*=\s*(\d+)", result.stdout)
     if not match:
         raise RuntimeError("Could not find 'MaxArraySize' in Slurm configuration")
-    max_array_size = int(match.group(1))
 
-    return max_array_size
+    return int(match.group(1))
 
 
 class SetupContext(SimpleNamespace):

@@ -83,17 +83,11 @@ class Pipeline:
                 f.write(script)
 
             # Submit the Slurm job
-            try:
-                result = subprocess.run(
-                    ["sbatch", str(file)],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-            except subprocess.CalledProcessError as e:
-                raise RuntimeError(f"Failed to run sbatch: {e.stderr}")
-            except Exception as e:
-                raise RuntimeError(f"Unexpected error: {e}")
+            result = subprocess.run(
+                ["sbatch", str(file)],
+                capture_output=True,
+                text=True,
+            )
 
             # Extract and store the job ID
             match = re.search(r"Submitted batch job (\d+)", result.stdout)
