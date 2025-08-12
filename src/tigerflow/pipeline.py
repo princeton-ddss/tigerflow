@@ -21,13 +21,17 @@ class Pipeline:
             if not p.exists():
                 raise FileNotFoundError(p)
 
+        self.input_dir = input_dir.resolve()
+        self.output_dir = output_dir.resolve()
+        self.symlinks_dir = self.output_dir / ".symlinks"
+        self.finished_dir = self.output_dir / ".finished"
+
+        for p in [self.symlinks_dir, self.finished_dir]:
+            p.mkdir(parents=True, exist_ok=True)
+
         self.config = PipelineConfig.model_validate(
             yaml.safe_load(config_file.read_text())
         )
-
-        self.input_dir = input_dir.resolve()
-        self.output_dir = output_dir.resolve() / self.config.name
-        self.symlinks_dir = self.output_dir / ".symlinks"  # Symlinks to input files
 
         for task in self.config.tasks:
             if not is_valid_cli(task.module):
@@ -44,7 +48,7 @@ class Pipeline:
 
         # Create task directories
         for task in self.config.tasks:
-            for p in [task.input_dir, task.output_dir, task.log_dir]:
+            for p in [task.output_dir, task.log_dir]:
                 p.mkdir(parents=True, exist_ok=True)
 
         # Initialize a set to track Slurm task clusters

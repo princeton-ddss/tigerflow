@@ -91,7 +91,6 @@ TaskConfig = Annotated[
 
 
 class PipelineConfig(BaseModel):
-    name: str
     tasks: list[TaskConfig] = Field(min_length=1)
 
     @field_validator("tasks")
