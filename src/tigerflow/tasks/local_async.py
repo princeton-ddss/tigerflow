@@ -1,4 +1,5 @@
 import asyncio
+import signal
 from abc import abstractmethod
 from pathlib import Path
 
@@ -17,6 +18,7 @@ class LocalAsyncTask(Task):
         self.context = SetupContext()
         self.queue = asyncio.Queue()
         self.in_queue: set[Path] = set()  # Track files in queue
+        self._shutdown_event = asyncio.Event()
 
     def start(
         self,
@@ -43,7 +45,7 @@ class LocalAsyncTask(Task):
                         await f.write(str(e))
 
         async def worker():
-            while True:
+            while not self._shutdown_event.is_set():
                 file = await self.queue.get()
                 assert isinstance(file, Path)
 
@@ -57,7 +59,7 @@ class LocalAsyncTask(Task):
                     self.in_queue.remove(file)
 
         async def poll():
-            while True:
+            while not self._shutdown_event.is_set():
                 unprocessed_files = self._get_unprocessed_files(
                     input_dir,
                     input_ext,
@@ -73,20 +75,27 @@ class LocalAsyncTask(Task):
                 await asyncio.sleep(3)
 
         async def main():
+            # Register signal handlers
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+                loop.add_signal_handler(sig, lambda: self._shutdown_event.set())
+
+            # Run common setup
             await self.setup(self.context)
             self.context.freeze()  # Make it read-only
 
+            # Start coroutines
             workers = [
                 asyncio.create_task(worker()) for _ in range(self.concurrency_limit)
             ]
             poller = asyncio.create_task(poll())
 
-            try:
-                await asyncio.gather(poller, *workers)
-            except asyncio.CancelledError:
-                print("Shutting down...")
-            finally:
-                await self.teardown(self.context)
+            # Perform graceful shutdown
+            await self._shutdown_event.wait()
+            for task in workers + [poller]:
+                task.cancel()
+            await asyncio.gather(*workers, poller, return_exceptions=True)
+            await self.teardown(self.context)
 
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)
