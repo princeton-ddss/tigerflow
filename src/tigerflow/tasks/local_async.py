@@ -31,15 +31,10 @@ class LocalAsyncTask(Task):
         for s in [input_ext, output_ext]:
             validate_file_ext(s)
 
-        # Reference methods that must be implemented in subclass
-        setup_func = type(self).setup
-        run_func = type(self).run
-        teardown_func = type(self).teardown
-
         async def task(input_file: Path, output_file: Path):
             try:
                 with atomic_write(output_file) as temp_file:
-                    await run_func(self.context, input_file, temp_file)
+                    await self.run(self.context, input_file, temp_file)
             except Exception as e:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
@@ -78,7 +73,7 @@ class LocalAsyncTask(Task):
                 await asyncio.sleep(3)
 
         async def main():
-            await setup_func(self.context)
+            await self.setup(self.context)
             self.context.freeze()  # Make it read-only
 
             workers = [
@@ -91,7 +86,7 @@ class LocalAsyncTask(Task):
             except asyncio.CancelledError:
                 print("Shutting down...")
             finally:
-                await teardown_func(self.context)
+                await self.teardown(self.context)
 
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)

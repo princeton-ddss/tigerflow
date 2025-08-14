@@ -27,15 +27,10 @@ class LocalTask(Task):
         for s in [input_ext, output_ext]:
             validate_file_ext(s)
 
-        # Reference methods that must be implemented in subclass
-        setup_func = type(self).setup
-        run_func = type(self).run
-        teardown_func = type(self).teardown
-
         def task(input_file: Path, output_file: Path):
             try:
                 with atomic_write(output_file) as temp_file:
-                    run_func(self.context, input_file, temp_file)
+                    self.run(self.context, input_file, temp_file)
             except Exception as e:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
@@ -47,7 +42,7 @@ class LocalTask(Task):
         self._remove_temporary_files(output_dir)
 
         # Run the setup logic
-        setup_func(self.context)
+        self.setup(self.context)
         self.context.freeze()  # Make it read-only
 
         # Monitor for new files and process them sequentially
@@ -67,7 +62,7 @@ class LocalTask(Task):
 
                 time.sleep(3)
         finally:
-            teardown_func(self.context)
+            self.teardown(self.context)
 
     @classmethod
     def cli(cls):

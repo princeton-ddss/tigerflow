@@ -44,9 +44,8 @@ class SlurmTask(Task):
         log_dir = output_dir / "logs"
         log_dir.mkdir(exist_ok=True)
 
-        # Reference methods that must be implemented in subclass
+        # Reference functions to use in plugin
         setup_func = type(self).setup
-        run_func = type(self).run
         teardown_func = type(self).teardown
 
         class TaskWorkerPlugin(WorkerPlugin):
@@ -62,7 +61,7 @@ class SlurmTask(Task):
             worker = get_worker()
             try:
                 with atomic_write(output_file) as temp_file:
-                    run_func(worker.context, input_file, temp_file)
+                    self.run(worker.context, input_file, temp_file)
             except Exception as e:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
