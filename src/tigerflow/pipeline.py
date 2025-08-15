@@ -2,6 +2,7 @@ import re
 import subprocess
 import tempfile
 import textwrap
+import time
 from pathlib import Path
 
 import yaml
@@ -51,28 +52,80 @@ class Pipeline:
             for p in [task.output_dir, task.log_dir]:
                 p.mkdir(parents=True, exist_ok=True)
 
+        # Initialize a set to track local task processes
+        self._subprocesses: set[subprocess.Popen] = set()
+
         # Initialize a set to track Slurm task clusters
         self.slurm_task_ids: set[str] = set()
 
     def run(self):
         try:
             self._start_tasks()
-            # TODO: Periodically check for any new input files to process (and create corresponding symlinks)
-            # TODO: Periodically clean up files that have successfully completed all steps of the pipeline
+            while True:
+                # TODO: Periodically check for any new input files to process (and create corresponding symlinks)
+                # TODO: Periodically clean up files that have successfully completed all steps of the pipeline
+                time.sleep(3)
         finally:
-            job_ids = " ".join(self.slurm_task_ids)
-            subprocess.run(["scancel", job_ids])
+            for process in self._subprocesses:
+                process.terminate()
+            for job_id in self.slurm_task_ids:
+                subprocess.run(["scancel", job_id])
 
     def _start_tasks(self):
         for task in self.config.tasks:
             if isinstance(task, LocalTaskConfig):
-                pass  # TODO: Start the task as a subprocess
+                self._start_local_task(task)
             elif isinstance(task, LocalAsyncTaskConfig):
-                pass  # TODO: Start the task as a subprocess
+                self._start_local_async_task(task)
             elif isinstance(task, SlurmTaskConfig):
                 self._start_slurm_task(task)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
+
+    def _start_local_task(self, task: LocalTaskConfig):
+        setup_command = task.setup_commands if task.setup_commands else ""
+        task_command = " ".join(
+            [
+                "python",
+                f"{task.module}",
+                f"--input-dir {task.input_dir}",
+                f"--input-ext {task.input_ext}",
+                f"--output-dir {task.output_dir}",
+                f"--output-ext {task.output_ext}",
+            ]
+        )
+
+        script = textwrap.dedent(f"""\
+            #!/bin/bash
+            {setup_command}
+            {task_command}
+        """)
+
+        process = subprocess.Popen(["bash", "-c", script])
+        self._subprocesses.add(process)
+
+    def _start_local_async_task(self, task: LocalAsyncTaskConfig):
+        setup_command = task.setup_commands if task.setup_commands else ""
+        task_command = " ".join(
+            [
+                "python",
+                f"{task.module}",
+                f"--input-dir {task.input_dir}",
+                f"--input-ext {task.input_ext}",
+                f"--output-dir {task.output_dir}",
+                f"--output-ext {task.output_ext}",
+                f"--concurrency-limit {task.concurrency_limit}",
+            ]
+        )
+
+        script = textwrap.dedent(f"""\
+            #!/bin/bash
+            {setup_command}
+            {task_command}
+        """)
+
+        process = subprocess.Popen(["bash", "-c", script])
+        self._subprocesses.add(process)
 
     def _start_slurm_task(self, task: SlurmTaskConfig):
         script = self._compose_slurm_script(task)
