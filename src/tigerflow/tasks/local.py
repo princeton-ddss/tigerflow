@@ -1,3 +1,4 @@
+import signal
 import time
 from abc import abstractmethod
 from pathlib import Path
@@ -13,6 +14,7 @@ from ._base import Task
 class LocalTask(Task):
     def __init__(self):
         self.context = SetupContext()
+        self._shutdown_requested = False
 
     def start(
         self,
@@ -38,16 +40,23 @@ class LocalTask(Task):
                     with open(temp_file, "w") as f:
                         f.write(str(e))
 
+        def signal_handler(signum, frame):
+            self._shutdown_requested = True
+
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)
 
-        # Run the setup logic
+        # Run common setup
         self.setup(self.context)
         self.context.freeze()  # Make it read-only
 
+        # Register signal handlers
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            signal.signal(sig, signal_handler)
+
         # Monitor for new files and process them sequentially
         try:
-            while True:
+            while not self._shutdown_requested:
                 unprocessed_files = self._get_unprocessed_files(
                     input_dir,
                     input_ext,
@@ -56,6 +65,8 @@ class LocalTask(Task):
                 )
 
                 for file in unprocessed_files:
+                    if self._shutdown_requested:
+                        return
                     output_fname = file.name.removesuffix(input_ext) + output_ext
                     output_file = output_dir / output_fname
                     task(file, output_file)
