@@ -1,6 +1,5 @@
 import re
 import subprocess
-import tempfile
 import textwrap
 import time
 from pathlib import Path
@@ -74,15 +73,29 @@ class Pipeline:
     def _start_tasks(self):
         for task in self.config.tasks:
             if isinstance(task, LocalTaskConfig):
-                self._start_local_task(task)
+                script = self._compose_local_task_script(task)
+                process = subprocess.Popen(["bash", "-c", script])
+                self._subprocesses.add(process)
             elif isinstance(task, LocalAsyncTaskConfig):
-                self._start_local_async_task(task)
+                script = self._compose_local_async_task_script(task)
+                process = subprocess.Popen(["bash", "-c", script])
+                self._subprocesses.add(process)
             elif isinstance(task, SlurmTaskConfig):
-                self._start_slurm_task(task)
+                script = self._compose_slurm_task_script(task)
+                result = subprocess.run(
+                    ["sbatch"], input=script, capture_output=True, text=True
+                )
+                match = re.search(r"Submitted batch job (\d+)", result.stdout)
+                if match:
+                    job_id = match.group(1).strip()
+                    self.slurm_task_ids.add(job_id)
+                else:
+                    raise ValueError("Failed to extract job ID from sbatch output")
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
-    def _start_local_task(self, task: LocalTaskConfig):
+    @staticmethod
+    def _compose_local_task_script(task: LocalTaskConfig) -> str:
         setup_command = task.setup_commands if task.setup_commands else ""
         task_command = " ".join(
             [
@@ -101,10 +114,10 @@ class Pipeline:
             {task_command}
         """)
 
-        process = subprocess.Popen(["bash", "-c", script])
-        self._subprocesses.add(process)
+        return script
 
-    def _start_local_async_task(self, task: LocalAsyncTaskConfig):
+    @staticmethod
+    def _compose_local_async_task_script(task: LocalAsyncTaskConfig) -> str:
         setup_command = task.setup_commands if task.setup_commands else ""
         task_command = " ".join(
             [
@@ -124,35 +137,10 @@ class Pipeline:
             {task_command}
         """)
 
-        process = subprocess.Popen(["bash", "-c", script])
-        self._subprocesses.add(process)
-
-    def _start_slurm_task(self, task: SlurmTaskConfig):
-        script = self._compose_slurm_script(task)
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Write the Slurm script to a temporary file
-            file = Path(temp_dir) / "task.slurm"
-            with open(file, "w") as f:
-                f.write(script)
-
-            # Submit the Slurm job
-            result = subprocess.run(
-                ["sbatch", str(file)],
-                capture_output=True,
-                text=True,
-            )
-
-            # Extract and store the job ID
-            match = re.search(r"Submitted batch job (\d+)", result.stdout)
-            if match:
-                job_id = match.group(1).strip()
-                self.slurm_task_ids.add(job_id)
-            else:
-                raise ValueError("Failed to extract job ID from sbatch output")
+        return script
 
     @staticmethod
-    def _compose_slurm_script(task: SlurmTaskConfig) -> str:
+    def _compose_slurm_task_script(task: SlurmTaskConfig) -> str:
         try:
             array_size = get_slurm_max_array_size() // 2
         except Exception:
@@ -178,7 +166,7 @@ class Pipeline:
             ]
         )
 
-        slurm_script = textwrap.dedent(f"""\
+        script = textwrap.dedent(f"""\
             #!/bin/bash
             #SBATCH --job-name=dask-client
             #SBATCH --output={task.log_dir}/dask-client-%A-%a.log
@@ -200,4 +188,4 @@ class Pipeline:
             {task_command}
         """)
 
-        return slurm_script
+        return script
