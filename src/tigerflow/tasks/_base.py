@@ -37,9 +37,10 @@ class Task(ABC):
         exclude such in-progress files.
         """
         processed_ids = {
-            f.name.removesuffix(output_ext)
+            f.name.removesuffix(ext)
             for f in output_dir.iterdir()
-            if f.is_file() and f.name.endswith(output_ext)
+            for ext in (output_ext, ".err")
+            if f.is_file() and f.name.endswith(ext)
         }
 
         unprocessed_files = [
