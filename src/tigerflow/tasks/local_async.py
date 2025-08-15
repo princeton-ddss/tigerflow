@@ -75,14 +75,14 @@ class LocalAsyncTask(Task):
                 await asyncio.sleep(3)
 
         async def main():
+            # Run common setup
+            await self.setup(self.context)
+            self.context.freeze()  # Make it read-only
+
             # Register signal handlers
             loop = asyncio.get_running_loop()
             for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
                 loop.add_signal_handler(sig, lambda: self._shutdown_event.set())
-
-            # Run common setup
-            await self.setup(self.context)
-            self.context.freeze()  # Make it read-only
 
             # Start coroutines
             workers = [
