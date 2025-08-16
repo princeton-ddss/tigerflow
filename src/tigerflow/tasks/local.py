@@ -13,7 +13,7 @@ from ._base import Task
 
 class LocalTask(Task):
     def __init__(self):
-        self.context = SetupContext()
+        self._context = SetupContext()
         self._shutdown_event = threading.Event()
 
     def start(
@@ -32,7 +32,7 @@ class LocalTask(Task):
         def task(input_file: Path, output_file: Path):
             try:
                 with atomic_write(output_file) as temp_file:
-                    self.run(self.context, input_file, temp_file)
+                    self.run(self._context, input_file, temp_file)
             except Exception as e:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
@@ -44,8 +44,8 @@ class LocalTask(Task):
         self._remove_temporary_files(output_dir)
 
         # Run common setup
-        self.setup(self.context)
-        self.context.freeze()  # Make it read-only
+        self.setup(self._context)
+        self._context.freeze()  # Make it read-only
 
         # Register signal handlers
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
@@ -70,7 +70,7 @@ class LocalTask(Task):
 
                 self._shutdown_event.wait(timeout=3)
         finally:
-            self.teardown(self.context)
+            self.teardown(self._context)
 
     @classmethod
     def cli(cls):

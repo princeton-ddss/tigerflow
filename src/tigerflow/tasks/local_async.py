@@ -14,10 +14,10 @@ from ._base import Task
 
 class LocalAsyncTask(Task):
     def __init__(self, concurrency_limit: int):
-        self.concurrency_limit = concurrency_limit
-        self.context = SetupContext()
-        self.queue = asyncio.Queue()
-        self.in_queue: set[Path] = set()  # Track files in queue
+        self._concurrency_limit = concurrency_limit
+        self._context = SetupContext()
+        self._queue = asyncio.Queue()
+        self._in_queue: set[Path] = set()  # Track files in queue
         self._shutdown_event = asyncio.Event()
 
     def start(
@@ -36,7 +36,7 @@ class LocalAsyncTask(Task):
         async def task(input_file: Path, output_file: Path):
             try:
                 with atomic_write(output_file) as temp_file:
-                    await self.run(self.context, input_file, temp_file)
+                    await self.run(self._context, input_file, temp_file)
             except Exception as e:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
@@ -46,7 +46,7 @@ class LocalAsyncTask(Task):
 
         async def worker():
             while not self._shutdown_event.is_set():
-                file = await self.queue.get()
+                file = await self._queue.get()
                 assert isinstance(file, Path)
 
                 output_fname = file.name.removesuffix(input_ext) + output_ext
@@ -55,8 +55,8 @@ class LocalAsyncTask(Task):
                 try:
                     await task(file, output_file)
                 finally:
-                    self.queue.task_done()
-                    self.in_queue.remove(file)
+                    self._queue.task_done()
+                    self._in_queue.remove(file)
 
         async def poll():
             while not self._shutdown_event.is_set():
@@ -68,16 +68,16 @@ class LocalAsyncTask(Task):
                 )
 
                 for file in unprocessed_files:
-                    if file not in self.in_queue:
-                        self.in_queue.add(file)
-                        await self.queue.put(file)
+                    if file not in self._in_queue:
+                        self._in_queue.add(file)
+                        await self._queue.put(file)
 
                 await asyncio.sleep(3)
 
         async def main():
             # Run common setup
-            await self.setup(self.context)
-            self.context.freeze()  # Make it read-only
+            await self.setup(self._context)
+            self._context.freeze()  # Make it read-only
 
             # Register signal handlers
             loop = asyncio.get_running_loop()
@@ -86,7 +86,7 @@ class LocalAsyncTask(Task):
 
             # Start coroutines
             workers = [
-                asyncio.create_task(worker()) for _ in range(self.concurrency_limit)
+                asyncio.create_task(worker()) for _ in range(self._concurrency_limit)
             ]
             poller = asyncio.create_task(poll())
 
@@ -95,7 +95,7 @@ class LocalAsyncTask(Task):
             for task in workers + [poller]:
                 task.cancel()
             await asyncio.gather(*workers, poller, return_exceptions=True)
-            await self.teardown(self.context)
+            await self.teardown(self._context)
 
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)

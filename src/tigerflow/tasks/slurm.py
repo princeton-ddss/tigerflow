@@ -24,8 +24,8 @@ class SlurmTask(Task):
         resources: SlurmResourceConfig,
         setup_commands: str | None = None,
     ):
-        self.resources = resources
-        self.setup_commands = setup_commands
+        self._resources = resources
+        self._setup_commands = setup_commands
 
     def start(
         self,
@@ -71,24 +71,24 @@ class SlurmTask(Task):
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
-            cores=self.resources.cpus,
-            memory=self.resources.memory,
-            walltime=self.resources.time,
+            cores=self._resources.cpus,
+            memory=self._resources.memory,
+            walltime=self._resources.time,
             processes=1,
             job_extra_directives=[
                 f"--output={log_dir}/dask-worker-%J.log",
                 f"--error={log_dir}/dask-worker-%J.log",
-                f"--gres=gpu:{self.resources.gpus}" if self.resources.gpus else "",
+                f"--gres=gpu:{self._resources.gpus}" if self._resources.gpus else "",
             ],
             job_script_prologue=(
-                self.setup_commands.splitlines() if self.setup_commands else None
+                self._setup_commands.splitlines() if self._setup_commands else None
             ),
         )
 
         # Enable autoscaling
         cluster.adapt(
             minimum_jobs=0,
-            maximum_jobs=self.resources.max_workers,
+            maximum_jobs=self._resources.max_workers,
         )
 
         # Instantiate a cluster client

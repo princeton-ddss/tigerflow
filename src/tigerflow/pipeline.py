@@ -22,33 +22,33 @@ class Pipeline:
             if not p.exists():
                 raise FileNotFoundError(p)
 
-        self.input_dir = input_dir.resolve()
-        self.output_dir = output_dir.resolve()
-        self.symlinks_dir = self.output_dir / ".symlinks"
-        self.finished_dir = self.output_dir / ".finished"
+        self._input_dir = input_dir.resolve()
+        self._output_dir = output_dir.resolve()
+        self._symlinks_dir = self._output_dir / ".symlinks"
+        self._finished_dir = self._output_dir / ".finished"
 
-        for p in [self.symlinks_dir, self.finished_dir]:
+        for p in [self._symlinks_dir, self._finished_dir]:
             p.mkdir(parents=True, exist_ok=True)
 
-        self.config = PipelineConfig.model_validate(
+        self._config = PipelineConfig.model_validate(
             yaml.safe_load(config_file.read_text())
         )
 
-        for task in self.config.tasks:
+        for task in self._config.tasks:
             if not is_valid_cli(task.module):
                 raise ValueError(f"Invalid CLI: {task.module}")
 
         # Map task I/O directories from the dependency graph
-        for task in self.config.tasks:
+        for task in self._config.tasks:
             task.input_dir = (
-                self.output_dir / task.depends_on
+                self._output_dir / task.depends_on
                 if task.depends_on
-                else self.symlinks_dir
+                else self._symlinks_dir
             )
-            task.output_dir = self.output_dir / task.name
+            task.output_dir = self._output_dir / task.name
 
         # Create task directories
-        for task in self.config.tasks:
+        for task in self._config.tasks:
             for p in [task.output_dir, task.log_dir]:
                 p.mkdir(parents=True, exist_ok=True)
 
@@ -56,7 +56,7 @@ class Pipeline:
         self._subprocesses: set[subprocess.Popen] = set()
 
         # Initialize a set to track Slurm task clusters
-        self.slurm_task_ids: set[str] = set()
+        self._slurm_task_ids: set[str] = set()
 
         # Initialize an event to manage graceful shutdown
         self._shutdown_event = threading.Event()
@@ -75,11 +75,11 @@ class Pipeline:
         finally:
             for process in self._subprocesses:
                 process.terminate()
-            for job_id in self.slurm_task_ids:
+            for job_id in self._slurm_task_ids:
                 subprocess.run(["scancel", job_id])
 
     def _start_tasks(self):
-        for task in self.config.tasks:
+        for task in self._config.tasks:
             if isinstance(task, LocalTaskConfig):
                 script = self._compose_local_task_script(task)
                 process = subprocess.Popen(["bash", "-c", script])
@@ -96,7 +96,7 @@ class Pipeline:
                 match = re.search(r"Submitted batch job (\d+)", result.stdout)
                 if match:
                     job_id = match.group(1).strip()
-                    self.slurm_task_ids.add(job_id)
+                    self._slurm_task_ids.add(job_id)
                 else:
                     raise ValueError("Failed to extract job ID from sbatch output")
             else:
