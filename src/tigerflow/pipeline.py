@@ -1,7 +1,8 @@
 import re
+import signal
 import subprocess
 import textwrap
-import time
+import threading
 from pathlib import Path
 
 import yaml
@@ -57,13 +58,20 @@ class Pipeline:
         # Initialize a set to track Slurm task clusters
         self.slurm_task_ids: set[str] = set()
 
+        # Initialize an event to manage graceful shutdown
+        self._shutdown_event = threading.Event()
+
     def run(self):
+        # Register signal handlers for graceful shutdown
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            signal.signal(sig, lambda signum, frame: self._shutdown_event.set())
+
         try:
             self._start_tasks()
-            while True:
+            while not self._shutdown_event.is_set():
                 # TODO: Periodically check for any new input files to process (and create corresponding symlinks)
                 # TODO: Periodically clean up files that have successfully completed all steps of the pipeline
-                time.sleep(3)
+                self._shutdown_event.wait(timeout=60)
         finally:
             for process in self._subprocesses:
                 process.terminate()
