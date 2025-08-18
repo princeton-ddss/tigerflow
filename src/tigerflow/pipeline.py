@@ -144,7 +144,8 @@ class Pipeline:
 
         # Clean up intermediate data
         for task in self._config.tasks:
-            # TODO: Skip if the task is marked for keeping output
+            if task.keep_output:
+                continue
             for file_id in completed_file_ids:
                 file = task.output_dir / f"{file_id}{task.output_ext}"
                 file.unlink()  # TODO: Log if FileNotFoundError
