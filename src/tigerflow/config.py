@@ -107,11 +107,6 @@ class PipelineConfig(BaseModel):
                     f"Task '{task.name}' depends on unknown task '{task.depends_on}'"
                 )
 
-        # Validate there is only a single root node
-        root_nodes = [task.name for task in tasks if task.depends_on is None]
-        if len(root_nodes) > 1:
-            raise ValueError(f"The pipeline has multiple root nodes: {root_nodes}")
-
         # Build the dependency graph
         G = nx.DiGraph()
         for task in tasks:
@@ -119,9 +114,23 @@ class PipelineConfig(BaseModel):
             if task.depends_on:
                 G.add_edge(task.depends_on, task.name)
 
-        # Validate the dependency graph is a DAG
-        if not nx.is_directed_acyclic_graph(G):
-            cycle = list(nx.simple_cycles(G))[0]
-            raise ValueError(f"Dependency cycle detected: {' -> '.join(cycle)}")
+        # Validate the dependency graph is a rooted tree
+        if not nx.is_tree(G):
+            raise ValueError("Task dependency graph is not a tree")
+        roots = [node for node in G.nodes() if G.in_degree(node) == 0]
+        if len(roots) != 1:
+            raise ValueError("Task dependency graph must have exactly one root")
 
         return tasks
+
+    @property
+    def root_task(self) -> TaskConfig:
+        for task in self.tasks:
+            if task.depends_on is None:
+                return task
+
+    @property
+    def terminal_tasks(self) -> list[TaskConfig]:
+        parents = {task.depends_on for task in self.tasks if task.depends_on}
+        non_parents = [task for task in self.tasks if task.name not in parents]
+        return non_parents
