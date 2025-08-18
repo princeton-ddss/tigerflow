@@ -18,7 +18,7 @@ from .utils import get_slurm_max_array_size, is_valid_cli
 
 class Pipeline:
     def __init__(self, config_file: Path, input_dir: Path, output_dir: Path):
-        for p in [config_file, input_dir, output_dir]:
+        for p in (config_file, input_dir, output_dir):
             if not p.exists():
                 raise FileNotFoundError(p)
 
@@ -27,7 +27,7 @@ class Pipeline:
         self._symlinks_dir = self._output_dir / ".symlinks"
         self._finished_dir = self._output_dir / ".finished"
 
-        for p in [self._symlinks_dir, self._finished_dir]:
+        for p in (self._symlinks_dir, self._finished_dir):
             p.mkdir(parents=True, exist_ok=True)
 
         self._config = PipelineConfig.model_validate(
@@ -49,13 +49,13 @@ class Pipeline:
 
         # Create task directories
         for task in self._config.tasks:
-            for p in [task.output_dir, task.log_dir]:
+            for p in (task.output_dir, task.log_dir):
                 p.mkdir(parents=True, exist_ok=True)
 
         # Initialize a set to track files being processed or already processed
         self._filenames = {
             f.name
-            for dir in [self._symlinks_dir, self._finished_dir]
+            for dir in (self._symlinks_dir, self._finished_dir)
             for f in dir.iterdir()
         }
 

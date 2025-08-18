@@ -23,10 +23,10 @@ class LocalTask(Task):
         output_dir: Path,
         output_ext: str,
     ):
-        for p in [input_dir, output_dir]:
+        for p in (input_dir, output_dir):
             if not p.exists():
                 raise FileNotFoundError(p)
-        for s in [input_ext, output_ext]:
+        for s in (input_ext, output_ext):
             validate_file_ext(s)
 
         def task(input_file: Path, output_file: Path):
