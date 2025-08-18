@@ -102,20 +102,20 @@ class PipelineConfig(BaseModel):
         tasks: list[TaskConfig],
     ) -> list[TaskConfig]:
         # Validate dependency references and extension compatibility
-        task_dict = {t.name: t for t in tasks}
-        for t in tasks:
-            if not t.depends_on:
+        task_dict = {task.name: task for task in tasks}
+        for task in tasks:
+            if not task.depends_on:
                 continue
-            dep_t = task_dict.get(t.depends_on)
-            if not dep_t:
+            parent_task = task_dict.get(task.depends_on)
+            if not parent_task:
                 raise ValueError(
-                    f"Task '{t.name}' depends on unknown task '{t.depends_on}'"
+                    f"Task '{task.name}' depends on unknown task '{task.depends_on}'"
                 )
-            if dep_t.output_ext != t.input_ext:
+            if parent_task.output_ext != task.input_ext:
                 raise ValueError(
                     "Extension mismatch: "
-                    f"task '{dep_t.name}' outputs '{dep_t.output_ext}' but "
-                    f"its dependent task '{t.name}' expects '{t.input_ext}'"
+                    f"task '{parent_task.name}' outputs '{parent_task.output_ext}' but "
+                    f"its dependent task '{task.name}' expects '{task.input_ext}'"
                 )
 
         # Build the dependency graph

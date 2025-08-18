@@ -16,9 +16,9 @@ class Task(ABC):
         """
         Remove any files with no file extension.
         """
-        for f in dirpath.iterdir():
-            if f.is_file() and f.suffix == "":
-                f.unlink()
+        for file in dirpath.iterdir():
+            if file.is_file() and file.suffix == "":
+                file.unlink()
 
     @staticmethod
     def _get_unprocessed_files(
@@ -37,18 +37,18 @@ class Task(ABC):
         exclude such in-progress files.
         """
         processed_ids = {
-            f.name.removesuffix(ext)
-            for f in output_dir.iterdir()
+            file.name.removesuffix(ext)
+            for file in output_dir.iterdir()
             for ext in (output_ext, ".err")
-            if f.is_file() and f.name.endswith(ext)
+            if file.is_file() and file.name.endswith(ext)
         }
 
         unprocessed_files = [
-            f
-            for f in input_dir.iterdir()
-            if f.is_file()
-            and f.name.endswith(input_ext)
-            and f.name.removesuffix(input_ext) not in processed_ids
+            file
+            for file in input_dir.iterdir()
+            if file.is_file()
+            and file.name.endswith(input_ext)
+            and file.name.removesuffix(input_ext) not in processed_ids
         ]
 
         return unprocessed_files

@@ -18,17 +18,17 @@ from .utils import get_slurm_max_array_size, is_valid_cli
 
 class Pipeline:
     def __init__(self, config_file: Path, input_dir: Path, output_dir: Path):
-        for p in (config_file, input_dir, output_dir):
-            if not p.exists():
-                raise FileNotFoundError(p)
+        for path in (config_file, input_dir, output_dir):
+            if not path.exists():
+                raise FileNotFoundError(path)
 
         self._input_dir = input_dir.resolve()
         self._output_dir = output_dir.resolve()
         self._symlinks_dir = self._output_dir / ".symlinks"
         self._finished_dir = self._output_dir / ".finished"
 
-        for p in (self._symlinks_dir, self._finished_dir):
-            p.mkdir(parents=True, exist_ok=True)
+        for path in (self._symlinks_dir, self._finished_dir):
+            path.mkdir(parents=True, exist_ok=True)
 
         self._config = PipelineConfig.model_validate(
             yaml.safe_load(config_file.read_text())
@@ -49,8 +49,8 @@ class Pipeline:
 
         # Create task directories
         for task in self._config.tasks:
-            for p in (task.output_dir, task.log_dir):
-                p.mkdir(parents=True, exist_ok=True)
+            for path in (task.output_dir, task.log_dir):
+                path.mkdir(parents=True, exist_ok=True)
 
         # Clean up any broken symlinks
         for file in self._symlinks_dir.iterdir():
@@ -65,9 +65,9 @@ class Pipeline:
 
         # Initialize a set to track files being processed or already processed
         self._filenames = {
-            f.name
+            file.name
             for dir in (self._symlinks_dir, self._finished_dir)
-            for f in dir.iterdir()
+            for file in dir.iterdir()
         }
 
         # Initialize a set to track local task processes
@@ -121,22 +121,22 @@ class Pipeline:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
     def _stage_new_files(self):
-        for f in self._input_dir.iterdir():
+        for file in self._input_dir.iterdir():
             if (
-                f.is_file()
-                and f.name.endswith(self._config.root_task.input_ext)
-                and f.name not in self._filenames
+                file.is_file()
+                and file.name.endswith(self._config.root_task.input_ext)
+                and file.name not in self._filenames
             ):
-                self._symlinks_dir.joinpath(f.name).symlink_to(f)
-                self._filenames.add(f.name)
+                self._symlinks_dir.joinpath(file.name).symlink_to(file)
+                self._filenames.add(file.name)
 
     def _process_completed_files(self):
         # Identify files that have completed all pipeline tasks
         completed_file_ids_by_task = (
             {
-                f.name.removesuffix(task.output_ext)
-                for f in task.output_dir.iterdir()
-                if f.is_file() and f.name.endswith(task.output_ext)
+                file.name.removesuffix(task.output_ext)
+                for file in task.output_dir.iterdir()
+                if file.is_file() and file.name.endswith(task.output_ext)
             }
             for task in self._config.terminal_tasks
         )

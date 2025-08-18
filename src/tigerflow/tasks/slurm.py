@@ -34,11 +34,11 @@ class SlurmTask(Task):
         output_dir: Path,
         output_ext: str,
     ):
-        for p in (input_dir, output_dir):
-            if not p.exists():
-                raise FileNotFoundError(p)
-        for s in (input_ext, output_ext):
-            validate_file_ext(s)
+        for path in (input_dir, output_dir):
+            if not path.exists():
+                raise FileNotFoundError(path)
+        for ext in (input_ext, output_ext):
+            validate_file_ext(ext)
 
         # Create subdirectory to store log files
         log_dir = output_dir / "logs"
