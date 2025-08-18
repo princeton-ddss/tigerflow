@@ -52,6 +52,9 @@ class Pipeline:
             for p in [task.output_dir, task.log_dir]:
                 p.mkdir(parents=True, exist_ok=True)
 
+        # Initialize a set to track files being processed or already processed
+        self._filenames: set[str] = set()
+
         # Initialize a set to track local task processes
         self._subprocesses: set[subprocess.Popen] = set()
 
@@ -69,7 +72,7 @@ class Pipeline:
         try:
             self._start_tasks()
             while not self._shutdown_event.is_set():
-                # TODO: Periodically check for any new input files to process (and create corresponding symlinks)
+                self._stage_new_files()
                 # TODO: Periodically clean up files that have successfully completed all steps of the pipeline
                 self._shutdown_event.wait(timeout=60)
         finally:
@@ -101,6 +104,12 @@ class Pipeline:
                     raise ValueError("Failed to extract job ID from sbatch output")
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
+
+    def _stage_new_files(self):
+        for f in self._input_dir.iterdir():
+            if f.is_file() and f.name not in self._filenames:
+                self._symlinks_dir.joinpath(f.name).symlink_to(f)
+                self._filenames.add(f.name)
 
     @staticmethod
     def _compose_local_task_script(task: LocalTaskConfig) -> str:
