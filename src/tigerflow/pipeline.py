@@ -53,7 +53,11 @@ class Pipeline:
                 p.mkdir(parents=True, exist_ok=True)
 
         # Initialize a set to track files being processed or already processed
-        self._filenames: set[str] = set()
+        self._filenames = {
+            f.name
+            for dir in [self._symlinks_dir, self._finished_dir]
+            for f in dir.iterdir()
+        }
 
         # Initialize a set to track local task processes
         self._subprocesses: set[subprocess.Popen] = set()
@@ -107,7 +111,11 @@ class Pipeline:
 
     def _stage_new_files(self):
         for f in self._input_dir.iterdir():
-            if f.is_file() and f.name not in self._filenames:
+            if (
+                f.is_file()
+                and f.name.endswith(self._config.root_task.input_ext)
+                and f.name not in self._filenames
+            ):
                 self._symlinks_dir.joinpath(f.name).symlink_to(f)
                 self._filenames.add(f.name)
 
