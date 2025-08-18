@@ -92,6 +92,8 @@ TaskConfig = Annotated[
 
 class PipelineConfig(BaseModel):
     tasks: list[TaskConfig] = Field(min_length=1)
+    _root_task: TaskConfig | None = None
+    _terminal_tasks: list[TaskConfig] = []
 
     @field_validator("tasks")
     @classmethod
@@ -134,12 +136,17 @@ class PipelineConfig(BaseModel):
 
     @property
     def root_task(self) -> TaskConfig:
-        for task in self.tasks:
-            if task.depends_on is None:
-                return task
+        if not self._root_task:
+            for task in self.tasks:
+                if not task.depends_on:
+                    self._root_task = task
+        return self._root_task
 
     @property
     def terminal_tasks(self) -> list[TaskConfig]:
-        parents = {task.depends_on for task in self.tasks if task.depends_on}
-        non_parents = [task for task in self.tasks if task.name not in parents]
-        return non_parents
+        if not self._terminal_tasks:
+            parents = {task.depends_on for task in self.tasks if task.depends_on}
+            self._terminal_tasks = [
+                task for task in self.tasks if task.name not in parents
+            ]
+        return self._terminal_tasks
