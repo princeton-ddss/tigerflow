@@ -77,7 +77,7 @@ class Pipeline:
             self._start_tasks()
             while not self._shutdown_event.is_set():
                 self._stage_new_files()
-                # TODO: Periodically clean up files that have successfully completed all steps of the pipeline
+                self._process_completed_files()
                 self._shutdown_event.wait(timeout=60)
         finally:
             for process in self._subprocesses:
@@ -118,6 +118,33 @@ class Pipeline:
             ):
                 self._symlinks_dir.joinpath(f.name).symlink_to(f)
                 self._filenames.add(f.name)
+
+    def _process_completed_files(self):
+        # Identify files that have completed all pipeline tasks
+        completed_file_ids_by_task = (
+            {
+                f.name.removesuffix(task.output_ext)
+                for f in task.output_dir.iterdir()
+                if f.is_file() and f.name.endswith(task.output_ext)
+            }
+            for task in self._config.terminal_tasks
+        )
+        completed_file_ids: set[str] = set.intersection(*completed_file_ids_by_task)
+
+        # Clean up intermediate data
+        for task in self._config.tasks:
+            # TODO: Skip if the task is marked for keeping output
+            for file_id in completed_file_ids:
+                file = task.output_dir / f"{file_id}{task.output_ext}"
+                file.unlink()  # TODO: Log if FileNotFoundError
+
+        # Record completion status
+        ext = self._config.root_task.input_ext
+        for file_id in completed_file_ids:
+            file = self._symlinks_dir / f"{file_id}{ext}"
+            file.unlink()  # TODO: Log if FileNotFoundError
+            new_file = self._finished_dir / file.name
+            new_file.touch()
 
     @staticmethod
     def _compose_local_task_script(task: LocalTaskConfig) -> str:
