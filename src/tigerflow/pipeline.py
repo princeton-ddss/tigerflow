@@ -60,7 +60,7 @@ class Pipeline:
         # Clean up any invalid or unsuccessful intermediate data
         for task in self._config.tasks:
             for file in task.output_dir.iterdir():
-                if not file.name.endswith(task.output_ext):
+                if file.is_file() and not file.name.endswith(task.output_ext):
                     file.unlink()
 
         # Initialize a set to track files being processed or already processed
