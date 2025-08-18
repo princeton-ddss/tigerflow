@@ -52,6 +52,17 @@ class Pipeline:
             for p in (task.output_dir, task.log_dir):
                 p.mkdir(parents=True, exist_ok=True)
 
+        # Clean up any broken symlinks
+        for file in self._symlinks_dir.iterdir():
+            if not file.is_symlink() or not file.exists():
+                file.unlink()
+
+        # Clean up any invalid or unsuccessful intermediate data
+        for task in self._config.tasks:
+            for file in task.output_dir.iterdir():
+                if not file.name.endswith(task.output_ext):
+                    file.unlink()
+
         # Initialize a set to track files being processed or already processed
         self._filenames = {
             f.name
