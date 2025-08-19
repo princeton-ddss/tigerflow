@@ -68,7 +68,7 @@ class LocalTask(Task):
                     output_file = output_dir / output_fname
                     task(file, output_file)
 
-                self._shutdown_event.wait(timeout=3)
+                self._shutdown_event.wait(timeout=3)  # Interruptible sleep
         finally:
             self.teardown(self._context)
 

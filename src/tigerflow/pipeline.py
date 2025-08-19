@@ -89,7 +89,7 @@ class Pipeline:
             while not self._shutdown_event.is_set():
                 self._stage_new_files()
                 self._process_completed_files()
-                self._shutdown_event.wait(timeout=60)
+                self._shutdown_event.wait(timeout=60)  # Interruptible sleep
         finally:
             for process in self._subprocesses:
                 process.terminate()
