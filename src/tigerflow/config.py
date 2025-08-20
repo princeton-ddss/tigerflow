@@ -1,10 +1,11 @@
+import textwrap
 from pathlib import Path
 from typing import Annotated, Literal
 
 import networkx as nx
 from pydantic import BaseModel, Field, field_validator
 
-from tigerflow.utils import validate_file_ext
+from tigerflow.utils import get_slurm_max_array_size, validate_file_ext
 
 
 class SlurmResourceConfig(BaseModel):
@@ -70,19 +71,118 @@ class BaseTaskConfig(BaseModel):
     def log_dir(self) -> Path:
         return self._output_dir / "logs"
 
+    def to_script(self) -> str:
+        """
+        Compose a Bash script that executes the task.
+        """
+        raise NotImplementedError
+
 
 class LocalTaskConfig(BaseTaskConfig):
     kind: Literal["local"]
+
+    def to_script(self) -> str:
+        setup_command = self.setup_commands if self.setup_commands else ""
+        task_command = " ".join(
+            [
+                "python",
+                f"{self.module}",
+                f"--input-dir {self.input_dir}",
+                f"--input-ext {self.input_ext}",
+                f"--output-dir {self.output_dir}",
+                f"--output-ext {self.output_ext}",
+            ]
+        )
+
+        script = textwrap.dedent(f"""\
+            #!/bin/bash
+            {setup_command}
+            {task_command}
+        """)
+
+        return script
 
 
 class LocalAsyncTaskConfig(BaseTaskConfig):
     kind: Literal["local_async"]
     concurrency_limit: int
 
+    def to_script(self) -> str:
+        setup_command = self.setup_commands if self.setup_commands else ""
+        task_command = " ".join(
+            [
+                "python",
+                f"{self.module}",
+                f"--input-dir {self.input_dir}",
+                f"--input-ext {self.input_ext}",
+                f"--output-dir {self.output_dir}",
+                f"--output-ext {self.output_ext}",
+                f"--concurrency-limit {self.concurrency_limit}",
+            ]
+        )
+
+        script = textwrap.dedent(f"""\
+            #!/bin/bash
+            {setup_command}
+            {task_command}
+        """)
+
+        return script
+
 
 class SlurmTaskConfig(BaseTaskConfig):
     kind: Literal["slurm"]
     resources: SlurmResourceConfig
+
+    def to_script(self) -> str:
+        try:
+            array_size = get_slurm_max_array_size() // 2
+        except Exception:
+            array_size = 300  # Default
+
+        setup_command = self.setup_commands if self.setup_commands else ""
+        task_command = " ".join(
+            [
+                "python",
+                f"{self.module}",
+                f"--input-dir {self.input_dir}",
+                f"--input-ext {self.input_ext}",
+                f"--output-dir {self.output_dir}",
+                f"--output-ext {self.output_ext}",
+                f"--cpus {self.resources.cpus}",
+                f"--memory {self.resources.memory}",
+                f"--time {self.resources.time}",
+                f"--max-workers {self.resources.max_workers}",
+                f"--gpus {self.resources.gpus}" if self.resources.gpus else "",
+                f"--setup-commands {repr(self.setup_commands)}"
+                if self.setup_commands
+                else "",
+            ]
+        )
+
+        script = textwrap.dedent(f"""\
+            #!/bin/bash
+            #SBATCH --job-name=dask-client
+            #SBATCH --output={self.log_dir}/dask-client-%A-%a.log
+            #SBATCH --error={self.log_dir}/dask-client-%A-%a.log
+            #SBATCH --nodes=1
+            #SBATCH --ntasks=1
+            #SBATCH --cpus-per-task=1
+            #SBATCH --mem-per-cpu=2G
+            #SBATCH --time=72:00:00
+            #SBATCH --array=1-{array_size}%1
+
+            echo "Starting Dask client for: {self.name}"
+            echo "With SLURM_ARRAY_JOB_ID: $SLURM_ARRAY_JOB_ID"
+            echo "With SLURM_ARRAY_TASK_ID: $SLURM_ARRAY_TASK_ID"
+            echo "On machine:" $(hostname)
+
+            {setup_command}
+
+            {task_command}
+        """)
+
+        return script
 
 
 TaskConfig = Annotated[
