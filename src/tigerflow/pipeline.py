@@ -1,8 +1,10 @@
 import re
 import signal
 import subprocess
+import sys
 import threading
 from pathlib import Path
+from types import FrameType
 
 import yaml
 
@@ -81,10 +83,17 @@ class Pipeline:
         # Initialize an event to manage graceful shutdown
         self._shutdown_event = threading.Event()
 
+        # Store the received signal number for proper exit code
+        self._received_signal: int | None = None
+
+    def _signal_handler(self, signum: int, frame: FrameType | None):
+        self._received_signal = signum
+        self._shutdown_event.set()
+
     def run(self):
         # Register signal handlers for graceful shutdown
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-            signal.signal(sig, lambda signum, frame: self._shutdown_event.set())
+            signal.signal(sig, self._signal_handler)
 
         try:
             self._start_tasks()
@@ -97,6 +106,8 @@ class Pipeline:
                 process.terminate()
             for job_id in self._slurm_task_ids:
                 subprocess.run(["scancel", job_id])
+            if self._received_signal is not None:
+                sys.exit(128 + self._received_signal)
 
     def _start_tasks(self):
         for task in self._config.tasks:

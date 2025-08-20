@@ -1,5 +1,6 @@
 import asyncio
 import signal
+import sys
 from abc import abstractmethod
 from pathlib import Path
 
@@ -19,6 +20,11 @@ class LocalAsyncTask(Task):
         self._queue = asyncio.Queue()
         self._in_queue: set[Path] = set()  # Track files in queue
         self._shutdown_event = asyncio.Event()
+        self._received_signal: int | None = None
+
+    def _signal_handler(self, signum: int):
+        self._received_signal = signum
+        self._shutdown_event.set()
 
     def start(
         self,
@@ -82,7 +88,7 @@ class LocalAsyncTask(Task):
             # Register signal handlers
             loop = asyncio.get_running_loop()
             for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-                loop.add_signal_handler(sig, lambda: self._shutdown_event.set())
+                loop.add_signal_handler(sig, self._signal_handler, sig.value)
 
             # Start coroutines
             workers = [
@@ -96,6 +102,8 @@ class LocalAsyncTask(Task):
                 task.cancel()
             await asyncio.gather(*workers, poller, return_exceptions=True)
             await self.teardown(self._context)
+            if self._received_signal is not None:
+                sys.exit(128 + self._received_signal)
 
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)

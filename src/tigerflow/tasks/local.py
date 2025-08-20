@@ -1,7 +1,9 @@
 import signal
+import sys
 import threading
 from abc import abstractmethod
 from pathlib import Path
+from types import FrameType
 
 import typer
 from typing_extensions import Annotated
@@ -15,6 +17,11 @@ class LocalTask(Task):
     def __init__(self):
         self._context = SetupContext()
         self._shutdown_event = threading.Event()
+        self._received_signal: int | None = None
+
+    def _signal_handler(self, signum: int, frame: FrameType | None):
+        self._received_signal = signum
+        self._shutdown_event.set()
 
     def start(
         self,
@@ -49,7 +56,7 @@ class LocalTask(Task):
 
         # Register signal handlers
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-            signal.signal(sig, lambda signum, frame: self._shutdown_event.set())
+            signal.signal(sig, self._signal_handler)
 
         # Monitor for new files and process them sequentially
         try:
@@ -71,6 +78,8 @@ class LocalTask(Task):
                 self._shutdown_event.wait(timeout=3)  # Interruptible sleep
         finally:
             self.teardown(self._context)
+            if self._received_signal is not None:
+                sys.exit(128 + self._received_signal)
 
     @classmethod
     def cli(cls):
