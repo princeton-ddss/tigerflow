@@ -24,8 +24,9 @@ class Pipeline:
 
         self._input_dir = input_dir.resolve()
         self._output_dir = output_dir.resolve()
-        self._symlinks_dir = self._output_dir / ".symlinks"
-        self._finished_dir = self._output_dir / ".finished"
+        self._internal_dir = self._output_dir / ".tigerflow"
+        self._symlinks_dir = self._internal_dir / ".symlinks"
+        self._finished_dir = self._internal_dir / ".finished"
 
         for path in (self._symlinks_dir, self._finished_dir):
             path.mkdir(parents=True, exist_ok=True)
@@ -41,16 +42,18 @@ class Pipeline:
         # Map task I/O directories from the dependency graph
         for task in self._config.tasks:
             task.input_dir = (
-                self._output_dir / task.depends_on
+                self._internal_dir / task.depends_on
                 if task.depends_on
                 else self._symlinks_dir
             )
-            task.output_dir = self._output_dir / task.name
+            task.output_dir = self._internal_dir / task.name
 
         # Create task directories
         for task in self._config.tasks:
             for path in (task.output_dir, task.log_dir):
                 path.mkdir(parents=True, exist_ok=True)
+            if task.keep_output:
+                self._output_dir.joinpath(task.name).mkdir(exist_ok=True)
 
         # Clean up any broken symlinks
         for file in self._symlinks_dir.iterdir():
@@ -144,11 +147,12 @@ class Pipeline:
 
         # Clean up intermediate data
         for task in self._config.tasks:
-            if task.keep_output:
-                continue
             for file_id in completed_file_ids:
                 file = task.output_dir / f"{file_id}{task.output_ext}"
-                file.unlink()  # TODO: Log if FileNotFoundError
+                if task.keep_output:
+                    file.replace(self._output_dir / task.name / file.name)
+                else:
+                    file.unlink()  # TODO: Log if FileNotFoundError
 
         # Record completion status
         ext = self._config.root_task.input_ext
