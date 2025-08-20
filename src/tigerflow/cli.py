@@ -27,7 +27,7 @@ def run(
     output_dir: Annotated[
         Path,
         typer.Argument(
-            help="Directory to store pipeline scripts and intermediate data",
+            help="Directory for storing pipeline outputs and internal data",
             show_default=False,
         ),
     ],
