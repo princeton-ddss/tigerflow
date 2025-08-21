@@ -1,6 +1,7 @@
 import asyncio
 import signal
 import sys
+import traceback
 from abc import abstractmethod
 from pathlib import Path
 
@@ -43,12 +44,12 @@ class LocalAsyncTask(Task):
             try:
                 with atomic_write(output_file) as temp_file:
                     await self.run(self._context, input_file, temp_file)
-            except Exception as e:
+            except Exception:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     async with aiofiles.open(temp_file, "w") as f:
-                        await f.write(str(e))
+                        await f.write(traceback.format_exc())
 
         async def worker():
             while not self._shutdown_event.is_set():

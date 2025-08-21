@@ -1,4 +1,5 @@
 import time
+import traceback
 from abc import abstractmethod
 from pathlib import Path
 
@@ -62,12 +63,12 @@ class SlurmTask(Task):
             try:
                 with atomic_write(output_file) as temp_file:
                     self.run(worker.context, input_file, temp_file)
-            except Exception as e:
+            except Exception:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
-                        f.write(str(e))
+                        f.write(traceback.format_exc())
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(

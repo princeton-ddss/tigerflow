@@ -1,6 +1,7 @@
 import signal
 import sys
 import threading
+import traceback
 from abc import abstractmethod
 from pathlib import Path
 from types import FrameType
@@ -40,12 +41,12 @@ class LocalTask(Task):
             try:
                 with atomic_write(output_file) as temp_file:
                     self.run(self._context, input_file, temp_file)
-            except Exception as e:
+            except Exception:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
-                        f.write(str(e))
+                        f.write(traceback.format_exc())
 
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)
