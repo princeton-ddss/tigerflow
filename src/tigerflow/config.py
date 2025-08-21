@@ -233,6 +233,10 @@ class PipelineConfig(BaseModel):
         if len(roots) != 1:
             raise ValueError("Task dependency graph must have exactly one root")
 
+        # Sort tasks topologically
+        order_map = {name: index for index, name in enumerate(nx.topological_sort(G))}
+        tasks.sort(key=lambda task: order_map[task.name])
+
         return tasks
 
     @property
