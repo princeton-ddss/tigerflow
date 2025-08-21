@@ -151,9 +151,9 @@ class LocalAsyncTask(Task):
                 int,
                 typer.Option(
                     help="""
-                    Maximum number of async tasks allowed to run in parallel
-                    at any given time (excess tasks are queued until capacity
-                    becomes available)
+                    Maximum number of coroutines that may run concurrently
+                    at any given time (excess coroutines are queued until
+                    capacity becomes available)
                     """,
                     show_default=False,
                 ),
