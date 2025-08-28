@@ -7,6 +7,7 @@ from pathlib import Path
 from types import FrameType
 
 import yaml
+from loguru import logger
 
 from .config import (
     LocalAsyncTaskConfig,
@@ -18,6 +19,7 @@ from .utils import is_valid_cli
 
 
 class Pipeline:
+    @logger.catch(reraise=True)
     def __init__(self, config_file: Path, input_dir: Path, output_dir: Path):
         for path in (config_file, input_dir, output_dir):
             if not path.exists():
@@ -87,48 +89,59 @@ class Pipeline:
         self._received_signal: int | None = None
 
     def _signal_handler(self, signum: int, frame: FrameType | None):
+        logger.warning("Received signal {}, initiating shutdown", signum)
         self._received_signal = signum
         self._shutdown_event.set()
 
+    @logger.catch(reraise=True)
     def run(self):
         # Register signal handlers for graceful shutdown
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             signal.signal(sig, self._signal_handler)
 
         try:
+            logger.info("Starting pipeline execution")
             self._start_tasks()
+            logger.info("All tasks started, beginning pipeline tracking loop")
             while not self._shutdown_event.is_set():
                 self._stage_new_files()
                 self._process_completed_files()
                 self._shutdown_event.wait(timeout=60)  # Interruptible sleep
         finally:
-            for process in self._subprocesses.values():
+            logger.info("Shutting down pipeline")
+            for name, process in self._subprocesses.items():
+                logger.info("Terminating task: {}", name)
                 process.terminate()
-            for job_id in self._slurm_task_ids.values():
+            for name, job_id in self._slurm_task_ids.items():
+                logger.info("Terminating task: {}", name)
                 subprocess.run(["scancel", str(job_id)])
+            logger.info("Pipeline shutdown complete")
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
 
     def _start_tasks(self):
         for task in self._config.tasks:
+            logger.info("Starting task: {} ({})", task.name, task.kind)
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
+                logger.info("Local task {} started with PID {}", task.name, process.pid)
             elif isinstance(task, SlurmTaskConfig):
                 result = subprocess.run(
                     ["sbatch"], input=script, capture_output=True, text=True
                 )
                 match = re.search(r"Submitted batch job (\d+)", result.stdout)
-                if match:
-                    job_id = int(match.group(1))
-                    self._slurm_task_ids[task.name] = job_id
-                else:
+                if not match:
                     raise ValueError("Failed to extract job ID from sbatch output")
+                job_id = int(match.group(1))
+                self._slurm_task_ids[task.name] = job_id
+                logger.info("Slurm task {} submitted with job ID {}", task.name, job_id)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
     def _stage_new_files(self):
+        n_files = 0
         for file in self._input_dir.iterdir():
             if (
                 file.is_file()
@@ -137,6 +150,9 @@ class Pipeline:
             ):
                 self._symlinks_dir.joinpath(file.name).symlink_to(file)
                 self._filenames.add(file.name)
+                n_files += 1
+        if n_files > 0:
+            logger.info("Staged {} new files for processing", n_files)
 
     def _process_completed_files(self):
         # Identify files that have completed all pipeline tasks
@@ -157,12 +173,14 @@ class Pipeline:
                 if task.keep_output:
                     file.replace(self._output_dir / task.name / file.name)
                 else:
-                    file.unlink()  # TODO: Log if FileNotFoundError
+                    file.unlink()
 
         # Record completion status
         ext = self._config.root_task.input_ext
         for file_id in completed_file_ids:
             file = self._symlinks_dir / f"{file_id}{ext}"
-            file.unlink()  # TODO: Log if FileNotFoundError
+            file.unlink()
             new_file = self._finished_dir / file.name
             new_file.touch()
+        if completed_file_ids:
+            logger.info("Completed processing {} files", len(completed_file_ids))

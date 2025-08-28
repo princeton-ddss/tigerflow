@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
 from dask_jobqueue import SLURMCluster
+from loguru import logger
 from typing_extensions import Annotated
 
 from tigerflow.config import SlurmResourceConfig
@@ -20,6 +21,7 @@ class SlurmTask(Task):
     the workload across Slurm jobs acting as cluster workers.
     """
 
+    @logger.catch(reraise=True)
     def __init__(
         self,
         resources: SlurmResourceConfig,
@@ -28,6 +30,7 @@ class SlurmTask(Task):
         self._resources = resources
         self._setup_commands = setup_commands
 
+    @logger.catch(reraise=True)
     def start(
         self,
         input_dir: Path,
@@ -51,24 +54,31 @@ class SlurmTask(Task):
 
         class TaskWorkerPlugin(WorkerPlugin):
             def setup(self, worker: Worker):
+                logger.info("Setting up task")
                 worker.context = SetupContext()
                 setup_func(worker.context)
                 worker.context.freeze()  # Make it read-only
+                logger.info("Task setup complete")
 
             def teardown(self, worker: Worker):
+                logger.info("Shutting down task")
                 teardown_func(worker.context)
+                logger.info("Task shutdown complete")
 
         def task(input_file: Path, output_file: Path):
             worker = get_worker()
             try:
+                logger.info("Starting processing: {}", input_file.name)
                 with atomic_write(output_file) as temp_file:
                     self.run(worker.context, input_file, temp_file)
+                logger.info("Successfully processed: {}", input_file.name)
             except Exception:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
                         f.write(traceback.format_exc())
+                logger.exception("Failed processing: {}", input_file.name)
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
@@ -77,8 +87,8 @@ class SlurmTask(Task):
             walltime=self._resources.time,
             processes=1,
             job_extra_directives=[
-                f"--output={log_dir}/dask-worker-%J.log",
-                f"--error={log_dir}/dask-worker-%J.log",
+                f"--output={log_dir}/dask-worker-%J.out",
+                f"--error={log_dir}/dask-worker-%J.err",
                 f"--gres=gpu:{self._resources.gpus}" if self._resources.gpus else "",
             ],
             job_script_prologue=(

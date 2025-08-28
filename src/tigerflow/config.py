@@ -86,6 +86,8 @@ class LocalTaskConfig(BaseTaskConfig):
     kind: Literal["local"]
 
     def to_script(self) -> str:
+        stdout_file = self.log_dir / f"{self.name}-$$.out"
+        stderr_file = self.log_dir / f"{self.name}-$$.err"
         setup_command = self.setup_commands if self.setup_commands else ""
         task_command = " ".join(
             [
@@ -101,7 +103,7 @@ class LocalTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             {setup_command}
-            {task_command}
+            {task_command} > {stdout_file} 2> {stderr_file}
         """)
 
         return script
@@ -112,6 +114,8 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
     concurrency_limit: int
 
     def to_script(self) -> str:
+        stdout_file = self.log_dir / f"{self.name}-$$.out"
+        stderr_file = self.log_dir / f"{self.name}-$$.err"
         setup_command = self.setup_commands if self.setup_commands else ""
         task_command = " ".join(
             [
@@ -128,7 +132,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             {setup_command}
-            {task_command}
+            {task_command} > {stdout_file} 2> {stderr_file}
         """)
 
         return script
@@ -167,8 +171,8 @@ class SlurmTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             #SBATCH --job-name=dask-client
-            #SBATCH --output={self.log_dir}/dask-client-%A-%a.log
-            #SBATCH --error={self.log_dir}/dask-client-%A-%a.log
+            #SBATCH --output={self.log_dir}/dask-client-%A-%a.out
+            #SBATCH --error={self.log_dir}/dask-client-%A-%a.err
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=1

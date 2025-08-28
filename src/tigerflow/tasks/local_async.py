@@ -7,6 +7,7 @@ from pathlib import Path
 
 import aiofiles
 import typer
+from loguru import logger
 from typing_extensions import Annotated
 
 from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
@@ -15,6 +16,7 @@ from ._base import Task
 
 
 class LocalAsyncTask(Task):
+    @logger.catch(reraise=True)
     def __init__(self, concurrency_limit: int):
         self._concurrency_limit = concurrency_limit
         self._context = SetupContext()
@@ -24,9 +26,11 @@ class LocalAsyncTask(Task):
         self._received_signal: int | None = None
 
     def _signal_handler(self, signum: int):
+        logger.warning("Received signal {}, initiating shutdown", signum)
         self._received_signal = signum
         self._shutdown_event.set()
 
+    @logger.catch(reraise=True)
     def start(
         self,
         input_dir: Path,
@@ -42,14 +46,17 @@ class LocalAsyncTask(Task):
 
         async def task(input_file: Path, output_file: Path):
             try:
+                logger.info("Starting processing: {}", input_file.name)
                 with atomic_write(output_file) as temp_file:
                     await self.run(self._context, input_file, temp_file)
+                logger.info("Successfully processed: {}", input_file.name)
             except Exception:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     async with aiofiles.open(temp_file, "w") as f:
                         await f.write(traceback.format_exc())
+                logger.exception("Failed processing: {}", input_file.name)
 
         async def worker():
             while not self._shutdown_event.is_set():
@@ -83,8 +90,10 @@ class LocalAsyncTask(Task):
 
         async def main():
             # Run common setup
+            logger.info("Setting up task")
             await self.setup(self._context)
             self._context.freeze()  # Make it read-only
+            logger.info("Task setup complete")
 
             # Register signal handlers
             loop = asyncio.get_running_loop()
@@ -99,10 +108,12 @@ class LocalAsyncTask(Task):
 
             # Perform graceful shutdown
             await self._shutdown_event.wait()
+            logger.info("Shutting down task")
             for task in workers + [poller]:
                 task.cancel()
             await asyncio.gather(*workers, poller, return_exceptions=True)
             await self.teardown(self._context)
+            logger.info("Task shutdown complete")
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
 

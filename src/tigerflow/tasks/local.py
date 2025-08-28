@@ -7,6 +7,7 @@ from pathlib import Path
 from types import FrameType
 
 import typer
+from loguru import logger
 from typing_extensions import Annotated
 
 from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
@@ -15,15 +16,18 @@ from ._base import Task
 
 
 class LocalTask(Task):
+    @logger.catch(reraise=True)
     def __init__(self):
         self._context = SetupContext()
         self._shutdown_event = threading.Event()
         self._received_signal: int | None = None
 
     def _signal_handler(self, signum: int, frame: FrameType | None):
+        logger.warning("Received signal {}, initiating shutdown", signum)
         self._received_signal = signum
         self._shutdown_event.set()
 
+    @logger.catch(reraise=True)
     def start(
         self,
         input_dir: Path,
@@ -39,21 +43,26 @@ class LocalTask(Task):
 
         def task(input_file: Path, output_file: Path):
             try:
+                logger.info("Starting processing: {}", input_file.name)
                 with atomic_write(output_file) as temp_file:
                     self.run(self._context, input_file, temp_file)
+                logger.info("Successfully processed: {}", input_file.name)
             except Exception:
                 error_fname = output_file.name.removesuffix(output_ext) + ".err"
                 error_file = output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
                         f.write(traceback.format_exc())
+                logger.exception("Failed processing: {}", input_file.name)
 
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)
 
         # Run common setup
+        logger.info("Setting up task")
         self.setup(self._context)
         self._context.freeze()  # Make it read-only
+        logger.info("Task setup complete")
 
         # Register signal handlers
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
@@ -78,7 +87,9 @@ class LocalTask(Task):
 
                 self._shutdown_event.wait(timeout=3)  # Interruptible sleep
         finally:
+            logger.info("Shutting down task")
             self.teardown(self._context)
+            logger.info("Task shutdown complete")
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
 
