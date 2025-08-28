@@ -206,6 +206,13 @@ class PipelineConfig(BaseModel):
         cls,
         tasks: list[TaskConfig],
     ) -> list[TaskConfig]:
+        # Validate task names are unique
+        seen_names = set()
+        for task in tasks:
+            if task.name in seen_names:
+                raise ValueError(f"Duplicate task name: {task.name}")
+            seen_names.add(task.name)
+
         # Validate dependency references and extension compatibility
         task_dict = {task.name: task for task in tasks}
         for task in tasks:
