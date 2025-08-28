@@ -24,8 +24,8 @@ class BaseTaskConfig(BaseModel):
     output_ext: str = ".out"
     keep_output: bool = False
     setup_commands: str | None = None
-    _input_dir: Path
-    _output_dir: Path
+    _input_dir: Path | None = None
+    _output_dir: Path | None = None
 
     @field_validator("module")
     @classmethod
@@ -53,6 +53,8 @@ class BaseTaskConfig(BaseModel):
 
     @property
     def input_dir(self) -> Path:
+        if not self._input_dir:
+            raise ValueError("Input directory has not been set")
         return self._input_dir
 
     @input_dir.setter
@@ -61,6 +63,8 @@ class BaseTaskConfig(BaseModel):
 
     @property
     def output_dir(self) -> Path:
+        if not self._output_dir:
+            raise ValueError("Output directory has not been set")
         return self._output_dir
 
     @output_dir.setter
@@ -69,7 +73,7 @@ class BaseTaskConfig(BaseModel):
 
     @property
     def log_dir(self) -> Path:
-        return self._output_dir / "logs"
+        return self.output_dir / "logs"
 
     def to_script(self) -> str:
         """
