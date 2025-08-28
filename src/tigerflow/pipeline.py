@@ -74,11 +74,11 @@ class Pipeline:
             for file in dir.iterdir()
         }
 
-        # Initialize a set to track local task processes
-        self._subprocesses: set[subprocess.Popen] = set()
+        # Initialize mapping from task name to local subprocess
+        self._subprocesses: dict[str, subprocess.Popen] = dict()
 
-        # Initialize a set to track Slurm task clusters
-        self._slurm_task_ids: set[str] = set()
+        # Initialize mapping from task name to Slurm job ID
+        self._slurm_task_ids: dict[str, int] = dict()
 
         # Initialize an event to manage graceful shutdown
         self._shutdown_event = threading.Event()
@@ -102,10 +102,10 @@ class Pipeline:
                 self._process_completed_files()
                 self._shutdown_event.wait(timeout=60)  # Interruptible sleep
         finally:
-            for process in self._subprocesses:
+            for process in self._subprocesses.values():
                 process.terminate()
-            for job_id in self._slurm_task_ids:
-                subprocess.run(["scancel", job_id])
+            for job_id in self._slurm_task_ids.values():
+                subprocess.run(["scancel", str(job_id)])
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
 
@@ -114,15 +114,15 @@ class Pipeline:
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
-                self._subprocesses.add(process)
+                self._subprocesses[task.name] = process
             elif isinstance(task, SlurmTaskConfig):
                 result = subprocess.run(
                     ["sbatch"], input=script, capture_output=True, text=True
                 )
                 match = re.search(r"Submitted batch job (\d+)", result.stdout)
                 if match:
-                    job_id = match.group(1).strip()
-                    self._slurm_task_ids.add(job_id)
+                    job_id = int(match.group(1))
+                    self._slurm_task_ids[task.name] = job_id
                 else:
                     raise ValueError("Failed to extract job ID from sbatch output")
             else:
