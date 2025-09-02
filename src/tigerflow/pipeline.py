@@ -104,6 +104,7 @@ class Pipeline:
             self._start_tasks()
             logger.info("All tasks started, beginning pipeline tracking loop")
             while not self._shutdown_event.is_set():
+                self._report_task_status()
                 self._stage_new_files()
                 self._report_failed_files()
                 self._process_completed_files()
@@ -154,6 +155,27 @@ class Pipeline:
                 n_files += 1
         if n_files > 0:
             logger.info("Staged {} new files for processing", n_files)
+
+    def _report_task_status(self):
+        for name, process in self._subprocesses.items():
+            status = process.poll()
+            if status is None:
+                logger.info("[{}] Status: Active", name)
+            else:
+                logger.error("[{}] Status: Terminated", name)
+
+        for name, job_id in self._slurm_task_ids.items():
+            result = subprocess.run(
+                ["squeue", "-j", str(job_id), "-h", "-o", "%.10T"],
+                capture_output=True,
+                text=True,
+            )
+            if "RUNNING" in result.stdout:
+                logger.info("[{}] Status: Active", name)
+            elif "PENDING" in result.stdout:
+                logger.info("[{}] Status: Pending", name)
+            else:
+                logger.error("[{}] Status: Terminated", name)
 
     def _report_failed_files(self):
         for task in self._config.tasks:
