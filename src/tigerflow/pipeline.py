@@ -105,6 +105,7 @@ class Pipeline:
             logger.info("All tasks started, beginning pipeline tracking loop")
             while not self._shutdown_event.is_set():
                 self._stage_new_files()
+                self._report_failed_files()
                 self._process_completed_files()
                 self._shutdown_event.wait(timeout=60)  # Interruptible sleep
         finally:
@@ -153,6 +154,12 @@ class Pipeline:
                 n_files += 1
         if n_files > 0:
             logger.info("Staged {} new files for processing", n_files)
+
+    def _report_failed_files(self):
+        for task in self._config.tasks:
+            n_error_files = len(list(task.output_dir.glob("*.err")))
+            if n_error_files > 0:
+                logger.error("[{}] {} failed file(s)", task.name, n_error_files)
 
     def _process_completed_files(self):
         # Identify files that have completed all pipeline tasks
