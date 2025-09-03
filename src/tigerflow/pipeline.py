@@ -7,7 +7,6 @@ from pathlib import Path
 from types import FrameType
 
 import yaml
-from loguru import logger
 
 from .config import (
     LocalAsyncTaskConfig,
@@ -15,6 +14,7 @@ from .config import (
     PipelineConfig,
     SlurmTaskConfig,
 )
+from .logconfig import logger
 from .utils import is_valid_cli
 
 

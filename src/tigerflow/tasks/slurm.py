@@ -6,10 +6,10 @@ from pathlib import Path
 import typer
 from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
 from dask_jobqueue import SLURMCluster
-from loguru import logger
 from typing_extensions import Annotated
 
 from tigerflow.config import SlurmResourceConfig
+from tigerflow.logconfig import logger
 from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
 
 from ._base import Task

@@ -7,9 +7,9 @@ from pathlib import Path
 
 import aiofiles
 import typer
-from loguru import logger
 from typing_extensions import Annotated
 
+from tigerflow.logconfig import logger
 from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
 
 from ._base import Task
