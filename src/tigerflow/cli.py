@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from typing_extensions import Annotated
 
-from .pipeline import Pipeline
+from tigerflow.pipeline import Pipeline
 
 app = typer.Typer()
 

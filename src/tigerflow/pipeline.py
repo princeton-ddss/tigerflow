@@ -8,14 +8,14 @@ from types import FrameType
 
 import yaml
 
-from .config import (
+from tigerflow.config import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
     PipelineConfig,
     SlurmTaskConfig,
 )
-from .logconfig import logger
-from .utils import is_valid_cli
+from tigerflow.logconfig import logger
+from tigerflow.utils import is_valid_cli
 
 
 class Pipeline:
