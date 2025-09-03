@@ -76,6 +76,11 @@ class Pipeline:
             for file in dir.iterdir()
         }
 
+        # Initialize mapping from task name to active status
+        self._task_is_active: dict[str, bool] = {
+            task.name: False for task in self._config.tasks
+        }
+
         # Initialize mapping from task name to local subprocess
         self._subprocesses: dict[str, subprocess.Popen] = dict()
 
@@ -104,7 +109,7 @@ class Pipeline:
             self._start_tasks()
             logger.info("All tasks started, beginning pipeline tracking loop")
             while not self._shutdown_event.is_set():
-                self._report_task_status()
+                self._check_task_status()
                 self._stage_new_files()
                 self._report_failed_files()
                 self._process_completed_files()
@@ -156,13 +161,10 @@ class Pipeline:
         if n_files > 0:
             logger.info("Staged {} new files for processing", n_files)
 
-    def _report_task_status(self):
+    def _check_task_status(self):
         for name, process in self._subprocesses.items():
-            status = process.poll()
-            if status is None:
-                logger.info("[{}] Status: Active", name)
-            else:
-                logger.error("[{}] Status: Terminated", name)
+            is_active = False if process.poll() else True
+            self._update_task_status(name, is_active)
 
         for name, job_id in self._slurm_task_ids.items():
             result = subprocess.run(
@@ -170,10 +172,14 @@ class Pipeline:
                 capture_output=True,
                 text=True,
             )
-            if "RUNNING" in result.stdout:
+            is_active = True if result.stdout.strip() else False
+            self._update_task_status(name, is_active)
+
+    def _update_task_status(self, name: str, is_active: bool):
+        if self._task_is_active[name] != is_active:
+            self._task_is_active[name] = is_active
+            if is_active:
                 logger.info("[{}] Status: Active", name)
-            elif "PENDING" in result.stdout:
-                logger.info("[{}] Status: Pending", name)
             else:
                 logger.error("[{}] Status: Terminated", name)
 
