@@ -8,8 +8,8 @@ from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
 from dask_jobqueue import SLURMCluster
 from typing_extensions import Annotated
 
-from tigerflow.config import SlurmResourceConfig
 from tigerflow.logconfig import logger
+from tigerflow.models import SlurmResourceConfig
 from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
 
 from ._base import Task

@@ -9,13 +9,13 @@ from types import FrameType
 
 import yaml
 
-from tigerflow.config import (
+from tigerflow.logconfig import logger
+from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
     PipelineConfig,
     SlurmTaskConfig,
 )
-from tigerflow.logconfig import logger
 from tigerflow.utils import is_valid_cli
 
 
