@@ -122,11 +122,13 @@ class Pipeline:
         finally:
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
-                logger.info("[{}] Terminating", name)
-                process.terminate()
+                if self._task_is_active[name]:
+                    logger.info("[{}] Terminating", name)
+                    process.terminate()
             for name, job_id in self._slurm_task_ids.items():
-                logger.info("[{}] Terminating", name)
-                subprocess.run(["scancel", str(job_id)])
+                if self._task_is_active[name]:
+                    logger.info("[{}] Terminating", name)
+                    subprocess.run(["scancel", str(job_id)])
             logger.info("Pipeline shutdown complete")
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
@@ -138,6 +140,7 @@ class Pipeline:
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
+                self._task_is_active[task.name] = True
                 logger.info("[{}] Started with PID {}", task.name, process.pid)
             elif isinstance(task, SlurmTaskConfig):
                 result = subprocess.run(
@@ -148,6 +151,7 @@ class Pipeline:
                     raise ValueError("Failed to extract job ID from sbatch output")
                 job_id = int(match.group(1))
                 self._slurm_task_ids[task.name] = job_id
+                self._task_is_active[task.name] = True
                 logger.info("[{}] Submitted with Slurm job ID {}", task.name, job_id)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
