@@ -53,7 +53,7 @@ class LocalTask(Task):
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
                         f.write(traceback.format_exc())
-                logger.exception("Failed processing: {}", input_file.name)
+                logger.error("Failed processing: {}", input_file.name)
 
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)

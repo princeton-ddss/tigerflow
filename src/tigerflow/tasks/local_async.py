@@ -56,7 +56,7 @@ class LocalAsyncTask(Task):
                 with atomic_write(error_file) as temp_file:
                     async with aiofiles.open(temp_file, "w") as f:
                         await f.write(traceback.format_exc())
-                logger.exception("Failed processing: {}", input_file.name)
+                logger.error("Failed processing: {}", input_file.name)
 
         async def worker():
             while not self._shutdown_event.is_set():

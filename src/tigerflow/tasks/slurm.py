@@ -78,7 +78,7 @@ class SlurmTask(Task):
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
                         f.write(traceback.format_exc())
-                logger.exception("Failed processing: {}", input_file.name)
+                logger.error("Failed processing: {}", input_file.name)
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
