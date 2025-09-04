@@ -122,10 +122,10 @@ class Pipeline:
         finally:
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
-                logger.info("Terminating task: {}", name)
+                logger.info("[{}] Terminating", name)
                 process.terminate()
             for name, job_id in self._slurm_task_ids.items():
-                logger.info("Terminating task: {}", name)
+                logger.info("[{}] Terminating", name)
                 subprocess.run(["scancel", str(job_id)])
             logger.info("Pipeline shutdown complete")
             if self._received_signal is not None:
@@ -133,12 +133,12 @@ class Pipeline:
 
     def _start_tasks(self):
         for task in self._config.tasks:
-            logger.info("Starting task: {} ({})", task.name, task.kind)
+            logger.info("[{}] Starting as a {} task", task.name, task.kind)
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
-                logger.info("Local task {} started with PID {}", task.name, process.pid)
+                logger.info("[{}] Started with PID {}", task.name, process.pid)
             elif isinstance(task, SlurmTaskConfig):
                 result = subprocess.run(
                     ["sbatch"], input=script, capture_output=True, text=True
@@ -148,7 +148,7 @@ class Pipeline:
                     raise ValueError("Failed to extract job ID from sbatch output")
                 job_id = int(match.group(1))
                 self._slurm_task_ids[task.name] = job_id
-                logger.info("Slurm task {} submitted with job ID {}", task.name, job_id)
+                logger.info("[{}] Submitted with Slurm job ID {}", task.name, job_id)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
@@ -184,9 +184,9 @@ class Pipeline:
         if self._task_is_active[name] != is_active:
             self._task_is_active[name] = is_active
             if is_active:
-                logger.info("[{}] Status: Active", name)
+                logger.info("[{}] Activated", name)
             else:
-                logger.error("[{}] Status: Terminated", name)
+                logger.error("[{}] Terminated", name)
 
     def _report_failed_files(self):
         for task in self._config.tasks:
