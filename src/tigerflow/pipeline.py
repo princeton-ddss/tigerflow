@@ -3,6 +3,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from types import FrameType
 
@@ -129,6 +130,9 @@ class Pipeline:
                 if self._task_is_active[name]:
                     logger.info("[{}] Terminating", name)
                     subprocess.run(["scancel", str(job_id)])
+            while any(self._task_is_active.values()):
+                self._check_task_status()
+                time.sleep(1)
             logger.info("Pipeline shutdown complete")
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
