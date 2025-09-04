@@ -76,6 +76,11 @@ class Pipeline:
             for file in dir.iterdir()
         }
 
+        # Initialize mapping to track failed files per task
+        self._task_error_files: dict[str, set[str]] = {
+            task.name: set() for task in self._config.tasks
+        }
+
         # Initialize mapping from task name to active status
         self._task_is_active: dict[str, bool] = {
             task.name: False for task in self._config.tasks
@@ -185,9 +190,13 @@ class Pipeline:
 
     def _report_failed_files(self):
         for task in self._config.tasks:
-            n_error_files = len(list(task.output_dir.glob("*.err")))
-            if n_error_files > 0:
-                logger.error("[{}] {} failed file(s)", task.name, n_error_files)
+            n_files = 0
+            for file in task.output_dir.glob("*.err"):
+                if file.name not in self._task_error_files[task.name]:
+                    self._task_error_files[task.name].add(file.name)
+                    n_files += 1
+            if n_files > 0:
+                logger.error("[{}] {} failed file(s)", task.name, n_files)
 
     def _process_completed_files(self):
         # Identify files that have completed all pipeline tasks
