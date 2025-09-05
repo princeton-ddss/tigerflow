@@ -270,3 +270,16 @@ class PipelineConfig(BaseModel):
                 task for task in self.tasks if task.name not in parents
             ]
         return self._terminal_tasks
+
+
+class TaskProgress(BaseModel):
+    name: str
+    n_processed: int = 0
+    n_ongoing: int = 0
+    n_failed: int = 0
+
+
+class PipelineProgress(BaseModel):
+    n_staged: int = 0
+    n_finished: int = 0
+    tasks: list[TaskProgress] = []

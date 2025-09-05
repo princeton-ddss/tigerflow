@@ -14,7 +14,9 @@ from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
     PipelineConfig,
+    PipelineProgress,
     SlurmTaskConfig,
+    TaskProgress,
 )
 from tigerflow.utils import is_valid_cli
 
@@ -236,3 +238,39 @@ class Pipeline:
             new_file.touch()
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
+
+    @staticmethod
+    def report_progress(output_dir: Path) -> PipelineProgress:
+        """
+        Report progress across pipeline tasks.
+        """
+        internal_dir = output_dir / ".tigerflow"
+        for path in (output_dir, internal_dir):
+            if not path.exists():
+                raise FileNotFoundError(path)
+
+        pipeline = PipelineProgress()
+        for folder in internal_dir.iterdir():
+            if folder.is_dir():
+                if folder.name == ".symlinks":
+                    pipeline.n_staged = sum(1 for f in folder.iterdir() if f.is_file())
+                elif folder.name == ".finished":
+                    pipeline.n_finished = sum(
+                        1 for f in folder.iterdir() if f.is_file()
+                    )
+                elif folder.name.startswith("."):
+                    continue
+                else:  # Task folders
+                    task = TaskProgress(name=folder.name)
+                    task.n_processed += pipeline.n_finished
+                    for file in folder.iterdir():
+                        if file.is_file():
+                            if file.suffix == "":
+                                task.n_ongoing += 1
+                            elif file.name.endswith(".err"):
+                                task.n_failed += 1
+                            else:
+                                task.n_processed += 1
+                    pipeline.tasks.append(task)
+
+        return pipeline
