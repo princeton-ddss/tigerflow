@@ -77,6 +77,7 @@ class Pipeline:
             file.name
             for dir in (self._symlinks_dir, self._finished_dir)
             for file in dir.iterdir()
+            if file.is_file()
         }
 
         # Initialize mapping to track failed files per task
@@ -201,8 +202,12 @@ class Pipeline:
     def _report_failed_files(self):
         for task in self._config.tasks:
             n_files = 0
-            for file in task.output_dir.glob("*.err"):
-                if file.name not in self._task_error_files[task.name]:
+            for file in task.output_dir.iterdir():
+                if (
+                    file.is_file()
+                    and file.name.endswith(".err")
+                    and file.name not in self._task_error_files[task.name]
+                ):
                     self._task_error_files[task.name].add(file.name)
                     n_files += 1
             if n_files > 0:
