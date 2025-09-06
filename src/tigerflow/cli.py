@@ -34,11 +34,18 @@ def run(
             show_default=False,
         ),
     ],
+    delete_input: Annotated[
+        bool,
+        typer.Option(
+            "--delete-input",
+            help="Delete input files after pipeline processing.",
+        ),
+    ] = False,
 ):
     """
     Run a pipeline based on the given specification.
     """
-    pipeline = Pipeline(config_file, input_dir, output_dir)
+    pipeline = Pipeline(config_file, input_dir, output_dir, delete_input=delete_input)
     pipeline.run()
 
 

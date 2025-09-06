@@ -23,7 +23,14 @@ from tigerflow.utils import is_valid_cli
 
 class Pipeline:
     @logger.catch(reraise=True)
-    def __init__(self, config_file: Path, input_dir: Path, output_dir: Path):
+    def __init__(
+        self,
+        config_file: Path,
+        input_dir: Path,
+        output_dir: Path,
+        *,
+        delete_input: bool = False,
+    ):
         for path in (config_file, input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
@@ -36,6 +43,8 @@ class Pipeline:
 
         for path in (self._symlinks_dir, self._finished_dir):
             path.mkdir(parents=True, exist_ok=True)
+
+        self._delete_input = delete_input
 
         self._config = PipelineConfig.model_validate(
             yaml.safe_load(config_file.read_text())
@@ -60,6 +69,12 @@ class Pipeline:
                 path.mkdir(parents=True, exist_ok=True)
             if task.keep_output:
                 self._output_dir.joinpath(task.name).mkdir(exist_ok=True)
+
+        # If opted in, delete input files that have been marked as finished
+        if self._delete_input:
+            for file in self._finished_dir.iterdir():
+                source_file = self._input_dir / file.name
+                source_file.unlink(missing_ok=True)
 
         # Clean up any broken symlinks
         for file in self._symlinks_dir.iterdir():
@@ -239,8 +254,11 @@ class Pipeline:
         for file_id in completed_file_ids:
             file = self._symlinks_dir / f"{file_id}{ext}"
             file.unlink()
-            new_file = self._finished_dir / file.name
-            new_file.touch()
+            if self._delete_input:
+                source_file = self._input_dir / file.name
+                source_file.unlink(missing_ok=True)
+            done_file = self._finished_dir / file.name
+            done_file.touch()
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
 
