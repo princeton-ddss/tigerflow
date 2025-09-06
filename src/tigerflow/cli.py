@@ -74,13 +74,11 @@ def report(
     )
     table.add_column("Task")
     table.add_column("Processed", justify="right", style="blue")
-    table.add_column("Ongoing", justify="right", style="yellow")
     table.add_column("Failed", justify="right", style="red")
     for task in progress.tasks:
         table.add_row(
             task.name,
             str(task.n_processed),
-            str(task.n_ongoing),
             str(task.n_failed),
         )
 

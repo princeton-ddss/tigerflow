@@ -275,7 +275,6 @@ class PipelineConfig(BaseModel):
 class TaskProgress(BaseModel):
     name: str
     n_processed: int = 0
-    n_ongoing: int = 0
     n_failed: int = 0
 
 
