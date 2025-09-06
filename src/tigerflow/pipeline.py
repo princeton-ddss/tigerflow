@@ -272,28 +272,24 @@ class Pipeline:
             if not path.exists():
                 raise FileNotFoundError(path)
 
+        symlinks_dir = internal_dir / ".symlinks"
+        finished_dir = internal_dir / ".finished"
+
         pipeline = PipelineProgress()
-        for folder in internal_dir.iterdir():
-            if folder.is_dir():
-                if folder.name == ".symlinks":
-                    pipeline.n_staged = sum(1 for f in folder.iterdir() if f.is_file())
-                elif folder.name == ".finished":
-                    pipeline.n_finished = sum(
-                        1 for f in folder.iterdir() if f.is_file()
-                    )
-                elif folder.name.startswith("."):
-                    continue
-                else:  # Task folders
-                    task = TaskProgress(name=folder.name)
-                    task.n_processed += pipeline.n_finished
-                    for file in folder.iterdir():
-                        if file.is_file():
-                            if file.suffix == "":
-                                task.n_ongoing += 1
-                            elif file.name.endswith(".err"):
-                                task.n_failed += 1
-                            else:
-                                task.n_processed += 1
-                    pipeline.tasks.append(task)
+        pipeline.n_staged = sum(1 for f in symlinks_dir.iterdir() if f.is_file())
+        pipeline.n_finished = sum(1 for f in finished_dir.iterdir() if f.is_file())
+        for folder in internal_dir.iterdir():  # TODO: Iterate tasks topologically
+            if folder.is_dir() and not folder.name.startswith("."):
+                task = TaskProgress(name=folder.name)
+                task.n_processed += pipeline.n_finished
+                for file in folder.iterdir():
+                    if file.is_file():
+                        if file.suffix == "":
+                            task.n_ongoing += 1
+                        elif file.name.endswith(".err"):
+                            task.n_failed += 1
+                        else:
+                            task.n_processed += 1
+                pipeline.tasks.append(task)
 
         return pipeline
