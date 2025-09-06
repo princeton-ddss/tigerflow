@@ -57,7 +57,10 @@ def report(
     """
     progress = Pipeline.report_progress(pipeline_dir)
 
-    bar = _make_progress_bar(progress.n_finished, progress.n_staged)
+    bar = _make_progress_bar(
+        current=progress.n_finished,
+        total=progress.n_staged + progress.n_finished,
+    )
 
     table = Table(
         title=f"Progress as of {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -66,7 +69,7 @@ def report(
     table.add_column("Processed", justify="right", style="blue")
     table.add_column("Ongoing", justify="right", style="yellow")
     table.add_column("Failed", justify="right", style="red")
-    for task in progress.tasks:
+    for task in progress.tasks:  # TODO: Iterate in topological order
         table.add_row(
             task.name,
             str(task.n_processed),
@@ -75,7 +78,7 @@ def report(
         )
 
     print(table)
-    print("[bold]TOTAL[/bold]:", bar)
+    print("[bold]FINISHED[/bold]:", bar)
 
 
 @app.callback()
