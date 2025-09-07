@@ -32,10 +32,10 @@ class Pipeline:
     @logger.catch(reraise=True)
     def __init__(
         self,
+        *,
         config_file: Path,
         input_dir: Path,
         output_dir: Path,
-        *,
         delete_input: bool = False,
     ):
         for path in (config_file, input_dir, output_dir):

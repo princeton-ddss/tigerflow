@@ -45,7 +45,12 @@ def run(
     """
     Run a pipeline based on the given specification.
     """
-    pipeline = Pipeline(config_file, input_dir, output_dir, delete_input=delete_input)
+    pipeline = Pipeline(
+        config_file=config_file,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        delete_input=delete_input,
+    )
     pipeline.run()
 
 
@@ -93,7 +98,7 @@ def callback():
     """
 
 
-def _make_progress_bar(current: int, total: int, length: int = 30) -> str:
+def _make_progress_bar(*, current: int, total: int, length: int = 30) -> str:
     """
     Returns a string with a fixed-width static progress bar.
     """

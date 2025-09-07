@@ -24,6 +24,7 @@ class SlurmTask(Task):
     @logger.catch(reraise=True)
     def __init__(
         self,
+        *,
         resources: SlurmResourceConfig,
         setup_commands: str | None = None,
     ):
@@ -33,6 +34,7 @@ class SlurmTask(Task):
     @logger.catch(reraise=True)
     def start(
         self,
+        *,
         input_dir: Path,
         input_ext: str,
         output_dir: Path,
@@ -113,10 +115,10 @@ class SlurmTask(Task):
         active_futures: dict[Path, Future] = dict()
         while True:
             unprocessed_files = self._get_unprocessed_files(
-                input_dir,
-                input_ext,
-                output_dir,
-                output_ext,
+                input_dir=input_dir,
+                input_ext=input_ext,
+                output_dir=output_dir,
+                output_ext=output_ext,
             )
 
             for file in unprocessed_files:
@@ -223,9 +225,17 @@ class SlurmTask(Task):
                 max_workers=max_workers,
             )
 
-            task = cls(resources, setup_commands)
+            task = cls(
+                resources=resources,
+                setup_commands=setup_commands,
+            )
 
-            task.start(input_dir, input_ext, output_dir, output_ext)
+            task.start(
+                input_dir=input_dir,
+                input_ext=input_ext,
+                output_dir=output_dir,
+                output_ext=output_ext,
+            )
 
         typer.run(main)
 

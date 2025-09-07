@@ -17,7 +17,7 @@ from ._base import Task
 
 class LocalAsyncTask(Task):
     @logger.catch(reraise=True)
-    def __init__(self, concurrency_limit: int):
+    def __init__(self, *, concurrency_limit: int):
         self._concurrency_limit = concurrency_limit
         self._context = SetupContext()
         self._queue = asyncio.Queue()
@@ -33,6 +33,7 @@ class LocalAsyncTask(Task):
     @logger.catch(reraise=True)
     def start(
         self,
+        *,
         input_dir: Path,
         input_ext: str,
         output_dir: Path,
@@ -75,10 +76,10 @@ class LocalAsyncTask(Task):
         async def poll():
             while not self._shutdown_event.is_set():
                 unprocessed_files = self._get_unprocessed_files(
-                    input_dir,
-                    input_ext,
-                    output_dir,
-                    output_ext,
+                    input_dir=input_dir,
+                    input_ext=input_ext,
+                    output_dir=output_dir,
+                    output_ext=output_ext,
                 )
 
                 for file in unprocessed_files:
@@ -173,8 +174,16 @@ class LocalAsyncTask(Task):
             """
             Run the task as a CLI application
             """
-            task = cls(concurrency_limit)
-            task.start(input_dir, input_ext, output_dir, output_ext)
+            task = cls(
+                concurrency_limit=concurrency_limit,
+            )
+
+            task.start(
+                input_dir=input_dir,
+                input_ext=input_ext,
+                output_dir=output_dir,
+                output_ext=output_ext,
+            )
 
         typer.run(main)
 

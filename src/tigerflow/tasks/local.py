@@ -30,6 +30,7 @@ class LocalTask(Task):
     @logger.catch(reraise=True)
     def start(
         self,
+        *,
         input_dir: Path,
         input_ext: str,
         output_dir: Path,
@@ -72,10 +73,10 @@ class LocalTask(Task):
         try:
             while not self._shutdown_event.is_set():
                 unprocessed_files = self._get_unprocessed_files(
-                    input_dir,
-                    input_ext,
-                    output_dir,
-                    output_ext,
+                    input_dir=input_dir,
+                    input_ext=input_ext,
+                    output_dir=output_dir,
+                    output_ext=output_ext,
                 )
 
                 for file in unprocessed_files:
@@ -133,7 +134,12 @@ class LocalTask(Task):
             Run the task as a CLI application
             """
             task = cls()
-            task.start(input_dir, input_ext, output_dir, output_ext)
+            task.start(
+                input_dir=input_dir,
+                input_ext=input_ext,
+                output_dir=output_dir,
+                output_ext=output_ext,
+            )
 
         typer.run(main)
 

@@ -22,6 +22,7 @@ class Task(ABC):
 
     @staticmethod
     def _get_unprocessed_files(
+        *,
         input_dir: Path,
         input_ext: str,
         output_dir: Path,
