@@ -220,11 +220,15 @@ class Pipeline:
 
     def _update_task_status(self, name: str, status: TaskStatus):
         if self._task_status[name] != status:
+            old_status = self._task_status[name]
             self._task_status[name] = status
-            if status == TaskStatus.INACTIVE:
-                logger.error("[{}] Status: {}", name, status.value)
-            else:
-                logger.info("[{}] Status: {}", name, status.value)
+            log_func = logger.error if status == TaskStatus.INACTIVE else logger.info
+            log_func(
+                "[{}] Status changed: {} -> {}",
+                name,
+                old_status.value.upper(),
+                status.value.upper(),
+            )
 
     def _report_failed_files(self):
         for task in self._config.tasks:
