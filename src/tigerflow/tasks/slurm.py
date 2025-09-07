@@ -128,6 +128,7 @@ class SlurmTask(Task):
 
             for key in list(active_futures.keys()):
                 if active_futures[key].done():
+                    active_futures[key].release()
                     del active_futures[key]
 
             time.sleep(3)
