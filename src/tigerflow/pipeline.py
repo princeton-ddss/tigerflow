@@ -4,6 +4,7 @@ import subprocess
 import sys
 import threading
 import time
+from enum import Enum
 from pathlib import Path
 from types import FrameType
 
@@ -19,6 +20,12 @@ from tigerflow.models import (
     TaskProgress,
 )
 from tigerflow.utils import is_valid_cli
+
+
+class TaskStatus(Enum):
+    ACTIVE = "Active"
+    INACTIVE = "Inactive"
+    PENDING = "Pending"
 
 
 class Pipeline:
@@ -100,9 +107,9 @@ class Pipeline:
             task.name: set() for task in self._config.tasks
         }
 
-        # Initialize mapping from task name to active status
-        self._task_is_active: dict[str, bool] = {
-            task.name: False for task in self._config.tasks
+        # Initialize mapping from task name to status
+        self._task_status: dict[str, TaskStatus] = {
+            task.name: TaskStatus.INACTIVE for task in self._config.tasks
         }
 
         # Initialize mapping from task name to local subprocess
@@ -141,14 +148,16 @@ class Pipeline:
         finally:
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
-                if self._task_is_active[name]:
+                if self._task_status[name] == TaskStatus.ACTIVE:
                     logger.info("[{}] Terminating", name)
                     process.terminate()
             for name, job_id in self._slurm_task_ids.items():
-                if self._task_is_active[name]:
+                if self._task_status[name] == TaskStatus.ACTIVE:
                     logger.info("[{}] Terminating", name)
                     subprocess.run(["scancel", str(job_id)])
-            while any(self._task_is_active.values()):
+            while any(
+                status != TaskStatus.INACTIVE for status in self._task_status.values()
+            ):
                 self._check_task_status()
                 time.sleep(1)
             logger.info("Pipeline shutdown complete")
@@ -162,7 +171,6 @@ class Pipeline:
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
-                self._task_is_active[task.name] = True
                 logger.info("[{}] Started with PID {}", task.name, process.pid)
             elif isinstance(task, SlurmTaskConfig):
                 result = subprocess.run(
@@ -173,7 +181,6 @@ class Pipeline:
                     raise ValueError("Failed to extract job ID from sbatch output")
                 job_id = int(match.group(1))
                 self._slurm_task_ids[task.name] = job_id
-                self._task_is_active[task.name] = True
                 logger.info("[{}] Submitted with Slurm job ID {}", task.name, job_id)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
@@ -194,8 +201,8 @@ class Pipeline:
 
     def _check_task_status(self):
         for name, process in self._subprocesses.items():
-            is_active = False if process.poll() else True
-            self._update_task_status(name, is_active)
+            status = TaskStatus.INACTIVE if process.poll() else TaskStatus.ACTIVE
+            self._update_task_status(name, status)
 
         for name, job_id in self._slurm_task_ids.items():
             result = subprocess.run(
@@ -203,16 +210,21 @@ class Pipeline:
                 capture_output=True,
                 text=True,
             )
-            is_active = True if result.stdout.strip() else False
-            self._update_task_status(name, is_active)
-
-    def _update_task_status(self, name: str, is_active: bool):
-        if self._task_is_active[name] != is_active:
-            self._task_is_active[name] = is_active
-            if is_active:
-                logger.info("[{}] Activated", name)
+            if result.stdout.count("RUNNING") > 1:  # Active client and worker
+                status = TaskStatus.ACTIVE
+            elif "PENDING" in result.stdout:
+                status = TaskStatus.PENDING
             else:
-                logger.error("[{}] Terminated", name)
+                status = TaskStatus.INACTIVE
+            self._update_task_status(name, status)
+
+    def _update_task_status(self, name: str, status: TaskStatus):
+        if self._task_status[name] != status:
+            self._task_status[name] = status
+            if status == TaskStatus.INACTIVE:
+                logger.error("[{}] Status: {}", name, status.value)
+            else:
+                logger.info("[{}] Status: {}", name, status.value)
 
     def _report_failed_files(self):
         for task in self._config.tasks:
