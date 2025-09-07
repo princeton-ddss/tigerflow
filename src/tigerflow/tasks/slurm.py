@@ -102,6 +102,8 @@ class SlurmTask(Task):
         cluster.adapt(
             minimum_jobs=0,
             maximum_jobs=self._resources.max_workers,
+            interval="15s",  # How often to check for scaling decisions
+            wait_count=8,  # Consecutive idle checks before removing a worker
         )
 
         # Instantiate a cluster client
