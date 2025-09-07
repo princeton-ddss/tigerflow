@@ -295,8 +295,10 @@ class Pipeline:
                 task = TaskProgress(name=folder.name)
                 task.n_processed += pipeline.n_finished
                 for file in folder.iterdir():
-                    if file.is_file() and file.suffix:
-                        if file.name.endswith(".err"):
+                    if file.is_file():
+                        if file.suffix == "":
+                            task.n_ongoing += 1
+                        elif file.name.endswith(".err"):
                             task.n_failed += 1
                         else:
                             task.n_processed += 1

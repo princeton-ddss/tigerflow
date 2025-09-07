@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -74,21 +73,21 @@ def report(
         total=progress.n_staged + progress.n_finished,
     )
 
-    table = Table(
-        title=f"Progress as of {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    )
+    table = Table()
     table.add_column("Task")
     table.add_column("Processed", justify="right", style="blue")
+    table.add_column("Ongoing", justify="right", style="yellow")
     table.add_column("Failed", justify="right", style="red")
     for task in progress.tasks:
         table.add_row(
             task.name,
             str(task.n_processed),
+            str(task.n_ongoing),
             str(task.n_failed),
         )
 
     print(table)
-    print("[bold]FINISHED[/bold]:", bar)
+    print("[bold]COMPLETED[/bold]:", bar)
 
 
 @app.callback()
