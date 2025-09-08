@@ -292,20 +292,19 @@ class Pipeline:
         finished_dir = internal_dir / ".finished"
 
         pipeline = PipelineProgress()
-        pipeline.n_staged = sum(1 for f in symlinks_dir.iterdir() if f.is_file())
-        pipeline.n_finished = sum(1 for f in finished_dir.iterdir() if f.is_file())
+        pipeline.staged = [f for f in symlinks_dir.iterdir() if f.is_file()]
+        pipeline.finished = [f for f in finished_dir.iterdir() if f.is_file()]
         for folder in internal_dir.iterdir():  # TODO: Iterate tasks topologically
-            if folder.is_dir() and not folder.name.startswith("."):
+            if folder.is_dir() and not folder.name.startswith("."):  # Task directory
                 task = TaskProgress(name=folder.name)
-                task.n_processed += pipeline.n_finished
                 for file in folder.iterdir():
                     if file.is_file():
                         if file.suffix == "":
-                            task.n_ongoing += 1
+                            task.ongoing.append(file)
                         elif file.name.endswith(".err"):
-                            task.n_failed += 1
+                            task.failed.append(file)
                         else:
-                            task.n_processed += 1
+                            task.processed.append(file)
                 pipeline.tasks.append(task)
 
         return pipeline

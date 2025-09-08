@@ -26,8 +26,8 @@ def progress(
     progress = Pipeline.report_progress(pipeline_dir)
 
     bar = _make_progress_bar(
-        current=progress.n_finished,
-        total=progress.n_staged + progress.n_finished,
+        current=len(progress.finished),
+        total=len(progress.staged) + len(progress.finished),
     )
 
     table = Table()
@@ -38,9 +38,9 @@ def progress(
     for task in progress.tasks:
         table.add_row(
             task.name,
-            str(task.n_processed),
-            str(task.n_ongoing),
-            str(task.n_failed),
+            str(len(task.processed) + len(progress.finished)),
+            str(len(task.ongoing)),
+            str(len(task.failed)),
         )
 
     print(table)

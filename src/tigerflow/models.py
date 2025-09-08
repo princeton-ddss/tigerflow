@@ -274,12 +274,12 @@ class PipelineConfig(BaseModel):
 
 class TaskProgress(BaseModel):
     name: str
-    n_processed: int = 0
-    n_ongoing: int = 0
-    n_failed: int = 0
+    processed: list[Path] = []
+    ongoing: list[Path] = []
+    failed: list[Path] = []
 
 
 class PipelineProgress(BaseModel):
-    n_staged: int = 0
-    n_finished: int = 0
+    staged: list[Path] = []
+    finished: list[Path] = []
     tasks: list[TaskProgress] = []
