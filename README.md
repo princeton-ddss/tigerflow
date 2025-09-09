@@ -26,25 +26,13 @@ TigerFlow can be run on any HPC cluster managed by Slurm. Since it is written in
 
 ### Installation
 
-TigerFlow can be installed using `pip` or other package managers such as [`uv`](https://docs.astral.sh/uv/) and [`poetry`](https://python-poetry.org/docs/).
+TigerFlow can be installed using `pip`:
 
-=== "pip"
+```bash
+pip install tigerflow
+```
 
-    ```bash
-    pip install tigerflow
-    ```
-
-=== "uv"
-
-    ```bash
-    uv add tigerflow
-    ```
-
-=== "poetry"
-
-    ```bash
-    poetry add tigerflow
-    ```
+It can also be installed using other package managers such as [`uv`](https://docs.astral.sh/uv/) and [`poetry`](https://python-poetry.org/docs/).
 
 ### Quick Start
 
@@ -64,4 +52,4 @@ tigerflow run --help
 
 ### What Next
 
-Please check out user [guides](guides/task.md) for more detailed instructions and examples.
+Please check out user [guides](https://princeton-ddss.github.io/tigerflow/latest/guides/task/) for more detailed instructions and examples.
