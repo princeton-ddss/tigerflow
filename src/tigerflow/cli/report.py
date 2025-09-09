@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import click
 import typer
 from rich import print
 from rich.table import Table
@@ -45,6 +46,51 @@ def progress(
 
     print(table)
     print("[bold]COMPLETED[/bold]:", bar)
+
+
+@app.command()
+def errors(
+    pipeline_dir: Annotated[
+        Path,
+        typer.Argument(
+            help="Pipeline output directory (must contain .tigerflow)",
+            show_default=False,
+        ),
+    ],
+    task_name: Annotated[
+        str,
+        typer.Option(
+            "--task",
+            help="Show failed files for this task only.",
+        ),
+    ] = "*",
+):
+    """
+    Report failed files for pipeline tasks.
+    """
+    progress = Pipeline.report_progress(pipeline_dir)
+
+    available_tasks = {task.name for task in progress.tasks}
+    if task_name not in available_tasks:
+        print(
+            f"[red]Error: Task '{task_name}' not found. "
+            f"Available tasks: {', '.join(available_tasks)}[/red]"
+        )
+        raise typer.Exit(1)
+
+    error_sections = []
+    for task in progress.tasks:
+        if task_name in ("*", task.name):
+            if task.failed:
+                section = f"[{task.name}] {len(task.failed)} failed files (open to view errors):\n"
+                for file in sorted(task.failed):
+                    section += f"  {file}\n"
+                error_sections.append(section)
+
+    if error_sections:
+        click.echo_via_pager("\n".join(error_sections))
+    else:
+        print("[green]No failed files found.[/green]")
 
 
 @app.callback()
