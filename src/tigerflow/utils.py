@@ -9,6 +9,15 @@ from subprocess import TimeoutExpired
 from types import SimpleNamespace
 
 
+def get_version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("tigerflow")
+    except PackageNotFoundError:
+        return "unknown"
+
+
 def validate_file_ext(ext: str) -> str:
     """
     Return the string if it is a valid file extension.
