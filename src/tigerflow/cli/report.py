@@ -62,6 +62,7 @@ def errors(
         typer.Option(
             "--task",
             help="Show failed files for this task only.",
+            show_default="all",
         ),
     ] = "*",
 ):
