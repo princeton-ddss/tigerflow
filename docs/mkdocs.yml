@@ -1,0 +1,59 @@
+docs_dir: mkdocs
+site_name: TigerFlow
+repo_name: princeton-ddss/tigerflow
+repo_url: https://github.com/princeton-ddss/tigerflow
+copyright: Copyright &copy; 2025 The Trustees of Princeton University
+
+theme:
+  name: material
+  # logo: images/logo.png
+  # favicon: images/favicon.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - header.autohide
+    - navigation.instant
+    - navigation.tabs
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra:
+  version:
+    provider: mike
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Guides:
+    - Task: guides/task.md
+    - Pipeline: guides/pipeline.md
