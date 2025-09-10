@@ -3,7 +3,12 @@
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-TigerFlow is a Python framework that simplifies the creation and execution of data pipelines on Slurm-managed HPC clusters. Designed as a continuously running service with dynamic scaling, it minimizes the need for users to manually plan and allocate resources in advance.
+TigerFlow is a Python framework that simplifies the creation and execution of data pipelines on Slurm-managed HPC clusters. It supports data pipelines where:
+
+- ***Each task performs embarrassingly parallel file processing.*** That is, files are processed independently of one another.
+- ***The task dependency graph forms a rooted tree.*** That is, the graph has a single root task, and every other task has exactly one parent.
+
+Designed as a continuously running service with dynamic scaling, TigerFlow minimizes the need for users to manually plan and allocate resources in advance.
 
 ## Why TigerFlow Matters
 
@@ -15,10 +20,15 @@ HPC clusters are an invaluable asset for researchers who require significant com
 
 These constraints make it difficult to design and implement end-to-end data pipelines, especially when some steps require external API calls (restricted to login/head nodes) while others depend on high-performance compute resources (available only on compute nodes). TigerFlow addresses these challenges by offering a simple, unified framework for defining and running data pipelines across different types of cluster nodes.
 
-Note that TigerFlow is *not* a fully generalized pipeline framework. Instead, it is a convenient and reliable tool tailored for specific types of data pipelines and their execution in HPC environments. Specifically, it supports data pipelines where:
+### Additional Advantages
 
-- ***Each task performs embarrassingly parallel file processing.*** That is, files are processed independently of one another.
-- ***The task dependency graph forms a rooted tree.*** That is, the graph has a single root task, and every other task has exactly one parent.
+TigerFlow further streamlines HPC workflows by addressing common inefficiencies in traditional Slurm-based job scheduling:
+
+- ***No need to pre-calculate optimal resources.*** In TigerFlow, each Slurm task runs a dynamically scalable worker cluster that automatically adapts to the incoming workload, removing the burden of manual tuning.
+- ***No need to start a new Slurm job for each file.*** In TigerFlow, a single Slurm job runs as a long-lived worker process that handles multiple files. It performs common operations (e.g., setup and teardown) only once, while applying the actual file-processing logic individually to each file. This reduces idle time and resource waste from launching a separate Slurm job for every file.
+- ***No need to wait for all files to complete a pipeline step.*** In TigerFlow, files are processed individually as they arrive, supporting more flexible and dynamic workflows.
+
+These features make TigerFlow especially well-suited for running large-scale or real-time data pipelines on HPC systems.
 
 ## How to Use TigerFlow
 
