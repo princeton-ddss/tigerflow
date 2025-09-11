@@ -1,11 +1,15 @@
 # Welcome to TigerFlow
 
-TigerFlow is a Python framework that simplifies the creation and execution of data pipelines on Slurm-managed HPC clusters. It supports data pipelines where:
+TigerFlow is a Python framework that simplifies the creation and execution of ***data pipelines on Slurm-managed HPC clusters***. It supports data pipelines where:
 
-- ***Each task performs embarrassingly parallel file processing.*** That is, files are processed independently of one another.
-- ***The task dependency graph forms a rooted tree.*** That is, the graph has a single root task, and every other task has exactly one parent.
+- *Each task performs embarrassingly parallel file processing.* That is, files are processed independently of one another.
+- *The task dependency graph forms a rooted tree.* That is, the graph has a single root task, and every other task has exactly one parent.
 
-Designed as a continuously running service with dynamic scaling, TigerFlow minimizes the need for users to manually plan and allocate resources in advance.
+Designed as a ***continuously running service with dynamic scaling***, TigerFlow minimizes the need for users to manually plan and allocate resources in advance.
+
+<p align="center">
+  <img alt="tigerflow-run-screenshot" src="https://raw.githubusercontent.com/princeton-ddss/tigerflow/refs/heads/main/.github/assets/screenshot.png" width="700" />
+</p>
 
 ## Why TigerFlow Matters
 
@@ -21,7 +25,7 @@ These constraints make it difficult to design and implement end-to-end data pipe
 
 TigerFlow further streamlines HPC workflows by addressing common inefficiencies in traditional Slurm-based job scheduling:
 
-- ***No need to pre-calculate optimal resources.*** In TigerFlow, each Slurm task runs a dynamically scalable worker cluster that automatically adapts to the incoming workload, removing the burden of manual tuning.
+- ***No need to pre-batch workloads.*** Each Slurm task in TigerFlow runs a dynamically scalable worker cluster that automatically adapts to the incoming workload, eliminating the need for manual batch planning and tuning.
 - ***No need to start a new Slurm job for each file.*** In TigerFlow, a single Slurm job runs as a long-lived worker process that handles multiple files. It performs common operations (e.g., setup and teardown) only once, while applying the actual file-processing logic individually to each file. This reduces idle time and resource waste from launching a separate Slurm job for every file.
 - ***No need to wait for all files to complete a pipeline step.*** In TigerFlow, files are processed individually as they arrive, supporting more flexible and dynamic workflows.
 
@@ -57,17 +61,60 @@ TigerFlow can be installed using `pip` or other package managers such as [`uv`](
 
 Once the package is installed, `tigerflow` command will be available, like so:
 
-```bash
-tigerflow --help
-```
+=== "Command"
+
+    ```bash
+    tigerflow --help
+    ```
+
+=== "Output"
+
+    ```console
+    Usage: tigerflow [OPTIONS] COMMAND [ARGS]...
+
+    A pipeline framework optimized for HPC with Slurm integration.
+
+    ╭─ Options ───────────────────────────────────────────────────────────────────╮
+    │ --version                                                                   │
+    │ --install-completion          Install completion for the current shell.     │
+    │ --show-completion             Show completion for the current shell, to     │
+    │                               copy it or customize the installation.        │
+    │ --help                        Show this message and exit.                   │
+    ╰─────────────────────────────────────────────────────────────────────────────╯
+    ╭─ Commands ──────────────────────────────────────────────────────────────────╮
+    │ run      Run a pipeline based on the given specification.                   │
+    │ report   Report different types of information about the given pipeline.    │
+    ╰─────────────────────────────────────────────────────────────────────────────╯
+    ```
 
 Running the above will display an overview of the tool, including supported subcommands.
 
 For instance, `run` is a subcommand for running a user-defined pipeline, and its details can be viewed by running:
 
-```bash
-tigerflow run --help
-```
+=== "Command"
+
+    ```bash
+    tigerflow run --help
+    ```
+
+=== "Output"
+
+    ```console
+    Usage: tigerflow run [OPTIONS] CONFIG_FILE INPUT_DIR OUTPUT_DIR
+
+    Run a pipeline based on the given specification.
+
+    ╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+    │ *    config_file      PATH  Configuration file [required]                                        │
+    │ *    input_dir        PATH  Directory containing input data for the pipeline [required]          │
+    │ *    output_dir       PATH  Directory for storing pipeline outputs and internal data [required]  │
+    ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+    ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+    │ --idle-timeout        INTEGER  Terminate after this many minutes of inactivity. [default: 10]    │
+    │ --delete-input                 Delete input files after pipeline processing.                     │
+    │ --help                         Show this message and exit.                                       │
+    ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+    ```
 
 ### What Next
 

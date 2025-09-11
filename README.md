@@ -3,12 +3,16 @@
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-TigerFlow is a Python framework that simplifies the creation and execution of data pipelines on Slurm-managed HPC clusters. It supports data pipelines where:
+TigerFlow is a Python framework that simplifies the creation and execution of ***data pipelines on Slurm-managed HPC clusters***. It supports data pipelines where:
 
-- ***Each task performs embarrassingly parallel file processing.*** That is, files are processed independently of one another.
-- ***The task dependency graph forms a rooted tree.*** That is, the graph has a single root task, and every other task has exactly one parent.
+- *Each task performs embarrassingly parallel file processing.* That is, files are processed independently of one another.
+- *The task dependency graph forms a rooted tree.* That is, the graph has a single root task, and every other task has exactly one parent.
 
-Designed as a continuously running service with dynamic scaling, TigerFlow minimizes the need for users to manually plan and allocate resources in advance.
+Designed as a ***continuously running service with dynamic scaling***, TigerFlow minimizes the need for users to manually plan and allocate resources in advance.
+
+<p align="center">
+  <img alt="tigerflow-run-screenshot" src="https://raw.githubusercontent.com/princeton-ddss/tigerflow/refs/heads/main/.github/assets/screenshot.png" width="700" />
+</p>
 
 ## Why TigerFlow Matters
 
@@ -24,7 +28,7 @@ These constraints make it difficult to design and implement end-to-end data pipe
 
 TigerFlow further streamlines HPC workflows by addressing common inefficiencies in traditional Slurm-based job scheduling:
 
-- ***No need to pre-calculate optimal resources.*** In TigerFlow, each Slurm task runs a dynamically scalable worker cluster that automatically adapts to the incoming workload, removing the burden of manual tuning.
+- ***No need to pre-batch workloads.*** Each Slurm task in TigerFlow runs a dynamically scalable worker cluster that automatically adapts to the incoming workload, eliminating the need for manual batch planning and tuning.
 - ***No need to start a new Slurm job for each file.*** In TigerFlow, a single Slurm job runs as a long-lived worker process that handles multiple files. It performs common operations (e.g., setup and teardown) only once, while applying the actual file-processing logic individually to each file. This reduces idle time and resource waste from launching a separate Slurm job for every file.
 - ***No need to wait for all files to complete a pipeline step.*** In TigerFlow, files are processed individually as they arrive, supporting more flexible and dynamic workflows.
 
