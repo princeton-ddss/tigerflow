@@ -72,7 +72,7 @@ def errors(
     progress = Pipeline.report_progress(pipeline_dir)
 
     available_tasks = {task.name for task in progress.tasks}
-    if task_name not in available_tasks:
+    if task_name != "*" and task_name not in available_tasks:
         print(
             f"[red]Error: Task '{task_name}' not found. "
             f"Available tasks: {', '.join(available_tasks)}[/red]"
