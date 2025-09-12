@@ -9,8 +9,8 @@ from dask_jobqueue import SLURMCluster
 from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
-from tigerflow.models import SlurmResourceConfig
-from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
+from tigerflow.models import SlurmResourceConfig, SlurmTaskConfig
+from tigerflow.utils import SetupContext, atomic_write
 
 from ._base import Task
 
@@ -22,33 +22,18 @@ class SlurmTask(Task):
     """
 
     @logger.catch(reraise=True)
-    def __init__(
-        self,
-        *,
-        resources: SlurmResourceConfig,
-        setup_commands: str | None = None,
-    ):
-        self._resources = resources
-        self._setup_commands = setup_commands
+    def __init__(self, config: SlurmTaskConfig):
+        self.config = config
 
     @logger.catch(reraise=True)
-    def start(
-        self,
-        *,
-        input_dir: Path,
-        input_ext: str,
-        output_dir: Path,
-        output_ext: str,
-    ):
+    def start(self, input_dir: Path, output_dir: Path):
         for path in (input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
-        for ext in (input_ext, output_ext):
-            validate_file_ext(ext)
 
-        # Create subdirectory to store log files
-        log_dir = output_dir / "logs"
-        log_dir.mkdir(exist_ok=True)
+        self.config.input_dir = input_dir
+        self.config.output_dir = output_dir
+        self.config.log_dir.mkdir(exist_ok=True)
 
         # Reference functions to use in plugin
         setup_func = type(self).setup
@@ -75,8 +60,10 @@ class SlurmTask(Task):
                     self.run(worker.context, input_file, temp_file)
                 logger.info("Successfully processed: {}", input_file.name)
             except Exception:
-                error_fname = output_file.name.removesuffix(output_ext) + ".err"
-                error_file = output_dir / error_fname
+                error_fname = (
+                    output_file.name.removesuffix(self.config.output_ext) + ".err"
+                )
+                error_file = self.config.output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
                         f.write(traceback.format_exc())
@@ -84,24 +71,28 @@ class SlurmTask(Task):
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
-            cores=self._resources.cpus,
-            memory=self._resources.memory,
-            walltime=self._resources.time,
+            cores=self.config.resources.cpus,
+            memory=self.config.resources.memory,
+            walltime=self.config.resources.time,
             processes=1,
             job_extra_directives=[
-                f"--output={log_dir}/dask-worker-%J.out",
-                f"--error={log_dir}/dask-worker-%J.err",
-                f"--gres=gpu:{self._resources.gpus}" if self._resources.gpus else "",
+                f"--output={self.config.log_dir}/dask-worker-%J.out",
+                f"--error={self.config.log_dir}/dask-worker-%J.err",
+                f"--gres=gpu:{self.config.resources.gpus}"
+                if self.config.resources.gpus
+                else "",
             ],
             job_script_prologue=(
-                self._setup_commands.splitlines() if self._setup_commands else None
+                self.config.setup_commands.splitlines()
+                if self.config.setup_commands
+                else None
             ),
         )
 
         # Enable autoscaling
         cluster.adapt(
             minimum_jobs=0,
-            maximum_jobs=self._resources.max_workers,
+            maximum_jobs=self.config.resources.max_workers,
             interval="15s",  # How often to check for scaling decisions
             wait_count=8,  # Consecutive idle checks before removing a worker
         )
@@ -111,22 +102,25 @@ class SlurmTask(Task):
         client.register_plugin(TaskWorkerPlugin())
 
         # Clean up incomplete temporary files left behind by a prior cluster instance
-        self._remove_temporary_files(output_dir)
+        self._remove_temporary_files(self.config.output_dir)
 
         # Monitor for new files and enqueue them for processing
         active_futures: dict[Path, Future] = dict()
         while True:
             unprocessed_files = self._get_unprocessed_files(
-                input_dir=input_dir,
-                input_ext=input_ext,
-                output_dir=output_dir,
-                output_ext=output_ext,
+                input_dir=self.config.input_dir,
+                input_ext=self.config.input_ext,
+                output_dir=self.config.output_dir,
+                output_ext=self.config.output_ext,
             )
 
             for file in unprocessed_files:
                 if file not in active_futures:  # Exclude in-progress files
-                    output_fname = file.name.removesuffix(input_ext) + output_ext
-                    output_file = output_dir / output_fname
+                    output_fname = (
+                        file.name.removesuffix(self.config.input_ext)
+                        + self.config.output_ext
+                    )
+                    output_file = self.config.output_dir / output_fname
                     future = client.submit(task, file, output_file)
                     active_futures[file] = future
 
@@ -227,17 +221,18 @@ class SlurmTask(Task):
                 max_workers=max_workers,
             )
 
-            task = cls(
-                resources=resources,
+            config = SlurmTaskConfig(
+                name=cls.get_name(),
+                kind="slurm",
+                module=cls.get_module_path(),
+                input_ext=input_ext,
+                output_ext=output_ext,
                 setup_commands=setup_commands,
+                resources=resources,
             )
 
-            task.start(
-                input_dir=input_dir,
-                input_ext=input_ext,
-                output_dir=output_dir,
-                output_ext=output_ext,
-            )
+            task = cls(config)
+            task.start(input_dir, output_dir)
 
         typer.run(main)
 

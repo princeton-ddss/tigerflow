@@ -10,15 +10,16 @@ import typer
 from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
-from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
+from tigerflow.models import LocalAsyncTaskConfig
+from tigerflow.utils import SetupContext, atomic_write
 
 from ._base import Task
 
 
 class LocalAsyncTask(Task):
     @logger.catch(reraise=True)
-    def __init__(self, *, concurrency_limit: int):
-        self._concurrency_limit = concurrency_limit
+    def __init__(self, config: LocalAsyncTaskConfig):
+        self.config = config
         self._context = SetupContext()
         self._queue = asyncio.Queue()
         self._in_queue: set[Path] = set()  # Track files in queue
@@ -31,19 +32,13 @@ class LocalAsyncTask(Task):
         self._shutdown_event.set()
 
     @logger.catch(reraise=True)
-    def start(
-        self,
-        *,
-        input_dir: Path,
-        input_ext: str,
-        output_dir: Path,
-        output_ext: str,
-    ):
+    def start(self, input_dir: Path, output_dir: Path):
         for path in (input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
-        for ext in (input_ext, output_ext):
-            validate_file_ext(ext)
+
+        self.config.input_dir = input_dir
+        self.config.output_dir = output_dir
 
         async def task(input_file: Path, output_file: Path):
             try:
@@ -52,8 +47,10 @@ class LocalAsyncTask(Task):
                     await self.run(self._context, input_file, temp_file)
                 logger.info("Successfully processed: {}", input_file.name)
             except Exception:
-                error_fname = output_file.name.removesuffix(output_ext) + ".err"
-                error_file = output_dir / error_fname
+                error_fname = (
+                    output_file.name.removesuffix(self.config.output_ext) + ".err"
+                )
+                error_file = self.config.output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     async with aiofiles.open(temp_file, "w") as f:
                         await f.write(traceback.format_exc())
@@ -64,8 +61,11 @@ class LocalAsyncTask(Task):
                 file = await self._queue.get()
                 assert isinstance(file, Path)
 
-                output_fname = file.name.removesuffix(input_ext) + output_ext
-                output_file = output_dir / output_fname
+                output_fname = (
+                    file.name.removesuffix(self.config.input_ext)
+                    + self.config.output_ext
+                )
+                output_file = self.config.output_dir / output_fname
 
                 try:
                     await task(file, output_file)
@@ -76,10 +76,10 @@ class LocalAsyncTask(Task):
         async def poll():
             while not self._shutdown_event.is_set():
                 unprocessed_files = self._get_unprocessed_files(
-                    input_dir=input_dir,
-                    input_ext=input_ext,
-                    output_dir=output_dir,
-                    output_ext=output_ext,
+                    input_dir=self.config.input_dir,
+                    input_ext=self.config.input_ext,
+                    output_dir=self.config.output_dir,
+                    output_ext=self.config.output_ext,
                 )
 
                 for file in unprocessed_files:
@@ -103,7 +103,8 @@ class LocalAsyncTask(Task):
 
             # Start coroutines
             workers = [
-                asyncio.create_task(worker()) for _ in range(self._concurrency_limit)
+                asyncio.create_task(worker())
+                for _ in range(self.config.concurrency_limit)
             ]
             poller = asyncio.create_task(poll())
 
@@ -119,7 +120,7 @@ class LocalAsyncTask(Task):
                 sys.exit(128 + self._received_signal)
 
         # Clean up incomplete temporary files left behind by a prior process instance
-        self._remove_temporary_files(output_dir)
+        self._remove_temporary_files(self.config.output_dir)
 
         # Start coroutines
         asyncio.run(main())
@@ -174,16 +175,17 @@ class LocalAsyncTask(Task):
             """
             Run the task as a CLI application
             """
-            task = cls(
+            config = LocalAsyncTaskConfig(
+                name=cls.get_name(),
+                kind="local_async",
+                module=cls.get_module_path(),
+                input_ext=input_ext,
+                output_ext=output_ext,
                 concurrency_limit=concurrency_limit,
             )
 
-            task.start(
-                input_dir=input_dir,
-                input_ext=input_ext,
-                output_dir=output_dir,
-                output_ext=output_ext,
-            )
+            task = cls(config)
+            task.start(input_dir, output_dir)
 
         typer.run(main)
 

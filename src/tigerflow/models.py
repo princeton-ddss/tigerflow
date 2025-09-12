@@ -22,7 +22,7 @@ class BaseTaskConfig(BaseModel):
     module: Path
     input_ext: str
     output_ext: str = ".out"
-    keep_output: bool = False
+    keep_output: bool = True
     setup_commands: str | None = None
     _input_dir: Path | None = None
     _output_dir: Path | None = None

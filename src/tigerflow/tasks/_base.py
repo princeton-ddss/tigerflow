@@ -1,3 +1,4 @@
+import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -10,6 +11,22 @@ class Task(ABC):
         Run the task as a CLI application
         """
         pass
+
+    @classmethod
+    def get_name(cls) -> str:
+        return cls.__name__
+
+    @classmethod
+    def get_module_path(cls) -> Path:
+        """
+        Return the absolute path to the module file
+        where the class is defined.
+        """
+        module = sys.modules.get(cls.__module__)
+        if module is None or not hasattr(module, "__file__"):
+            raise FileNotFoundError(f"Module not found for {cls}")
+
+        return Path(module.__file__).resolve()
 
     @staticmethod
     def _remove_temporary_files(dirpath: Path):

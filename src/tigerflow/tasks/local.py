@@ -10,14 +10,16 @@ import typer
 from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
-from tigerflow.utils import SetupContext, atomic_write, validate_file_ext
+from tigerflow.models import LocalTaskConfig
+from tigerflow.utils import SetupContext, atomic_write
 
 from ._base import Task
 
 
 class LocalTask(Task):
     @logger.catch(reraise=True)
-    def __init__(self):
+    def __init__(self, config: LocalTaskConfig):
+        self.config = config
         self._context = SetupContext()
         self._shutdown_event = threading.Event()
         self._received_signal: int | None = None
@@ -28,19 +30,13 @@ class LocalTask(Task):
         self._shutdown_event.set()
 
     @logger.catch(reraise=True)
-    def start(
-        self,
-        *,
-        input_dir: Path,
-        input_ext: str,
-        output_dir: Path,
-        output_ext: str,
-    ):
+    def start(self, input_dir: Path, output_dir: Path):
         for path in (input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
-        for ext in (input_ext, output_ext):
-            validate_file_ext(ext)
+
+        self.config.input_dir = input_dir
+        self.config.output_dir = output_dir
 
         def task(input_file: Path, output_file: Path):
             try:
@@ -49,7 +45,9 @@ class LocalTask(Task):
                     self.run(self._context, input_file, temp_file)
                 logger.info("Successfully processed: {}", input_file.name)
             except Exception:
-                error_fname = output_file.name.removesuffix(output_ext) + ".err"
+                error_fname = (
+                    output_file.name.removesuffix(self.config.output_ext) + ".err"
+                )
                 error_file = output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
@@ -73,16 +71,19 @@ class LocalTask(Task):
         try:
             while not self._shutdown_event.is_set():
                 unprocessed_files = self._get_unprocessed_files(
-                    input_dir=input_dir,
-                    input_ext=input_ext,
-                    output_dir=output_dir,
-                    output_ext=output_ext,
+                    input_dir=self.config.input_dir,
+                    input_ext=self.config.input_ext,
+                    output_dir=self.config.output_dir,
+                    output_ext=self.config.output_ext,
                 )
 
                 for file in unprocessed_files:
                     if self._shutdown_event.is_set():
                         return
-                    output_fname = file.name.removesuffix(input_ext) + output_ext
+                    output_fname = (
+                        file.name.removesuffix(self.config.input_ext)
+                        + self.config.output_ext
+                    )
                     output_file = output_dir / output_fname
                     task(file, output_file)
 
@@ -133,13 +134,16 @@ class LocalTask(Task):
             """
             Run the task as a CLI application
             """
-            task = cls()
-            task.start(
-                input_dir=input_dir,
+            config = LocalTaskConfig(
+                name=cls.get_name(),
+                kind="local",
+                module=cls.get_module_path(),
                 input_ext=input_ext,
-                output_dir=output_dir,
                 output_ext=output_ext,
             )
+
+            task = cls(config)
+            task.start(input_dir, output_dir)
 
         typer.run(main)
 
