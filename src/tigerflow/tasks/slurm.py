@@ -1,3 +1,4 @@
+import subprocess
 import time
 import traceback
 from abc import abstractmethod
@@ -209,6 +210,17 @@ class SlurmTask(Task):
                     """,
                 ),
             ] = None,
+            run_directly: Annotated[
+                bool,
+                typer.Option(
+                    "--run-directly",
+                    help="""
+                    Run the task directly in the current process
+                    rather than submitting to Slurm.
+                    """,
+                    hidden=True,  # Internal use only
+                ),
+            ] = False,
         ):
             """
             Run the task as a CLI application
@@ -231,8 +243,14 @@ class SlurmTask(Task):
                 resources=resources,
             )
 
-            task = cls(config)
-            task.start(input_dir, output_dir)
+            if run_directly:
+                task = cls(config)
+                task.start(input_dir, output_dir)
+            else:
+                config.input_dir = input_dir
+                config.output_dir = output_dir
+                script = config.to_script()
+                subprocess.run(["sbatch"], input=script)
 
         typer.run(main)
 

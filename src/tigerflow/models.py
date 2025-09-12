@@ -165,6 +165,7 @@ class SlurmTaskConfig(BaseTaskConfig):
                 f"--setup-commands {repr(self.setup_commands)}"
                 if self.setup_commands
                 else "",
+                "--run-directly",
             ]
         )
 
