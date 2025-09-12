@@ -250,7 +250,7 @@ class SlurmTask(Task):
                 config.input_dir = input_dir
                 config.output_dir = output_dir
                 script = config.to_script()
-                subprocess.run(["sbatch"], input=script)
+                subprocess.run(["sbatch"], input=script, text=True)
 
         typer.run(main)
 
