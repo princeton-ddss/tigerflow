@@ -83,12 +83,19 @@ class Pipeline:
                 source_file = self._input_dir / file.name
                 source_file.unlink(missing_ok=True)
 
-        # Clean up any broken symlinks
+        # Clean up any invalid or broken symlinks
         for file in self._symlinks_dir.iterdir():
-            if not file.is_symlink() or not file.exists():
+            if not file.is_symlink():
                 file.unlink()
+            elif not file.exists():
+                file.unlink()
+                # Remove all downstream task outputs since source data is missing
+                file_id = file.name.removesuffix(self._config.root_task.input_ext)
+                for task in self._config.tasks:
+                    file = task.output_dir / f"{file_id}{task.output_ext}"
+                    file.unlink(missing_ok=True)
 
-        # Clean up any invalid or unsuccessful intermediate data
+        # Clean up any invalid or unsuccessful task outputs
         for task in self._config.tasks:
             for file in task.output_dir.iterdir():
                 if file.is_file() and not file.name.endswith(task.output_ext):
