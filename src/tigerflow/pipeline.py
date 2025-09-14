@@ -4,7 +4,6 @@ import subprocess
 import sys
 import threading
 import time
-from enum import Enum
 from pathlib import Path
 from types import FrameType
 
@@ -18,14 +17,10 @@ from tigerflow.models import (
     PipelineProgress,
     SlurmTaskConfig,
     TaskProgress,
+    TaskStatus,
+    TaskStatusKind,
 )
 from tigerflow.utils import is_valid_cli
-
-
-class TaskStatus(Enum):
-    ACTIVE = "Active"
-    INACTIVE = "Inactive"
-    PENDING = "Pending"
 
 
 class Pipeline:
@@ -116,7 +111,8 @@ class Pipeline:
 
         # Initialize mapping from task name to status
         self._task_status: dict[str, TaskStatus] = {
-            task.name: TaskStatus.INACTIVE for task in self._config.tasks
+            task.name: TaskStatus(kind=TaskStatusKind.INACTIVE)
+            for task in self._config.tasks
         }
 
         # Initialize mapping from task name to local subprocess
@@ -155,16 +151,14 @@ class Pipeline:
         finally:
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
-                if self._task_status[name] != TaskStatus.INACTIVE:
+                if self._task_status[name].is_alive():
                     logger.info("[{}] Terminating", name)
                     process.terminate()
             for name, job_id in self._slurm_task_ids.items():
-                if self._task_status[name] != TaskStatus.INACTIVE:
+                if self._task_status[name].is_alive():
                     logger.info("[{}] Terminating", name)
                     subprocess.run(["scancel", str(job_id)])
-            while any(
-                status != TaskStatus.INACTIVE for status in self._task_status.values()
-            ):
+            while any(status.is_alive() for status in self._task_status.values()):
                 self._check_task_status()
                 time.sleep(1)
             logger.info("Pipeline shutdown complete")
@@ -207,35 +201,27 @@ class Pipeline:
             logger.info("Staged {} new files for processing", n_files)
 
     def _check_task_status(self):
-        for name, process in self._subprocesses.items():
-            status = TaskStatus.INACTIVE if process.poll() else TaskStatus.ACTIVE
-            self._update_task_status(name, status)
-
-        for name, job_id in self._slurm_task_ids.items():
-            result = subprocess.run(
-                ["squeue", "-j", str(job_id), "-h", "-o", "%.10T"],
-                capture_output=True,
-                text=True,
-            )
-            if result.stdout.count("RUNNING") > 1:  # Active client and worker
-                status = TaskStatus.ACTIVE
-            elif "PENDING" in result.stdout:
-                status = TaskStatus.PENDING
+        for task in self._config.tasks:
+            if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
+                process = self._subprocesses[task.name]
+                status = self._get_subprocess_status(process)
+            elif isinstance(task, SlurmTaskConfig):
+                status = task.get_slurm_status()
             else:
-                status = TaskStatus.INACTIVE
-            self._update_task_status(name, status)
+                raise ValueError(f"Unsupported task kind: {type(task)}")
 
-    def _update_task_status(self, name: str, status: TaskStatus):
-        if self._task_status[name] != status:
-            old_status = self._task_status[name]
-            self._task_status[name] = status
-            log_func = logger.error if status == TaskStatus.INACTIVE else logger.info
-            log_func(
-                "[{}] Status changed: {} -> {}",
-                name,
-                old_status.value.upper(),
-                status.value.upper(),
-            )
+            if self._task_status[task.name] != status:
+                old_status = self._task_status[task.name]
+                self._task_status[task.name] = status
+                log_func = logger.info if status.is_alive() else logger.error
+                log_func(
+                    "[{}] Status changed: {}{} -> {}{}",
+                    task.name,
+                    old_status.kind.name,
+                    f" ({old_status.detail})" if old_status.detail else "",
+                    status.kind.name,
+                    f" ({status.detail})" if status.detail else "",
+                )
 
     def _report_failed_files(self):
         for task in self._config.tasks:
@@ -315,3 +301,14 @@ class Pipeline:
                 pipeline.tasks.append(task)
 
         return pipeline
+
+    @staticmethod
+    def _get_subprocess_status(process: subprocess.Popen) -> TaskStatus:
+        exit_code = process.poll()
+        if exit_code is None:
+            return TaskStatus(kind=TaskStatusKind.ACTIVE)
+        else:
+            return TaskStatus(
+                kind=TaskStatusKind.INACTIVE,
+                detail=f"Exited with code {exit_code}",
+            )

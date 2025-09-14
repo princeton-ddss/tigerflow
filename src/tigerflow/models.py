@@ -1,4 +1,6 @@
+import subprocess
 import textwrap
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -6,6 +8,20 @@ import networkx as nx
 from pydantic import BaseModel, Field, field_validator
 
 from tigerflow.utils import get_slurm_max_array_size, validate_file_ext
+
+
+class TaskStatusKind(Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    PENDING = "pending"
+
+
+class TaskStatus(BaseModel):
+    kind: TaskStatusKind
+    detail: str | None = None
+
+    def is_alive(self) -> bool:
+        return self.kind != TaskStatusKind.INACTIVE
 
 
 class SlurmResourceConfig(BaseModel):
@@ -142,6 +158,14 @@ class SlurmTaskConfig(BaseTaskConfig):
     kind: Literal["slurm"]
     resources: SlurmResourceConfig
 
+    @property
+    def client_job_name(self) -> str:
+        return f"{self.name}-client"
+
+    @property
+    def worker_job_name(self) -> str:
+        return f"{self.name}-worker"
+
     def to_script(self) -> str:
         try:
             array_size = get_slurm_max_array_size() // 2
@@ -171,9 +195,9 @@ class SlurmTaskConfig(BaseTaskConfig):
 
         script = textwrap.dedent(f"""\
             #!/bin/bash
-            #SBATCH --job-name=dask-client
-            #SBATCH --output={self.log_dir}/dask-client-%A-%a.out
-            #SBATCH --error={self.log_dir}/dask-client-%A-%a.err
+            #SBATCH --job-name={self.client_job_name}
+            #SBATCH --output={self.log_dir}/%x-%A-%a.out
+            #SBATCH --error={self.log_dir}/%x-%A-%a.err
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=1
@@ -192,6 +216,38 @@ class SlurmTaskConfig(BaseTaskConfig):
         """)
 
         return script
+
+    def get_slurm_status(self) -> TaskStatus:
+        client_status = subprocess.run(
+            ["squeue", "--me", "-n", self.client_job_name, "-h", "-o", "%.10T"],
+            capture_output=True,
+            text=True,
+        ).stdout
+
+        if "RUNNING" in client_status:
+            worker_status = subprocess.run(
+                ["squeue", "--me", "-n", self.worker_job_name, "-h", "-o", "%.10T"],
+                capture_output=True,
+                text=True,
+            ).stdout
+
+            return TaskStatus(
+                kind=TaskStatusKind.ACTIVE,
+                detail=f"{worker_status.count('RUNNING')} workers",
+            )
+        elif "PENDING" in client_status:
+            reason = subprocess.run(
+                ["squeue", "--me", "-n", self.client_job_name, "-h", "-o", "%.30R"],
+                capture_output=True,
+                text=True,
+            ).stdout
+
+            return TaskStatus(
+                kind=TaskStatusKind.PENDING,
+                detail=reason.splitlines()[-1].strip(),
+            )
+        else:
+            return TaskStatus(kind=TaskStatusKind.INACTIVE)
 
 
 TaskConfig = Annotated[

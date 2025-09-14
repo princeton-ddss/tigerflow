@@ -77,8 +77,9 @@ class SlurmTask(Task):
             walltime=self.config.resources.time,
             processes=1,
             job_extra_directives=[
-                f"--output={self.config.log_dir}/dask-worker-%J.out",
-                f"--error={self.config.log_dir}/dask-worker-%J.err",
+                f"--job-name={self.config.worker_job_name}",
+                f"--output={self.config.log_dir}/%x-%j.out",
+                f"--error={self.config.log_dir}/%x-%j.err",
                 f"--gres=gpu:{self.config.resources.gpus}"
                 if self.config.resources.gpus
                 else "",
