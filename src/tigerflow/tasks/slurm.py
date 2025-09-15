@@ -211,7 +211,13 @@ class SlurmTask(Task):
                     """,
                 ),
             ] = None,
-            run_directly: Annotated[
+            task_name: Annotated[
+                str,
+                typer.Option(
+                    help="Task name",
+                ),
+            ] = cls.get_name(),
+            _run_directly: Annotated[
                 bool,
                 typer.Option(
                     "--run-directly",
@@ -235,7 +241,7 @@ class SlurmTask(Task):
             )
 
             config = SlurmTaskConfig(
-                name=cls.get_name(),
+                name=task_name,
                 kind="slurm",
                 module=cls.get_module_path(),
                 input_ext=input_ext,
@@ -244,7 +250,7 @@ class SlurmTask(Task):
                 resources=resources,
             )
 
-            if run_directly:
+            if _run_directly:
                 task = cls(config)
                 task.start(input_dir, output_dir)
             else:

@@ -171,12 +171,18 @@ class LocalAsyncTask(Task):
                     show_default=False,
                 ),
             ],
+            task_name: Annotated[
+                str,
+                typer.Option(
+                    help="Task name",
+                ),
+            ] = cls.get_name(),
         ):
             """
             Run the task as a CLI application
             """
             config = LocalAsyncTaskConfig(
-                name=cls.get_name(),
+                name=task_name,
                 kind="local_async",
                 module=cls.get_module_path(),
                 input_ext=input_ext,

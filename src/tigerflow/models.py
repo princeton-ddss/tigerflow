@@ -109,6 +109,7 @@ class LocalTaskConfig(BaseTaskConfig):
             [
                 "python",
                 f"{self.module}",
+                f"--task-name {self.name}",
                 f"--input-dir {self.input_dir}",
                 f"--input-ext {self.input_ext}",
                 f"--output-dir {self.output_dir}",
@@ -137,6 +138,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
             [
                 "python",
                 f"{self.module}",
+                f"--task-name {self.name}",
                 f"--input-dir {self.input_dir}",
                 f"--input-ext {self.input_ext}",
                 f"--output-dir {self.output_dir}",
@@ -174,6 +176,7 @@ class SlurmTaskConfig(BaseTaskConfig):
             [
                 "python",
                 f"{self.module}",
+                f"--task-name {self.name}",
                 f"--input-dir {self.input_dir}",
                 f"--input-ext {self.input_ext}",
                 f"--output-dir {self.output_dir}",
