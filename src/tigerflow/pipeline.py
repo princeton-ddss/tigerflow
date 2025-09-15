@@ -146,7 +146,7 @@ class Pipeline:
                 self._stage_new_files()
                 self._report_failed_files()
                 self._process_completed_files()
-                self._shutdown_event.wait(timeout=60)  # Interruptible sleep
+                self._shutdown_event.wait(timeout=10)  # Interruptible sleep
         finally:
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
