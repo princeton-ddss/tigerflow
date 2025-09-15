@@ -144,6 +144,7 @@ class Pipeline:
             logger.info("All tasks started, beginning pipeline tracking loop")
             while not self._shutdown_event.is_set():
                 self._check_task_status()
+                self._handle_task_timeout()
                 self._stage_new_files()
                 self._report_failed_files()
                 self._process_completed_files()
@@ -217,6 +218,18 @@ class Pipeline:
                     status.kind.name,
                     f" ({status.detail})" if status.detail else "",
                 )
+
+    def _handle_task_timeout(self):
+        for task in self._config.tasks:
+            if isinstance(task, SlurmTaskConfig):
+                task_status = self._task_status[task.name]
+                if not task_status.is_alive() and "TIMEOUT" in task_status.detail:
+                    script = task.to_script()
+                    job_id = submit_to_slurm(script)
+                    self._slurm_task_ids[task.name] = job_id
+                    logger.info(
+                        "[{}] Re-submitted with Slurm job ID {}", task.name, job_id
+                    )
 
     def _report_failed_files(self):
         for task in self._config.tasks:

@@ -168,8 +168,6 @@ class SlurmTaskConfig(BaseTaskConfig):
         return f"{self.name}-worker"
 
     def to_script(self) -> str:
-        array_size = 30  # NOTE: This counts toward `MaxSubmitJobs` limit
-
         setup_command = self.setup_commands if self.setup_commands else ""
         task_command = " ".join(
             [
@@ -195,18 +193,16 @@ class SlurmTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             #SBATCH --job-name={self.client_job_name}
-            #SBATCH --output={self.log_dir}/%x-%A-%a.out
-            #SBATCH --error={self.log_dir}/%x-%A-%a.err
+            #SBATCH --output={self.log_dir}/%x-%j.out
+            #SBATCH --error={self.log_dir}/%x-%j.err
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=1
             #SBATCH --mem-per-cpu=2G
             #SBATCH --time=24:00:00
-            #SBATCH --array=1-{array_size}%1
 
             echo "Starting Dask client for: {self.name}"
-            echo "With SLURM_ARRAY_JOB_ID: $SLURM_ARRAY_JOB_ID"
-            echo "With SLURM_ARRAY_TASK_ID: $SLURM_ARRAY_TASK_ID"
+            echo "With SLURM_JOB_ID: $SLURM_JOB_ID"
             echo "On machine:" $(hostname)
 
             {setup_command}
