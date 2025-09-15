@@ -152,11 +152,11 @@ class Pipeline:
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
                 if self._task_status[name].is_alive():
-                    logger.info("[{}] Terminating", name)
+                    logger.info("[{}] Terminating...", name)
                     process.terminate()
             for name, job_id in self._slurm_task_ids.items():
                 if self._task_status[name].is_alive():
-                    logger.info("[{}] Terminating", name)
+                    logger.info("[{}] Terminating...", name)
                     subprocess.run(["scancel", str(job_id)])
             while any(status.is_alive() for status in self._task_status.values()):
                 self._check_task_status()
@@ -310,5 +310,5 @@ class Pipeline:
         else:
             return TaskStatus(
                 kind=TaskStatusKind.INACTIVE,
-                detail=f"Exited with code {exit_code}",
+                detail=f"Exit code: {exit_code}",
             )

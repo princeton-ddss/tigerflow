@@ -244,7 +244,7 @@ class SlurmTaskConfig(BaseTaskConfig):
 
             return TaskStatus(
                 kind=TaskStatusKind.PENDING,
-                detail=reason.splitlines()[-1].strip(),
+                detail=f"Reason: {reason.splitlines()[-1].strip()}",
             )
         else:
             return TaskStatus(kind=TaskStatusKind.INACTIVE)
