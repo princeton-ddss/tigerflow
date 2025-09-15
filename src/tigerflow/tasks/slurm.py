@@ -1,4 +1,3 @@
-import subprocess
 import time
 import traceback
 from abc import abstractmethod
@@ -256,8 +255,7 @@ class SlurmTask(Task):
             else:
                 config.input_dir = input_dir
                 config.output_dir = output_dir
-                script = config.to_script()
-                subprocess.run(["sbatch"], input=script, text=True)
+                config.submit_to_slurm()
 
         typer.run(main)
 

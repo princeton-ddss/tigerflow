@@ -1,3 +1,4 @@
+import re
 import subprocess
 import textwrap
 from enum import Enum
@@ -216,6 +217,24 @@ class SlurmTaskConfig(BaseTaskConfig):
         """)
 
         return script
+
+    def submit_to_slurm(self) -> int:
+        script = self.to_script()
+
+        result = subprocess.run(
+            ["sbatch"],
+            capture_output=True,
+            check=True,
+            input=script,
+            text=True,
+        )
+
+        match = re.search(r"Submitted batch job (\d+)", result.stdout)
+        if not match:
+            raise ValueError("Failed to extract job ID from sbatch output")
+        job_id = int(match.group(1))
+
+        return job_id
 
     def get_slurm_status(self) -> TaskStatus:
         client_status = subprocess.run(

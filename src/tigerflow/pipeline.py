@@ -1,4 +1,3 @@
-import re
 import signal
 import subprocess
 import sys
@@ -168,19 +167,13 @@ class Pipeline:
     def _start_tasks(self):
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind)
-            script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
+                script = task.to_script()
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
                 logger.info("[{}] Started with PID {}", task.name, process.pid)
             elif isinstance(task, SlurmTaskConfig):
-                result = subprocess.run(
-                    ["sbatch"], input=script, capture_output=True, text=True
-                )
-                match = re.search(r"Submitted batch job (\d+)", result.stdout)
-                if not match:
-                    raise ValueError("Failed to extract job ID from sbatch output")
-                job_id = int(match.group(1))
+                job_id = task.submit_to_slurm()
                 self._slurm_task_ids[task.name] = job_id
                 logger.info("[{}] Submitted with Slurm job ID {}", task.name, job_id)
             else:
