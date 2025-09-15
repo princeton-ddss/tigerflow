@@ -51,20 +51,6 @@ def is_valid_cli(file: Path) -> bool:
         return False
 
 
-def get_slurm_max_array_size() -> int:
-    result = subprocess.run(
-        ["scontrol", "show", "config"],
-        capture_output=True,
-        text=True,
-    )
-
-    match = re.search(r"MaxArraySize\s*=\s*(\d+)", result.stdout)
-    if not match:
-        raise RuntimeError("Could not find 'MaxArraySize' in Slurm configuration")
-
-    return int(match.group(1))
-
-
 class SetupContext(SimpleNamespace):
     """
     Namespace for user-defined setup variables.

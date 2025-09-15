@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 import networkx as nx
 from pydantic import BaseModel, Field, field_validator
 
-from tigerflow.utils import get_slurm_max_array_size, validate_file_ext
+from tigerflow.utils import validate_file_ext
 
 
 class TaskStatusKind(Enum):
@@ -167,10 +167,7 @@ class SlurmTaskConfig(BaseTaskConfig):
         return f"{self.name}-worker"
 
     def to_script(self) -> str:
-        try:
-            array_size = get_slurm_max_array_size() // 2
-        except Exception:
-            array_size = 300  # Default
+        array_size = 30  # NOTE: This counts toward `MaxSubmitJobs` limit
 
         setup_command = self.setup_commands if self.setup_commands else ""
         task_command = " ".join(
