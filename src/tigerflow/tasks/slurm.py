@@ -10,7 +10,7 @@ from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
 from tigerflow.models import SlurmResourceConfig, SlurmTaskConfig
-from tigerflow.utils import SetupContext, atomic_write
+from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
 
 from ._base import Task
 
@@ -255,7 +255,8 @@ class SlurmTask(Task):
             else:
                 config.input_dir = input_dir
                 config.output_dir = output_dir
-                config.submit_to_slurm()
+                script = config.to_script()
+                submit_to_slurm(script)
 
         typer.run(main)
 
