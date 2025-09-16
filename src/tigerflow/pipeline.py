@@ -105,15 +105,6 @@ class Pipeline:
             if file.is_file()
         }
 
-        # Initialize mapping to track processed files per task
-        self._task_processed_filenames: dict[str, set[str]] = {}
-        for task in self._config.tasks:
-            processed_filenames: set[str] = set()
-            for file in task.output_dir.iterdir():
-                if file.is_file() and file.name.endswith(task.output_ext):
-                    processed_filenames.add(file.name)
-            self._task_processed_filenames[task.name] = processed_filenames
-
         # Initialize mapping to track failed files per task
         self._task_error_filenames: dict[str, set[str]] = {
             task.name: set() for task in self._config.tasks
@@ -257,19 +248,19 @@ class Pipeline:
                 logger.error("[{}] {} failed file(s)", task.name, n_files)
 
     def _handle_processed_files(self):
+        processed_filenames_by_task: dict[str, set[str]] = {
+            task.name: set() for task in self._config.tasks
+        }
+
+        # Identify processed files for each task
         for task in self._config.tasks:
-            n_files = 0
             for file in task.output_dir.iterdir():
-                if (
-                    file.is_file()
-                    and file.name.endswith(task.output_ext)
-                    and file.name not in self._task_processed_filenames[task.name]
-                ):
-                    self._task_processed_filenames[task.name].add(file.name)
-                    n_files += 1
+                if file.is_file() and file.name.endswith(task.output_ext):
+                    processed_filenames_by_task[task.name].add(file.name)
                     if task.keep_output:
                         new_file = self._output_dir / task.name / file.name
                         shutil.copy(file, new_file)
+            n_files = len(processed_filenames_by_task[task.name])
             if n_files > 0:
                 logger.info("[{}] {} processed file(s)", task.name, n_files)
 
@@ -278,13 +269,13 @@ class Pipeline:
             *(
                 {
                     filename.removesuffix(task.output_ext)
-                    for filename in self._task_processed_filenames[task.name]
+                    for filename in processed_filenames_by_task[task.name]
                 }
                 for task in self._config.terminal_tasks
             )
         )
 
-        # Clean up intermediate data
+        # Clean up intermediate data for completed files
         for task in self._config.tasks:
             for file_id in completed_file_ids:
                 file = task.output_dir / f"{file_id}{task.output_ext}"
