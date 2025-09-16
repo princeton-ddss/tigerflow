@@ -200,7 +200,8 @@ class Pipeline:
                 process = self._subprocesses[task.name]
                 status = self._get_subprocess_status(process)
             elif isinstance(task, SlurmTaskConfig):
-                status = get_slurm_task_status(task)
+                job_id = self._slurm_task_ids[task.name]
+                status = get_slurm_task_status(job_id, task.worker_job_name)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
