@@ -19,6 +19,7 @@ class TaskStatus(BaseModel):
     kind: TaskStatusKind
     detail: str | None = None
 
+    @property
     def is_alive(self) -> bool:
         return self.kind != TaskStatusKind.INACTIVE
 
