@@ -1,3 +1,4 @@
+import shutil
 import signal
 import subprocess
 import sys
@@ -104,8 +105,17 @@ class Pipeline:
             if file.is_file()
         }
 
+        # Initialize mapping to track processed files per task
+        self._task_processed_filenames: dict[str, set[str]] = {}
+        for task in self._config.tasks:
+            processed_filenames: set[str] = set()
+            for file in task.output_dir.iterdir():
+                if file.is_file() and file.name.endswith(task.output_ext):
+                    processed_filenames.add(file.name)
+            self._task_processed_filenames[task.name] = processed_filenames
+
         # Initialize mapping to track failed files per task
-        self._task_error_files: dict[str, set[str]] = {
+        self._task_error_filenames: dict[str, set[str]] = {
             task.name: set() for task in self._config.tasks
         }
 
@@ -147,9 +157,10 @@ class Pipeline:
                 self._handle_task_timeout()
                 self._stage_new_files()
                 self._report_failed_files()
-                self._process_completed_files()
+                self._handle_processed_files()
                 self._shutdown_event.wait(timeout=10)  # Interruptible sleep
         finally:
+            self._handle_processed_files()
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
                 if self._task_status[name].is_alive:
@@ -238,35 +249,48 @@ class Pipeline:
                 if (
                     file.is_file()
                     and file.name.endswith(".err")
-                    and file.name not in self._task_error_files[task.name]
+                    and file.name not in self._task_error_filenames[task.name]
                 ):
-                    self._task_error_files[task.name].add(file.name)
+                    self._task_error_filenames[task.name].add(file.name)
                     n_files += 1
             if n_files > 0:
                 logger.error("[{}] {} failed file(s)", task.name, n_files)
 
-    def _process_completed_files(self):
+    def _handle_processed_files(self):
+        for task in self._config.tasks:
+            n_files = 0
+            for file in task.output_dir.iterdir():
+                if (
+                    file.is_file()
+                    and file.name.endswith(task.output_ext)
+                    and file.name not in self._task_processed_filenames[task.name]
+                ):
+                    self._task_processed_filenames[task.name].add(file.name)
+                    n_files += 1
+                    if task.keep_output:
+                        new_file = self._output_dir / task.name / file.name
+                        shutil.copy(file, new_file)
+            if n_files > 0:
+                logger.info("[{}] {} processed file(s)", task.name, n_files)
+
         # Identify files that have completed all pipeline tasks
-        completed_file_ids_by_task = (
-            {
-                file.name.removesuffix(task.output_ext)
-                for file in task.output_dir.iterdir()
-                if file.is_file() and file.name.endswith(task.output_ext)
-            }
-            for task in self._config.terminal_tasks
+        completed_file_ids: set[str] = set.intersection(
+            *(
+                {
+                    filename.removesuffix(task.output_ext)
+                    for filename in self._task_processed_filenames[task.name]
+                }
+                for task in self._config.terminal_tasks
+            )
         )
-        completed_file_ids: set[str] = set.intersection(*completed_file_ids_by_task)
 
         # Clean up intermediate data
         for task in self._config.tasks:
             for file_id in completed_file_ids:
                 file = task.output_dir / f"{file_id}{task.output_ext}"
-                if task.keep_output:
-                    file.replace(self._output_dir / task.name / file.name)
-                else:
-                    file.unlink()
+                file.unlink()
 
-        # Record completion status
+        # Record completion
         ext = self._config.root_task.input_ext
         for file_id in completed_file_ids:
             file = self._symlinks_dir / f"{file_id}{ext}"
