@@ -19,7 +19,8 @@ from tigerflow.models import (
     TaskStatus,
     TaskStatusKind,
 )
-from tigerflow.utils import is_valid_cli
+from tigerflow.tasks.utils import get_slurm_task_status
+from tigerflow.utils import is_valid_cli, submit_to_slurm
 
 
 class Pipeline:
@@ -167,13 +168,13 @@ class Pipeline:
     def _start_tasks(self):
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind)
+            script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
-                script = task.to_script()
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
                 logger.info("[{}] Started with PID {}", task.name, process.pid)
             elif isinstance(task, SlurmTaskConfig):
-                job_id = task.submit_to_slurm()
+                job_id = submit_to_slurm(script)
                 self._slurm_task_ids[task.name] = job_id
                 logger.info("[{}] Submitted with Slurm job ID {}", task.name, job_id)
             else:
@@ -199,7 +200,7 @@ class Pipeline:
                 process = self._subprocesses[task.name]
                 status = self._get_subprocess_status(process)
             elif isinstance(task, SlurmTaskConfig):
-                status = task.get_slurm_status()
+                status = get_slurm_task_status(task)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 

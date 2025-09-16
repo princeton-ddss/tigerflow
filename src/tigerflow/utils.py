@@ -51,6 +51,23 @@ def is_valid_cli(file: Path) -> bool:
         return False
 
 
+def submit_to_slurm(script: str) -> int:
+    result = subprocess.run(
+        ["sbatch"],
+        capture_output=True,
+        check=True,
+        input=script,
+        text=True,
+    )
+
+    match = re.search(r"Submitted batch job (\d+)", result.stdout)
+    if not match:
+        raise ValueError("Failed to extract job ID from sbatch output")
+    job_id = int(match.group(1))
+
+    return job_id
+
+
 class SetupContext(SimpleNamespace):
     """
     Namespace for user-defined setup variables.

@@ -1,5 +1,3 @@
-import re
-import subprocess
 import textwrap
 from enum import Enum
 from pathlib import Path
@@ -217,56 +215,6 @@ class SlurmTaskConfig(BaseTaskConfig):
         """)
 
         return script
-
-    def submit_to_slurm(self) -> int:
-        script = self.to_script()
-
-        result = subprocess.run(
-            ["sbatch"],
-            capture_output=True,
-            check=True,
-            input=script,
-            text=True,
-        )
-
-        match = re.search(r"Submitted batch job (\d+)", result.stdout)
-        if not match:
-            raise ValueError("Failed to extract job ID from sbatch output")
-        job_id = int(match.group(1))
-
-        return job_id
-
-    def get_slurm_status(self) -> TaskStatus:
-        client_status = subprocess.run(
-            ["squeue", "--me", "-n", self.client_job_name, "-h", "-o", "%.10T"],
-            capture_output=True,
-            text=True,
-        ).stdout
-
-        if "RUNNING" in client_status:
-            worker_status = subprocess.run(
-                ["squeue", "--me", "-n", self.worker_job_name, "-h", "-o", "%.10T"],
-                capture_output=True,
-                text=True,
-            ).stdout
-
-            return TaskStatus(
-                kind=TaskStatusKind.ACTIVE,
-                detail=f"{worker_status.count('RUNNING')} workers",
-            )
-        elif "PENDING" in client_status:
-            reason = subprocess.run(
-                ["squeue", "--me", "-n", self.client_job_name, "-h", "-o", "%.30R"],
-                capture_output=True,
-                text=True,
-            ).stdout
-
-            return TaskStatus(
-                kind=TaskStatusKind.PENDING,
-                detail=f"Reason: {reason.splitlines()[-1].strip()}",
-            )
-        else:
-            return TaskStatus(kind=TaskStatusKind.INACTIVE)
 
 
 TaskConfig = Annotated[
