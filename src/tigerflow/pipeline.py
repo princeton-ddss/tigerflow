@@ -282,15 +282,12 @@ class Pipeline:
                 file.unlink()
 
         # Record completion
-        ext = self._config.root_task.input_ext
         for file_id in completed_file_ids:
-            file = self._symlinks_dir / f"{file_id}{ext}"
-            file.unlink()
+            filename = f"{file_id}{self._config.root_task.input_ext}"
+            self._symlinks_dir.joinpath(filename).unlink()
             if self._delete_input:
-                source_file = self._input_dir / file.name
-                source_file.unlink(missing_ok=True)
-            done_file = self._finished_dir / file.name
-            done_file.touch()
+                self._input_dir.joinpath(filename).unlink(missing_ok=True)
+            self._finished_dir.joinpath(filename).touch()
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
 
