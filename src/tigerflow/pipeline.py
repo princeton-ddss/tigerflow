@@ -110,6 +110,15 @@ class Pipeline:
             task.name: set() for task in self._config.tasks
         }
 
+        # Initialize mapping to track processed files per task
+        self._task_processed_filenames: dict[str, set[str]] = {}
+        for task in self._config.tasks:
+            processed_filenames: set[str] = set()
+            for file in task.output_dir.iterdir():
+                if file.is_file() and file.name.endswith(task.output_ext):
+                    processed_filenames.add(file.name)
+            self._task_processed_filenames[task.name] = processed_filenames
+
         # Initialize mapping from task name to status
         self._task_status: dict[str, TaskStatus] = {
             task.name: TaskStatus(kind=TaskStatusKind.INACTIVE)
@@ -248,14 +257,18 @@ class Pipeline:
                 logger.error("[{}] {} failed file(s)", task.name, n_files)
 
     def _handle_processed_files(self):
+        # Identify *newly* processed files for each task
         processed_filenames_by_task: dict[str, set[str]] = {
             task.name: set() for task in self._config.tasks
         }
-
-        # Identify processed files for each task
         for task in self._config.tasks:
             for file in task.output_dir.iterdir():
-                if file.is_file() and file.name.endswith(task.output_ext):
+                if (
+                    file.is_file()
+                    and file.name.endswith(task.output_ext)
+                    and file.name not in self._task_processed_filenames[task.name]
+                ):
+                    self._task_processed_filenames[task.name].add(file.name)
                     processed_filenames_by_task[task.name].add(file.name)
                     if task.keep_output:
                         new_file = self._output_dir / task.name / file.name
