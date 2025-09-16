@@ -330,5 +330,5 @@ class Pipeline:
         else:
             return TaskStatus(
                 kind=TaskStatusKind.INACTIVE,
-                detail=f"Exit code: {exit_code}",
+                detail=f"Exit Code: {exit_code}",
             )

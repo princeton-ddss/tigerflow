@@ -367,7 +367,6 @@ class SlurmTaskRunner:
         finally:
             logger.info("Shutting down task")
             if self._status.is_alive:
-                logger.info("Terminating task...")
                 subprocess.run(["scancel", str(self._job_id)])
             while self._status.is_alive:
                 self._check_status()
