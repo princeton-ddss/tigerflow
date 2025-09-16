@@ -1,7 +1,12 @@
+import signal
+import subprocess
+import sys
+import threading
 import time
 import traceback
 from abc import abstractmethod
 from pathlib import Path
+from types import FrameType
 
 import typer
 from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
@@ -9,10 +14,16 @@ from dask_jobqueue import SLURMCluster
 from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
-from tigerflow.models import SlurmResourceConfig, SlurmTaskConfig
+from tigerflow.models import (
+    SlurmResourceConfig,
+    SlurmTaskConfig,
+    TaskStatus,
+    TaskStatusKind,
+)
 from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
 
 from ._base import Task
+from .utils import get_slurm_task_status
 
 
 class SlurmTask(Task):
@@ -253,10 +264,8 @@ class SlurmTask(Task):
                 task = cls(config)
                 task.start(input_dir, output_dir)
             else:
-                config.input_dir = input_dir
-                config.output_dir = output_dir
-                script = config.to_script()
-                submit_to_slurm(script)
+                runner = SlurmTaskRunner(config)
+                runner.start(input_dir, output_dir)
 
         typer.run(main)
 
@@ -309,3 +318,107 @@ class SlurmTask(Task):
             (e.g., large language model, DB connection).
         """
         pass
+
+
+class SlurmTaskRunner:
+    """
+    Orchestrate Slurm task execution from a login/head node.
+    """
+
+    @logger.catch(reraise=True)
+    def __init__(self, config: SlurmTaskConfig):
+        self.config = config
+        self._job_id: int | None = None
+        self._status: TaskStatus = TaskStatus(kind=TaskStatusKind.INACTIVE)
+        self._processed_filenames: set[str] = set()
+        self._error_filenames: set[str] = set()
+        self._shutdown_event = threading.Event()
+        self._received_signal: int | None = None
+
+    def _signal_handler(self, signum: int, frame: FrameType | None):
+        logger.warning("Received signal {}, initiating shutdown", signum)
+        self._received_signal = signum
+        self._shutdown_event.set()
+
+    @logger.catch(reraise=True)
+    def start(self, input_dir: Path, output_dir: Path):
+        for path in (input_dir, output_dir):
+            if not path.exists():
+                raise FileNotFoundError(path)
+
+        self.config.input_dir = input_dir
+        self.config.output_dir = output_dir
+
+        # Register signal handlers for graceful shutdown
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            signal.signal(sig, self._signal_handler)
+
+        try:
+            logger.info("Starting task: {}", self.config.name)
+            script = self.config.to_script()
+            self._job_id = submit_to_slurm(script)
+            logger.info("Submitted with Slurm job ID {}", self._job_id)
+            while not self._shutdown_event.is_set():
+                self._check_status()
+                self._handle_timeout()
+                self._report_processed_files()
+                self._report_failed_files()
+                self._shutdown_event.wait(timeout=10)  # Interruptible sleep
+        finally:
+            logger.info("Shutting down task")
+            if self._status.is_alive:
+                logger.info("Terminating task...")
+                subprocess.run(["scancel", str(self._job_id)])
+            while self._status.is_alive:
+                self._check_status()
+                time.sleep(1)
+            logger.info("Task shutdown complete")
+            if self._received_signal is not None:
+                sys.exit(128 + self._received_signal)
+
+    def _check_status(self):
+        status = get_slurm_task_status(self._job_id, self.config.worker_job_name)
+
+        if self._status != status:
+            old_status = self._status
+            self._status = status
+            log_func = logger.info if status.is_alive else logger.error
+            log_func(
+                "Status changed: {}{} -> {}{}",
+                old_status.kind.name,
+                f" ({old_status.detail})" if old_status.detail else "",
+                status.kind.name,
+                f" ({status.detail})" if status.detail else "",
+            )
+
+    def _handle_timeout(self):
+        if not self._status.is_alive and "TIMEOUT" in self._status.detail:
+            script = self.config.to_script()
+            self._job_id = submit_to_slurm(script)
+            logger.info("Re-submitted with Slurm job ID {}", self._job_id)
+
+    def _report_processed_files(self):
+        n_files = 0
+        for file in self.config.output_dir.iterdir():
+            if (
+                file.is_file()
+                and file.name.endswith(self.config.output_ext)
+                and file.name not in self._processed_filenames
+            ):
+                self._processed_filenames.add(file.name)
+                n_files += 1
+        if n_files > 0:
+            logger.info("{} processed file(s)", n_files)
+
+    def _report_failed_files(self):
+        n_files = 0
+        for file in self.config.output_dir.iterdir():
+            if (
+                file.is_file()
+                and file.name.endswith(".err")
+                and file.name not in self._error_filenames
+            ):
+                self._error_filenames.add(file.name)
+                n_files += 1
+        if n_files > 0:
+            logger.error("{} failed file(s)", n_files)
