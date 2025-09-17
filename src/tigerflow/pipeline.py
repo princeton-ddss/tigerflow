@@ -179,7 +179,7 @@ class Pipeline:
 
     def _start_tasks(self):
         for task in self._config.tasks:
-            logger.info("[{}] Starting as a {} task", task.name, task.kind)
+            logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
