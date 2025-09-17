@@ -204,7 +204,7 @@ class Pipeline:
                 self._filenames.add(file.name)
                 n_files += 1
         if n_files > 0:
-            logger.info("Staged {} new files for processing", n_files)
+            logger.info("Staged {} new file(s) for processing", n_files)
 
     def _check_task_status(self):
         for task in self._config.tasks:
@@ -273,9 +273,6 @@ class Pipeline:
                     if task.keep_output:
                         new_file = self._output_dir / task.name / file.name
                         shutil.copy(file, new_file)
-            n_files = len(processed_filenames_by_task[task.name])
-            if n_files > 0:
-                logger.info("[{}] {} processed file(s)", task.name, n_files)
 
         # Identify files that have completed all pipeline tasks
         completed_file_ids: set[str] = set.intersection(
@@ -302,7 +299,7 @@ class Pipeline:
                 self._input_dir.joinpath(filename).unlink(missing_ok=True)
             self._finished_dir.joinpath(filename).touch()
         if completed_file_ids:
-            logger.info("Completed processing {} files", len(completed_file_ids))
+            logger.info("Completed processing {} file(s)", len(completed_file_ids))
 
     @staticmethod
     def report_progress(output_dir: Path) -> PipelineProgress:
