@@ -4,6 +4,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import FrameType
 
@@ -32,6 +33,7 @@ class Pipeline:
         config_file: Path,
         input_dir: Path,
         output_dir: Path,
+        idle_timeout: int = 10,  # In minutes
         delete_input: bool = False,
     ):
         for path in (config_file, input_dir, output_dir):
@@ -46,6 +48,12 @@ class Pipeline:
 
         for path in (self._symlinks_dir, self._finished_dir):
             path.mkdir(parents=True, exist_ok=True)
+
+        if idle_timeout < 1:
+            raise ValueError("'idle_timeout' must be greater than zero")
+
+        self._idle_timeout = timedelta(minutes=idle_timeout)
+        self._last_active = datetime.now()
 
         self._delete_input = delete_input
 
@@ -158,6 +166,7 @@ class Pipeline:
                 self._stage_new_files()
                 self._report_failed_files()
                 self._handle_processed_files()
+                self._check_inactivity()
                 self._shutdown_event.wait(timeout=10)  # Interruptible sleep
         finally:
             self._handle_processed_files()
@@ -300,6 +309,19 @@ class Pipeline:
             self._finished_dir.joinpath(filename).touch()
         if completed_file_ids:
             logger.info("Completed processing {} file(s)", len(completed_file_ids))
+
+    def _check_inactivity(self):
+        n_finished = sum(1 for file in self._finished_dir.iterdir() if file.is_file())
+        n_failed = sum(len(errors) for errors in self._task_error_filenames.values())
+        n_total = len(self._filenames)
+        if (n_finished + n_failed) < n_total:  # Still in progress
+            self._last_active = datetime.now()
+
+        inactivity = datetime.now() - self._last_active
+        if inactivity > self._idle_timeout:
+            logger.warning("Idle timeout reached, initiating shutdown")
+            self._received_signal = signal.SIGTERM
+            self._shutdown_event.set()
 
     @staticmethod
     def report_progress(output_dir: Path) -> PipelineProgress:

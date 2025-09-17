@@ -28,6 +28,12 @@ def run(
             show_default=False,
         ),
     ],
+    idle_timeout: Annotated[
+        int,
+        typer.Option(
+            help="Terminate after this many minutes of inactivity.",
+        ),
+    ] = 10,
     delete_input: Annotated[
         bool,
         typer.Option(
@@ -43,6 +49,7 @@ def run(
         config_file=config_file,
         input_dir=input_dir,
         output_dir=output_dir,
+        idle_timeout=idle_timeout,
         delete_input=delete_input,
     )
     pipeline.run()
