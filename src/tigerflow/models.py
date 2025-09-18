@@ -107,6 +107,7 @@ class LocalTaskConfig(BaseTaskConfig):
         setup_command = self.setup_commands if self.setup_commands else ""
         task_command = " ".join(
             [
+                "exec",
                 "python",
                 f"{self.module}",
                 f"--task-name {self.name}",
@@ -136,6 +137,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
         setup_command = self.setup_commands if self.setup_commands else ""
         task_command = " ".join(
             [
+                "exec",
                 "python",
                 f"{self.module}",
                 f"--task-name {self.name}",
@@ -172,6 +174,7 @@ class SlurmTaskConfig(BaseTaskConfig):
         setup_command = self.setup_commands if self.setup_commands else ""
         task_command = " ".join(
             [
+                "exec",
                 "python",
                 f"{self.module}",
                 f"--task-name {self.name}",
