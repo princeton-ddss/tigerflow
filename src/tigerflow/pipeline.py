@@ -213,7 +213,7 @@ class Pipeline:
                 self._filenames.add(file.name)
                 n_files += 1
         if n_files > 0:
-            logger.info("Staged {} new file(s) for processing", n_files)
+            logger.info("Staged {} new files for processing", n_files)
 
     def _check_task_status(self):
         for task in self._config.tasks:
@@ -263,7 +263,7 @@ class Pipeline:
                     self._task_error_filenames[task.name].add(file.name)
                     n_files += 1
             if n_files > 0:
-                logger.error("[{}] {} failed file(s)", task.name, n_files)
+                logger.error("[{}] {} failed files", task.name, n_files)
 
     def _handle_processed_files(self):
         # Identify *newly* processed files for each task
@@ -308,7 +308,7 @@ class Pipeline:
                 self._input_dir.joinpath(filename).unlink(missing_ok=True)
             self._finished_dir.joinpath(filename).touch()
         if completed_file_ids:
-            logger.info("Completed processing {} file(s)", len(completed_file_ids))
+            logger.info("Completed processing {} files", len(completed_file_ids))
 
     def _check_inactivity(self):
         n_finished = sum(1 for file in self._finished_dir.iterdir() if file.is_file())

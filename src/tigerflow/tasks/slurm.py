@@ -354,10 +354,9 @@ class SlurmTaskRunner:
             signal.signal(sig, self._signal_handler)
 
         try:
-            logger.info("Starting task: {}", self.config.name)
             script = self.config.to_script()
             self._job_id = submit_to_slurm(script)
-            logger.info("Submitted with Slurm job ID {}", self._job_id)
+            logger.info("Submitted task with Slurm job ID {}", self._job_id)
             while not self._shutdown_event.is_set():
                 self._check_status()
                 self._handle_timeout()
@@ -407,7 +406,7 @@ class SlurmTaskRunner:
                 self._processed_filenames.add(file.name)
                 n_files += 1
         if n_files > 0:
-            logger.info("{} processed file(s)", n_files)
+            logger.info("{} processed files", n_files)
 
     def _report_failed_files(self):
         n_files = 0
@@ -420,4 +419,4 @@ class SlurmTaskRunner:
                 self._error_filenames.add(file.name)
                 n_files += 1
         if n_files > 0:
-            logger.error("{} failed file(s)", n_files)
+            logger.error("{} failed files", n_files)
