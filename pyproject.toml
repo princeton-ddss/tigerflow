@@ -21,7 +21,7 @@ dependencies = [
 
 [project.urls]
 Repository = "https://github.com/princeton-ddss/tigerflow"
-Documentation = "https://princeton-ddss.github.io/tigerflow"
+Documentation = "https://princeton-ddss.github.io/tigerflow/latest"
 
 [project.scripts]
 tigerflow = "tigerflow:main"

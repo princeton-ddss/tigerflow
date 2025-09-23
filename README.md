@@ -66,4 +66,4 @@ tigerflow run --help
 
 ### What Next
 
-Please check out user [guides](https://princeton-ddss.github.io/tigerflow/guides/task/) for more detailed instructions and examples.
+Please check out user [guides](https://princeton-ddss.github.io/tigerflow/latest/guides/task/) for more detailed instructions and examples.

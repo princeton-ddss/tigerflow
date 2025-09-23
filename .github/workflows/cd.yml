@@ -1,0 +1,66 @@
+name: CD
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Git credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.15"
+
+      - name: Sync version with tag name
+        run: |
+          uv version ${{ github.event.release.tag_name }}
+          git add .
+          git commit -m "Update package version" || echo "Package version up to date"
+          git push origin HEAD:main
+
+      - name: Build and publish the package
+        run: |
+          uv build
+          uv publish --token ${{ secrets.PYPI_API_TOKEN }}
+
+  docs:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Git credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Checkout merge branch
+        run: |
+          git fetch origin
+          git checkout ${{ github.ref_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install dependencies
+        run: pip install mkdocs-material mike
+
+      - name: Publish docs to gh-pages
+        run: |
+          cd docs
+          MINOR_VERSION=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v\?\([0-9]*\.[0-9]*\).*/\1/')
+          mike deploy --push --update-aliases $MINOR_VERSION latest
