@@ -10,7 +10,7 @@
 TigerFlow is a Python framework that simplifies the creation and execution of ***data pipelines on Slurm-managed HPC clusters***. It supports data pipelines where:
 
 - *Each task performs embarrassingly parallel file processing.* That is, files are processed independently of one another.
-- *The task dependency graph forms a rooted tree.* That is, the graph has a single root task, and every other task has exactly one parent.
+- *The task dependency graph forms a rooted tree.* That is, there is a single root task, and every other task has exactly one parent.
 
 Designed as a ***continuously running service with dynamic scaling***, TigerFlow minimizes the need for users to manually plan and allocate resources in advance.
 

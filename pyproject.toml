@@ -1,7 +1,7 @@
 [project]
 name = "tigerflow"
 version = "0.1.0a1"
-description = "A pipeline framework optimized for HPC with Slurm integration"
+description = "Data pipeline framework for Slurm-managed HPC clusters"
 readme = "README.md"
 authors = [
     { name = "Sangyoon Park", email = "datumvitae@gmail.com" }

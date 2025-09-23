@@ -518,6 +518,8 @@ We can then run the task as follows:
 === "Output"
 
     ```log
+    2025-09-19 13:02:16 | INFO     | Setting up task
+    Successfully connected to /home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db
     2025-09-19 13:02:16 | INFO     | Task setup complete
     2025-09-19 13:02:16 | INFO     | Starting processing: 7501869531975929119.json
     2025-09-19 13:02:17 | INFO     | Successfully processed: 7501869531975929119.json
@@ -542,5 +544,3 @@ We can then run the task as follows:
     was processed successfully according to the user-provided `run` logic, even if no concrete
     output was produced. If processing fails, however, TigerFlow generates a separate error file
     containing the relevant error message instead of the placeholder.
-
-

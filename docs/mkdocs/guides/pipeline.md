@@ -13,7 +13,7 @@ where we created a sequence of tasks to:
 2. Embed the transcriptions using an external API service (Voyage AI)
 3. Ingest the embeddings into a single-writer database (DuckDB)
 
-## Defining a pipeline
+## Defining a Pipeline
 
 A pipeline is configured using a [YAML](https://circleci.com/blog/what-is-yaml-a-beginner-s-guide/) file.
 For example, the tasks above can be structured into a pipeline as follows:
@@ -74,7 +74,7 @@ where:
     TigerFlow supports pipelines where the task dependency graph forms a *rooted tree*.
     That is, there must be a single root task, and every other task must have exactly one parent.
 
-## Running a pipeline
+## Running a Pipeline
 
 Assuming the configuration file and task scripts are in the current directory,
 we can run the pipeline as follows:
@@ -175,7 +175,7 @@ where `.tigerflow/` is an internal directory storing the pipeline's operational 
 
     `.tigerflow/` is what enables resuming a previous pipeline run, so it should not be deleted or modified.
 
-## Checking progress
+## Checking Progress
 
 We can check the pipeline's progress at any point by running:
 
@@ -200,7 +200,7 @@ We can check the pipeline's progress at any point by running:
 
 where `path/to/results/` must be a valid output directory containing `.tigerflow/`.
 
-## Checking errors
+## Checking Errors
 
 If the progress reports any failed files, we can identify them by running:
 
