@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <p align="center">
-  <img alt="tigerflow-run-screenshot" src="https://raw.githubusercontent.com/princeton-ddss/tigerflow/refs/heads/main/.github/assets/screenshot.png" width="700" />
+  <img alt="tigerflow-run-screenshot" src="https://raw.githubusercontent.com/princeton-ddss/tigerflow/refs/heads/main/.github/assets/screenshot.png" width="750" />
 </p>
 
 TigerFlow is a Python framework that simplifies the creation and execution of ***data pipelines on Slurm-managed HPC clusters***. It supports data pipelines where:
@@ -66,4 +66,4 @@ tigerflow run --help
 
 ### What Next
 
-Please check out user [guides](https://princeton-ddss.github.io/tigerflow/latest/guides/task/) for more detailed instructions and examples.
+Please check out user [guides](https://princeton-ddss.github.io/tigerflow/guides/task/) for more detailed instructions and examples.

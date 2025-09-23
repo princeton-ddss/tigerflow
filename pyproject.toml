@@ -1,11 +1,13 @@
 [project]
 name = "tigerflow"
-version = "0.1.0a0"
+version = "0.1.0a1"
 description = "A pipeline framework optimized for HPC with Slurm integration"
 readme = "README.md"
 authors = [
     { name = "Sangyoon Park", email = "datumvitae@gmail.com" }
 ]
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
     "aiofiles>=24.1.0",
@@ -19,6 +21,7 @@ dependencies = [
 
 [project.urls]
 Repository = "https://github.com/princeton-ddss/tigerflow"
+Documentation = "https://princeton-ddss.github.io/tigerflow"
 
 [project.scripts]
 tigerflow = "tigerflow:main"

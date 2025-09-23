@@ -1,7 +1,10 @@
 # Welcome to TigerFlow
 
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 <p align="center">
-  <img alt="tigerflow-run-screenshot" src="https://raw.githubusercontent.com/princeton-ddss/tigerflow/refs/heads/main/.github/assets/screenshot.png" width="700" />
+  <img alt="tigerflow-run-screenshot" src="https://raw.githubusercontent.com/princeton-ddss/tigerflow/refs/heads/main/.github/assets/screenshot.png" width="750" />
 </p>
 
 TigerFlow is a Python framework that simplifies the creation and execution of ***data pipelines on Slurm-managed HPC clusters***. It supports data pipelines where:

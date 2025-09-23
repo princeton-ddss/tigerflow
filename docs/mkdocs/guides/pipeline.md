@@ -9,9 +9,9 @@ In TigerFlow, tasks are organized into a pipeline by creating a configuration fi
 Let's build on the [example](task.md#examples) from the *Task in TigerFlow* section,
 where we created a sequence of tasks to:
 
-- Transcribe videos using an open-source model (Whisper)
-- Embed the transcriptions using an external API service (Voyage AI)
-- Ingest the embeddings into a single-writer database (DuckDB)
+1. Transcribe videos using an open-source model (Whisper)
+2. Embed the transcriptions using an external API service (Voyage AI)
+3. Ingest the embeddings into a single-writer database (DuckDB)
 
 ## Defining a pipeline
 
@@ -141,21 +141,21 @@ The console output shows that the pipeline:
 - Acts as a central orchestrator that launches, monitors, and manages the lifecycle of tasks
 - Optimizes resource usage through autoscaling and idle timeout
 
-??? info "Idle Timeout"
+By default, pipelines time out after 10 minutes of inactivity (i.e., when there are no more files
+left to process). We can override this behavior using the `--idle-timeout` option, like so:
 
-    By default, pipelines time out after 10 minutes of inactivity (i.e., when there are no more files
-    left to process). Users can override this behavior using the `--idle-timeout` option, like so:
+```bash
+# Time out after 30 days of inactivity
+tigerflow run config.yaml path/to/data/ path/to/results/ --idle-timeout 43200
+```
 
-    ```bash
-    # Make pipeline time out after 30 days (43,200 minutes) of inactivity
-    tigerflow run config.yaml path/to/data/ path/to/results/ --idle-timeout 43200
-    ```
+Before the timeout threshold is reached, the pipeline will remain active with a minimal
+resource footprint, ready to stage and process any new files placed in the input directory.
+This behavior is useful for streaming-like workflows where data may arrive sporadically.
 
-    To see all available options for the `run` subcommand, run:
+!!! info
 
-    ```bash
-    tigerflow run --help
-    ```
+    To see all available options for the `run` subcommand, run `tigerflow run --help`.
 
 Since the pipeline has been configured to retain output files only for the transcription task,
 the output directory (i.e., `path/to/results/`) will look as follows:
