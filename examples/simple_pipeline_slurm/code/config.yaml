@@ -1,0 +1,27 @@
+tasks:
+  - name: download
+    kind: local_async
+    module: ./download_book.py
+    input_ext: .txt
+    output_ext: .txt
+    concurrency_limit: 5
+  - name: count
+    kind: slurm
+    depends_on: download
+    module: ./count_words.py
+    input_ext: .txt
+    output_ext: .json
+    resources:
+      cpus: 1
+      memory: "2G"
+      time: "01:15:00"
+      max_workers: 3
+    setup_commands: |
+      module purge
+      module load anaconda3/2024.6
+      conda activate demo
+  - name: ingest
+    kind: local
+    depends_on: count
+    module: ./ingest_count.py
+    input_ext: .json

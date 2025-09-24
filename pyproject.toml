@@ -26,6 +26,13 @@ Documentation = "https://princeton-ddss.github.io/tigerflow/latest"
 [project.scripts]
 tigerflow = "tigerflow:main"
 
+[project.optional-dependencies]
+examples = [
+    "aiohttp>=3.12.15",
+    "duckdb>=1.4.0",
+    "openai-whisper>=20250625",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

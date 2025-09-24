@@ -13,6 +13,13 @@ where we created a sequence of tasks to:
 2. Embed the transcriptions using an external API service (Voyage AI)
 3. Ingest the embeddings into a single-writer database (DuckDB)
 
+!!! info
+
+    You can follow along with the example using the code and data provided
+    [here](https://github.com/princeton-ddss/tigerflow/tree/main/examples/audio_feature_extraction).
+    Videos have been substituted with audio files due to intellectual property
+    constraints and storage limitations, but the pipeline remains otherwise identical.
+
 ## Defining a Pipeline
 
 A pipeline is configured using a [YAML](https://circleci.com/blog/what-is-yaml-a-beginner-s-guide/) file.

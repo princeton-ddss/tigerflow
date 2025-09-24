@@ -120,6 +120,13 @@ Say we want to implement the following workflow:
 
 We can create and test each task as shown below.
 
+!!! info
+
+    You can follow along with the examples using the code and data provided
+    [here](https://github.com/princeton-ddss/tigerflow/tree/main/examples/audio_feature_extraction).
+    Videos have been substituted with audio files due to intellectual property
+    constraints and storage limitations, but the task logic remains otherwise identical.
+
 ### Transcribing Video Files (`SlurmTask`)
 
 We implement the transcription step as a Slurm task because it involves
@@ -134,10 +141,7 @@ from tigerflow.tasks import SlurmTask
 class Transcribe(SlurmTask):
     @staticmethod
     def setup(context):
-        context.model = whisper.load_model(
-            "medium",
-            download_root="/home/sp8538/.cache/whisper",
-        )
+        context.model = whisper.load_model("/home/sp8538/.cache/whisper/medium.pt")
         print("Model loaded successfully")
 
     @staticmethod
@@ -156,29 +160,6 @@ As shown, the task is defined such that:
 
 - The model is loaded once during setup and stored in `context`
 - This pre-loaded model is then accessed from `context` to transcribe each file
-
-!!! warning
-
-    With
-
-    ```py
-    context.model = whisper.load_model(
-        "medium",
-        download_root="/home/sp8538/.cache/whisper",
-    )
-    ```
-
-    Whisper will attempt to load the model from `download_root` if the model file (`medium.pt`)
-    is already present. If the file is missing, it will try to download it, which would fail
-    in this case because `SlurmTask` runs on compute nodes without internet access.
-
-    To avoid this issue, we can update the code to explicitly load the model from a local path:
-
-    ```py
-    local_model_path = "/home/sp8538/.cache/whisper/medium.pt"
-    model = torch.load(local_model_path)
-    context.model = whisper.Whisper(model)
-    ```
 
 Calling `Transcribe.cli()` turns this module into a runnable CLI application:
 

@@ -1,0 +1,30 @@
+tasks:
+  - name: transcribe
+    kind: slurm
+    module: ./transcribe.py
+    input_ext: .mp3
+    output_ext: .txt
+    resources:
+      cpus: 1
+      gpus: 1
+      memory: "8G"
+      time: "02:00:00"
+      max_workers: 3
+    setup_commands: |
+      module purge
+      module load anaconda3/2024.6
+      conda activate demo
+  - name: embed
+    depends_on: transcribe
+    kind: local_async
+    module: ./embed.py
+    input_ext: .txt
+    output_ext: .json
+    keep_output: false
+    concurrency_limit: 10
+  - name: ingest
+    depends_on: embed
+    kind: local
+    module: ./ingest.py
+    input_ext: .json
+    keep_output: false

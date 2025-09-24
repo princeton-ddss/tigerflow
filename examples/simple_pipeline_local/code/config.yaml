@@ -1,0 +1,13 @@
+tasks:
+  - name: download
+    kind: local_async
+    module: ./download_book.py
+    input_ext: .txt
+    output_ext: .txt
+    concurrency_limit: 3
+  - name: count
+    kind: local
+    depends_on: download
+    module: ./count_words.py
+    input_ext: .txt
+    output_ext: .json

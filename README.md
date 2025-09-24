@@ -46,6 +46,12 @@ TigerFlow can be installed using `pip`:
 pip install tigerflow
 ```
 
+Or install the package with the additional dependencies for running the [examples](https://github.com/princeton-ddss/tigerflow/tree/main/examples):
+
+```bash
+pip install tigerflow[examples]
+```
+
 It can also be installed using other package managers such as [`uv`](https://docs.astral.sh/uv/) and [`poetry`](https://python-poetry.org/docs/).
 
 ### Quick Start
@@ -63,6 +69,9 @@ For instance, `run` is a subcommand for running a user-defined pipeline, and its
 ```bash
 tigerflow run --help
 ```
+
+Try running the examples, starting with a simple [pipeline](https://github.com/princeton-ddss/tigerflow/tree/main/examples/simple_pipeline_local)
+consisting of two local tasks.
 
 ### What Next
 
