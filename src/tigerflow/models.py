@@ -290,12 +290,16 @@ class PipelineConfig(BaseModel):
 
 class TaskProgress(BaseModel):
     name: str
-    processed: list[Path] = []
-    ongoing: list[Path] = []
-    failed: list[Path] = []
+    processed: set[Path] = set()
+    ongoing: set[Path] = set()
+    failed: set[Path] = set()
 
 
 class PipelineProgress(BaseModel):
-    staged: list[Path] = []
-    finished: list[Path] = []
+    staged: set[Path] = set()
+    finished: set[Path] = set()
     tasks: list[TaskProgress] = []
+
+    @property
+    def failed(self) -> set[Path]:
+        return set.union(*(task.failed for task in self.tasks))

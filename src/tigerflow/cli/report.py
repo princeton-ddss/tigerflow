@@ -27,13 +27,13 @@ def progress(
     progress = Pipeline.report_progress(pipeline_dir)
 
     bar = _make_progress_bar(
-        current=len(progress.finished),
+        current=len(progress.failed) + len(progress.finished),
         total=len(progress.staged) + len(progress.finished),
     )
 
     table = Table()
     table.add_column("Task")
-    table.add_column("Processed", justify="right", style="blue")
+    table.add_column("Processed", justify="right", style="green")
     table.add_column("Ongoing", justify="right", style="yellow")
     table.add_column("Failed", justify="right", style="red")
     for task in progress.tasks:
@@ -45,7 +45,7 @@ def progress(
         )
 
     print(table)
-    print("[bold]COMPLETED[/bold]:", bar)
+    print(bar)
 
 
 @app.command()
@@ -107,6 +107,6 @@ def _make_progress_bar(*, current: int, total: int, length: int = 30) -> str:
     """
     filled = int(length * current / total)
     empty = length - filled
-    bar = f"[bold green]{'█' * filled}[/bold green][dim]{'░' * empty}[/dim]"
+    bar = f"[bold cyan]{'█' * filled}[/bold cyan][dim]{'░' * empty}[/dim]"
     percentage = f"{(current / total) * 100:>5.1f}%"
     return f"{bar} {current}/{total} ({percentage})"
