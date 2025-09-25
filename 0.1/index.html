@@ -646,7 +646,7 @@
 <p>TigerFlow is a Python framework that simplifies the creation and execution of <strong><em>data pipelines on Slurm-managed HPC clusters</em></strong>. It supports data pipelines where:</p>
 <ul>
 <li><em>Each task performs embarrassingly parallel file processing.</em> That is, files are processed independently of one another.</li>
-<li><em>The task dependency graph forms a rooted tree.</em> That is, the graph has a single root task, and every other task has exactly one parent.</li>
+<li><em>The task dependency graph forms a rooted tree.</em> That is, there is a single root task, and every other task has exactly one parent.</li>
 </ul>
 <p>Designed as a <strong><em>continuously running service with dynamic scaling</em></strong>, TigerFlow minimizes the need for users to manually plan and allocate resources in advance.</p>
 <h2 id="why-tigerflow-matters">Why TigerFlow Matters<a class="headerlink" href="#why-tigerflow-matters" title="Permanent link">&para;</a></h2>
@@ -688,9 +688,26 @@
 </div>
 </div>
 </div>
+<p>Or install the package with the additional dependencies for running the <a href="https://github.com/princeton-ddss/tigerflow/tree/main/examples">examples</a>:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">pip</label><label for="__tabbed_2_2">uv</label><label for="__tabbed_2_3">poetry</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>tigerflow<span class="o">[</span>examples<span class="o">]</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span>tigerflow<span class="o">[</span>examples<span class="o">]</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>poetry<span class="w"> </span>add<span class="w"> </span>tigerflow<span class="o">[</span>examples<span class="o">]</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 <h3 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h3>
 <p>Once the package is installed, <code>tigerflow</code> command will be available, like so:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Command</label><label for="__tabbed_2_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>--help
@@ -718,7 +735,7 @@
 </div>
 <p>Running the above will display an overview of the tool, including supported subcommands.</p>
 <p>For instance, <code>run</code> is a subcommand for running a user-defined pipeline, and its details can be viewed by running:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Command</label><label for="__tabbed_4_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>run<span class="w"> </span>--help
@@ -743,6 +760,8 @@
 </div>
 </div>
 </div>
+<p>Try running the examples, starting with a simple <a href="https://github.com/princeton-ddss/tigerflow/tree/main/examples/simple_pipeline_local">pipeline</a>
+consisting of two local tasks.</p>
 <h3 id="what-next">What Next<a class="headerlink" href="#what-next" title="Permanent link">&para;</a></h3>
 <p>Please check out user <a href="guides/task/">guides</a> for more detailed instructions and examples.</p>
 

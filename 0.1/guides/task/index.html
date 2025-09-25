@@ -744,6 +744,13 @@ instead of <code>4.txt</code>). This file contains specific error messages to as
 <li>Ingest the embeddings into a single-writer database (e.g., <a href="https://duckdb.org/docs/stable/clients/python/overview.html">DuckDB</a>)</li>
 </ol>
 <p>We can create and test each task as shown below.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>You can follow along with the examples using the code and data provided
+<a href="https://github.com/princeton-ddss/tigerflow/tree/main/examples/audio_feature_extraction">here</a>.
+Videos have been substituted with audio files due to intellectual property
+constraints and storage limitations, but the task logic remains otherwise identical.</p>
+</div>
 <h3 id="transcribing-video-files-slurmtask">Transcribing Video Files (<code>SlurmTask</code>)<a class="headerlink" href="#transcribing-video-files-slurmtask" title="Permanent link">&para;</a></h3>
 <p>We implement the transcription step as a Slurm task because it involves
 compute-intensive work and we want to process files in parallel.</p>
@@ -755,10 +762,7 @@ compute-intensive work and we want to process files in parallel.</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">Transcribe</span><span class="p">(</span><span class="n">SlurmTask</span><span class="p">):</span>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
-        <span class="n">context</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">whisper</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span>
-            <span class="s2">&quot;medium&quot;</span><span class="p">,</span>
-            <span class="n">download_root</span><span class="o">=</span><span class="s2">&quot;/home/sp8538/.cache/whisper&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">whisper</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s2">&quot;/home/sp8538/.cache/whisper/medium.pt&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model loaded successfully&quot;</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
@@ -777,23 +781,6 @@ compute-intensive work and we want to process files in parallel.</p>
 <li>The model is loaded once during setup and stored in <code>context</code></li>
 <li>This pre-loaded model is then accessed from <code>context</code> to transcribe each file</li>
 </ul>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>With</p>
-<div class="highlight"><pre><span></span><code><span class="n">context</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">whisper</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span>
-    <span class="s2">&quot;medium&quot;</span><span class="p">,</span>
-    <span class="n">download_root</span><span class="o">=</span><span class="s2">&quot;/home/sp8538/.cache/whisper&quot;</span><span class="p">,</span>
-<span class="p">)</span>
-</code></pre></div>
-<p>Whisper will attempt to load the model from <code>download_root</code> if the model file (<code>medium.pt</code>)
-is already present. If the file is missing, it will try to download it, which would fail
-in this case because <code>SlurmTask</code> runs on compute nodes without internet access.</p>
-<p>To avoid this issue, we can update the code to explicitly load the model from a local path:</p>
-<div class="highlight"><pre><span></span><code><span class="n">local_model_path</span> <span class="o">=</span> <span class="s2">&quot;/home/sp8538/.cache/whisper/medium.pt&quot;</span>
-<span class="n">model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">local_model_path</span><span class="p">)</span>
-<span class="n">context</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">whisper</span><span class="o">.</span><span class="n">Whisper</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-</code></pre></div>
-</div>
 <p>Calling <code>Transcribe.cli()</code> turns this module into a runnable CLI application:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
 <div class="tabbed-content">
@@ -1114,7 +1101,9 @@ only supports writes from a single process.</p>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>2025-09-19 13:02:16 | INFO     | Task setup complete
+<div class="highlight"><pre><span></span><code>2025-09-19 13:02:16 | INFO     | Setting up task
+Successfully connected to /home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db
+2025-09-19 13:02:16 | INFO     | Task setup complete
 2025-09-19 13:02:16 | INFO     | Starting processing: 7501869531975929119.json
 2025-09-19 13:02:17 | INFO     | Successfully processed: 7501869531975929119.json
 2025-09-19 13:02:17 | INFO     | Starting processing: 7501869470705782062.json

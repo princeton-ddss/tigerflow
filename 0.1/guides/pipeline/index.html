@@ -451,7 +451,7 @@
         <li class="md-nav__item">
   <a href="#defining-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Defining a pipeline
+      Defining a Pipeline
     </span>
   </a>
   
@@ -460,7 +460,7 @@
         <li class="md-nav__item">
   <a href="#running-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Running a pipeline
+      Running a Pipeline
     </span>
   </a>
   
@@ -469,7 +469,7 @@
         <li class="md-nav__item">
   <a href="#checking-progress" class="md-nav__link">
     <span class="md-ellipsis">
-      Checking progress
+      Checking Progress
     </span>
   </a>
   
@@ -478,7 +478,7 @@
         <li class="md-nav__item">
   <a href="#checking-errors" class="md-nav__link">
     <span class="md-ellipsis">
-      Checking errors
+      Checking Errors
     </span>
   </a>
   
@@ -529,7 +529,7 @@
         <li class="md-nav__item">
   <a href="#defining-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Defining a pipeline
+      Defining a Pipeline
     </span>
   </a>
   
@@ -538,7 +538,7 @@
         <li class="md-nav__item">
   <a href="#running-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Running a pipeline
+      Running a Pipeline
     </span>
   </a>
   
@@ -547,7 +547,7 @@
         <li class="md-nav__item">
   <a href="#checking-progress" class="md-nav__link">
     <span class="md-ellipsis">
-      Checking progress
+      Checking Progress
     </span>
   </a>
   
@@ -556,7 +556,7 @@
         <li class="md-nav__item">
   <a href="#checking-errors" class="md-nav__link">
     <span class="md-ellipsis">
-      Checking errors
+      Checking Errors
     </span>
   </a>
   
@@ -594,7 +594,14 @@ where we created a sequence of tasks to:</p>
 <li>Embed the transcriptions using an external API service (Voyage AI)</li>
 <li>Ingest the embeddings into a single-writer database (DuckDB)</li>
 </ol>
-<h2 id="defining-a-pipeline">Defining a pipeline<a class="headerlink" href="#defining-a-pipeline" title="Permanent link">&para;</a></h2>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>You can follow along with the example using the code and data provided
+<a href="https://github.com/princeton-ddss/tigerflow/tree/main/examples/audio_feature_extraction">here</a>.
+Videos have been substituted with audio files due to intellectual property
+constraints and storage limitations, but the pipeline remains otherwise identical.</p>
+</div>
+<h2 id="defining-a-pipeline">Defining a Pipeline<a class="headerlink" href="#defining-a-pipeline" title="Permanent link">&para;</a></h2>
 <p>A pipeline is configured using a <a href="https://circleci.com/blog/what-is-yaml-a-beginner-s-guide/">YAML</a> file.
 For example, the tasks above can be structured into a pipeline as follows:</p>
 <div class="highlight"><span class="filename">config.yaml</span><pre><span></span><code><span class="nt">tasks</span><span class="p">:</span>
@@ -651,7 +658,7 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <p>TigerFlow supports pipelines where the task dependency graph forms a <em>rooted tree</em>.
 That is, there must be a single root task, and every other task must have exactly one parent.</p>
 </div>
-<h2 id="running-a-pipeline">Running a pipeline<a class="headerlink" href="#running-a-pipeline" title="Permanent link">&para;</a></h2>
+<h2 id="running-a-pipeline">Running a Pipeline<a class="headerlink" href="#running-a-pipeline" title="Permanent link">&para;</a></h2>
 <p>Assuming the configuration file and task scripts are in the current directory,
 we can run the pipeline as follows:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Command</label><label for="__tabbed_1_2">Output</label></div>
@@ -742,7 +749,7 @@ the output directory (i.e., <code>path/to/results/</code>) will look as follows:
 <p class="admonition-title">Warning</p>
 <p><code>.tigerflow/</code> is what enables resuming a previous pipeline run, so it should not be deleted or modified.</p>
 </div>
-<h2 id="checking-progress">Checking progress<a class="headerlink" href="#checking-progress" title="Permanent link">&para;</a></h2>
+<h2 id="checking-progress">Checking Progress<a class="headerlink" href="#checking-progress" title="Permanent link">&para;</a></h2>
 <p>We can check the pipeline's progress at any point by running:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Command</label><label for="__tabbed_2_2">Output</label></div>
 <div class="tabbed-content">
@@ -758,13 +765,13 @@ the output directory (i.e., <code>path/to/results/</code>) will look as follows:
 │ embed      │        83 │       0 │      8 │
 │ ingest     │        83 │       0 │      0 │
 └────────────┴───────────┴─────────┴────────┘
-COMPLETED: ███████████████████████████░░░ 83/91 ( 91.2%)
+██████████████████████████████ 91/91 (100.0%)
 </code></pre></div>
 </div>
 </div>
 </div>
 <p>where <code>path/to/results/</code> must be a valid output directory containing <code>.tigerflow/</code>.</p>
-<h2 id="checking-errors">Checking errors<a class="headerlink" href="#checking-errors" title="Permanent link">&para;</a></h2>
+<h2 id="checking-errors">Checking Errors<a class="headerlink" href="#checking-errors" title="Permanent link">&para;</a></h2>
 <p>If the progress reports any failed files, we can identify them by running:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
 <div class="tabbed-content">
