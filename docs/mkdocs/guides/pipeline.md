@@ -202,7 +202,7 @@ We can check the pipeline's progress at any point by running:
     │ embed      │        83 │       0 │      8 │
     │ ingest     │        83 │       0 │      0 │
     └────────────┴───────────┴─────────┴────────┘
-    COMPLETED: ███████████████████████████░░░ 83/91 ( 91.2%)
+    ██████████████████████████████ 91/91 (100.0%)
     ```
 
 where `path/to/results/` must be a valid output directory containing `.tigerflow/`.
