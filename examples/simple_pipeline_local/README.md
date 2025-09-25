@@ -13,9 +13,9 @@ including a personal laptop.
 
 - [ ] Install the package with the additional dependencies required to run the examples:
 
-```bash
-pip install tigerflow[examples]
-```
+    ```bash
+    pip install tigerflow[examples]
+    ```
 
 ## Running the Pipeline
 
