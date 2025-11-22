@@ -1,6 +1,6 @@
-# Task in TigerFlow
+# Tasks
 
-## Overview
+In TigerFlow, **tasks** represent a unit of work to be applied to individual files, e.g., transcribing an audio file. Tasks are user-defined Python modules that subclass one of several builtin abstract tasks. These abstract classes provide methods that automatically convert user modules into "task servers". Run individually, a task server can be used to bulk process files. Connected, tasks transform into elegant data processing **pipelines**.
 
 TigerFlow supports three types of tasks:
 
@@ -8,7 +8,9 @@ TigerFlow supports three types of tasks:
 - `LocalAsyncTask`: Runs *asynchronous* operations on a login/head node
 - `SlurmTask`: Runs *parallel* operations across compute nodes via Slurm
 
-To define a task, subclass one of these types and implement the following methods:
+## Hello, Tasks!
+
+To define a task, subclass one of the above abstract types and implement the following methods:
 
 | Method     | Required  | Description                                                                             |
 |------------|:---------:|-----------------------------------------------------------------------------------------|
@@ -18,16 +20,16 @@ To define a task, subclass one of these types and implement the following method
 
 Then, simply call the inherited `cli()` method to turn the module into a runnable CLI application.
 
-For instance, we can define a simple local task that converts text files to uppercase as follows:
+For instance, here's a simple "Hello, World!" local task:
 
-```py title="upper.py"
+```py title="hello.py"
 from tigerflow.tasks import LocalTask
 
 
-class Upper(LocalTask):
+class HelloWorld(LocalTask):
     @staticmethod
     def setup(context):
-        context.common_data = "Common Data from Setup"
+        context.greeting = "Hello"
         print("Setup executed successfully!")
 
     @staticmethod
@@ -35,7 +37,7 @@ class Upper(LocalTask):
         with open(input_file, "r") as fi:
             content = fi.read()
 
-        new_content = context.common_data + "\n" + content.upper()
+        new_content = context.greeting + ", " + content.upper()
 
         with open(output_file, "w") as fo:
             fo.write(new_content)
@@ -45,7 +47,7 @@ class Upper(LocalTask):
         print("Teardown executed successfully!")
 
 
-Upper.cli()
+HelloWorld.cli()
 ```
 
 where:
@@ -54,18 +56,18 @@ where:
 - `input_file` is a path to the input file to be processed
 - `output_file` is a path to the output file to be generated
 
-With `Upper.cli()`, this module becomes a runnable CLI application and we can check its details by running:
+With `HelloWorld.cli()`, this module becomes a runnable CLI application and we can check its details by running:
 
 === "Command"
 
     ```bash
-    python upper.py --help
+    python hello.py --help
     ```
 
 === "Output"
 
     ```console
-    Usage: test.py [OPTIONS]
+    Usage: hello.py [OPTIONS]
 
     Run the task as a CLI application
 
@@ -83,7 +85,7 @@ We can then run the task as follows:
 === "Command"
 
     ```bash
-    python test.py --input-dir path/to/data/ --input-ext .txt --output-dir path/to/results/ --output-ext .txt
+    python hello.py --input-dir path/to/data/ --input-ext .txt --output-dir path/to/results/ --output-ext .txt
     ```
 
 === "Output"
@@ -105,22 +107,23 @@ We can then run the task as follows:
     2025-09-11 10:54:30 | INFO     | Task shutdown complete
     ```
 
-!!! info
+The task processes every file found in `input-dir` with file extension `.txt` and outputs the result to a file with the same filename stem and specified `output-ext` (also `.txt` in this case) to the the `output-dir`. E.g., `inputs/4.txt` generates `outputs/4.txt`.
 
-    If a file is not processed successfully, an error output file will be generated (e.g., `4.err`
-    instead of `4.txt`). This file contains specific error messages to assist with debugging.
+!!! info "Error Files"
+
+    If a task encounters an error, TigerFlow generates an error output file, e.g., `4.err` instead of `4.txt`. This file contains specific error messages to assist with debugging.
 
 ## Examples
 
-Say we want to implement the following workflow:
+Say we want to implement a workflow that involves the following tasks:
 
 1. Transcribe video files using an open-source model (e.g., [Whisper](https://github.com/openai/whisper))
 2. Embed the transcription files using an external API service (e.g., [Voyage AI](https://docs.voyageai.com/docs/embeddings))
 3. Ingest the embeddings into a single-writer database (e.g., [DuckDB](https://duckdb.org/docs/stable/clients/python/overview.html))
 
-We can create and test each task as shown below.
+We can create each task as shown below.
 
-!!! info
+!!! info "Follow Along"
 
     You can follow along with the examples using the code and data provided
     [here](https://github.com/princeton-ddss/tigerflow/tree/main/examples/audio_feature_extraction).
@@ -129,8 +132,7 @@ We can create and test each task as shown below.
 
 ### Transcribing Video Files (`SlurmTask`)
 
-We implement the transcription step as a Slurm task because it involves
-compute-intensive work and we want to process files in parallel.
+We implement the transcription step as a Slurm task because it involves compute-intensive work and we want to process files in parallel.
 
 ```py title="transcribe.py"
 import whisper
@@ -233,23 +235,12 @@ We can then run the task as follows:
     2025-09-16 11:06:41 | INFO     | Task shutdown complete
     ```
 
-!!! note
-
-    The resources specified here, including `time`, apply to each individual worker.
-    Workers can be spun up and down dynamically in response to incoming workloads,
-    so it is beneficial to allocate only the minimal necessary resources per worker.
-
-    For example, setting the worker `time` to a reasonable value like 2 hours (instead
-    of 12 hours) can reduce scheduling delays, as longer Slurm job requests often result
-    in longer queue times. Of course, the definition of "reasonable" depends on the nature
-    of the work the worker performs. For instance, if processing each file takes around
-    3 hours, setting the worker `time` to 12 hours may be appropriate.
+The resources specified above, including `time`, apply to each individual worker. Workers can be spun up and down dynamically in response to incoming workloads, so it is recommended to allocate only the minimal necessary resources per worker. For example, setting the worker `time` to a smaller value like 2 hours (instead of 12 hours) can reduce scheduling delays, as longer Slurm job requests often result in longer queue times.
 
 ### Embedding Text Files (`LocalAsyncTask`)
 
 We implement the embedding step as a local *asynchronous* task because it involves
-I/O-bound work (i.e., making external API requests) and we want to process multiple
-files concurrently.
+I/O-bound work (i.e., making external API requests) that can be performed concurrently.
 
 ```py title="embed.py"
 import asyncio
@@ -308,14 +299,7 @@ As shown, the task is defined such that it:
 - Utilizes these resources from `context` to send a request to the external API for each input file
 - Cleans up resources (e.g., HTTP session) at the end to ensure a graceful shutdown
 
-!!! info
-
-    `LocalAsyncTask` requires all operations to adhere to Python's `async`/`await` syntax.
-    For example, as shown above, file reading and writing are performed using `aiofiles`,
-    since standard file I/O would block the event loop and prevent concurrent file processing.
-    Similarly, `LocalAsyncTask` should not include compute-intensive logic, as this would
-    also block the event loop and goes against its intended use. For compute-heavy tasks,
-    consider using `SlurmTask` instead.
+Notice that `LocalAsyncTask` requires all operations to adhere to Python's `async`/`await` syntax. For example, file reading and writing should be performed using `aiofiles`, since standard file I/O would block the event loop and prevent concurrent file processing. Similarly, `LocalAsyncTask` should not include compute-intensive logic, as this would also block the event loop and goes against its intended use. For compute-heavy tasks, consider using `SlurmTask` instead.
 
 ??? tip "API Rate Limits"
 
@@ -517,11 +501,10 @@ We can then run the task as follows:
     2025-09-19 13:02:22 | INFO     | Task shutdown complete
     ```
 
-!!! info
+!!! info "Output Files"
 
     Note that we specify `--output-dir` and `--output-ext` even though the task’s `run` logic
     does not write to `output_file`. This is necessary because TigerFlow creates an empty
     "placeholder" file even when no content is written. This placeholder indicates that the file
     was processed successfully according to the user-provided `run` logic, even if no concrete
-    output was produced. If processing fails, however, TigerFlow generates a separate error file
-    containing the relevant error message instead of the placeholder.
+    output was produced.
