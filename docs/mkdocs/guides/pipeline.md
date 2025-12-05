@@ -2,9 +2,38 @@
 
 !!! note
 
-    This guide assumes you are familiar with TigerFlow [tasks](task.md). Please review how to create and use tasks in TigerFlow before proceeding.
+    This guide assumes you are familiar with TigerFlow [tasks](task.md).
+    Please review how to create and use tasks in TigerFlow before proceeding.
 
-In TigerFlow, tasks are organized into a pipeline by creating a configuration file that describes the tasks to be run, the resources required by each task, and the dependencies between tasks. Tasks use the file system to signal completion of work and signal downstream tasks that new work is available. Each task continuously monitors a *single* input directory for new work. As such, tasks may depend on the same parent, but **each task is limited to a single parent task**.
+In TigerFlow, tasks are organized into a pipeline by creating a configuration file that
+describes the tasks to be run, the resources required by each task, and the dependencies
+between tasks. Tasks communicate through the file system: a parent task writes its outputs
+to a designated directory, which downstream tasks monitor for new inputs.[^1] Since each task
+performs embarrassingly parallel, one-to-one file processing (i.e., each input is transformed
+into a single output independently of all other inputs), multiple tasks may share the same
+parent, but each task can have only one parent.
+
+[^1]:
+    TigerFlow uses the dependency information specified in the pipeline configuration
+    to automatically organize input and output directories between tasks, so users do not
+    need to handle this file organization manually.
+
+!!! example "Dependency Graph"
+
+    The following illustrates a pipeline that can be supported by TigerFlow:
+
+    ![Pipeline Task Dependency](../assets/img/task_dependency.svg){ align=right }
+
+    As shown, the pipeline's task dependency graph forms a rooted tree
+    (i.e., there is a single root task, and every other task depends on
+    exactly one parent), which is required by TigerFlow.
+
+    Because each task performs embarrassingly parallel, one-to-one file
+    processing (i.e., each input is transformed into a single output
+    independently of all other inputs), the pipeline's dependency graph
+    can be represented at the file level as follows:
+
+    ![Pipeline File Dependency](../assets/img/file_dependency.svg){ align=right }
 
 Let's build on the [example](task.md#examples) from the previous section, where we created a sequence of tasks to:
 

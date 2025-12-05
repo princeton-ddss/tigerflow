@@ -13,7 +13,7 @@ hide:
 #
 
 <p align="center">
-  <img alt="tigerflow-run-screenshot" src="assets/img/logo.png" width="350" />
+  <img alt="tigerflow-logo" src="assets/img/logo.png" width="350" />
 </p>
 
 <p align="center">
@@ -27,8 +27,8 @@ hide:
 
 **TigerFlow** is a Python framework that simplifies the creation and execution of data pipelines on Slurm-managed HPC clusters. It supports data pipelines where:
 
-- *Each task performs embarrassingly parallel file processing.* That is, files are processed independently of one another.
-- *The task dependency graph forms a rooted tree.* That is, there is a single root task, and every other task has exactly one parent.
+- *Each task performs embarrassingly parallel, one-to-one file processing.* That is, each input file is transformed into a single output file independently of all other input files.
+- *The task dependency graph forms a rooted tree.* That is, there is a single root task, and every other task depends on exactly one parent.
 
 Designed as a continuously running service with dynamic scaling, TigerFlow minimizes the need for users to manually plan and allocate resources in advance.
 
@@ -40,7 +40,7 @@ HPC clusters are an invaluable asset for researchers who require significant com
 
 - **Compute nodes often have restricted access to file systems.** Certain file systems (e.g., cold storage) may not be mounted on compute nodes. This necessitates moving or copying data to accessible locations (e.g., scratch space) before processing can occur on compute nodes.
 
-These constraints make it difficult to design and implement end-to-end data pipelines when some steps require external API call—restricted to login/head nodes—while others depend on high-performance compute resources available only on compute nodes. TigerFlow addresses these challenges by offering a simple, unified framework for defining and running data pipelines across different types of cluster nodes.
+These constraints make it difficult to design and implement end-to-end data pipelines when some steps require external API call&mdash;restricted to login/head nodes&mdash;while others depend on high-performance compute resources available only on compute nodes. TigerFlow addresses these challenges by offering a simple, unified framework for defining and running data pipelines across different types of cluster nodes.
 
 ## Key Features
 
@@ -162,4 +162,4 @@ consisting of two local tasks.
 
 ### Next Steps
 
-Please check out user [guides](guides/task.md) for more detailed instructions and examples.
+Please check out the user [guide](guides/task.md) for more detailed instructions and examples.

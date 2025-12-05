@@ -1,6 +1,15 @@
 # Tasks
 
-In TigerFlow, **tasks** represent a unit of work to be applied to individual files, e.g., transcribing an audio file. Tasks are user-defined Python modules that subclass one of several builtin abstract tasks. These abstract classes provide methods that automatically convert user modules into "task servers". Run individually, a task server can be used to bulk process files. Connected, tasks transform into elegant data processing **pipelines**.
+In TigerFlow, a **task** represents a unit of work to be applied to individual files, e.g.,
+transcribing an audio file. Tasks are user-defined Python modules that subclass one of several
+builtin abstract tasks. These abstract classes provide methods that automatically convert user
+modules into "task servers". Run individually, a task server can be used to bulk process files.
+Connected, tasks transform into a data processing [**pipeline**](pipeline.md).
+
+!!! note
+
+    TigerFlow tasks are designed for ***embarrassingly parallel***, ***one-to-one*** file processing,
+    where each input file is transformed into a single output file independently of all other input files.
 
 TigerFlow supports three types of tasks:
 
@@ -56,6 +65,10 @@ where:
 - `input_file` is a path to the input file to be processed
 - `output_file` is a path to the output file to be generated
 
+!!! warning
+
+    In the `run` method, `context` is read-only and will raise an error if modified.
+
 With `HelloWorld.cli()`, this module becomes a runnable CLI application and we can check its details by running:
 
 === "Command"
@@ -107,7 +120,9 @@ We can then run the task as follows:
     2025-09-11 10:54:30 | INFO     | Task shutdown complete
     ```
 
-The task processes every file found in `input-dir` with file extension `.txt` and outputs the result to a file with the same filename stem and specified `output-ext` (also `.txt` in this case) to the the `output-dir`. E.g., `inputs/4.txt` generates `outputs/4.txt`.
+The task processes every `.txt` file in `input-dir` and writes the result to `output-dir`
+using the same filename stem and the specified output extension (also `.txt` in this case).
+For example, `path/to/data/4.txt` produces `path/to/results/4.txt`.
 
 !!! info "Error Files"
 
@@ -132,7 +147,8 @@ We can create each task as shown below.
 
 ### Transcribing Video Files (`SlurmTask`)
 
-We implement the transcription step as a Slurm task because it involves compute-intensive work and we want to process files in parallel.
+We implement the transcription step as a Slurm task because it involves compute-intensive work
+and we want to process files in parallel.
 
 ```py title="transcribe.py"
 import whisper
@@ -235,7 +251,11 @@ We can then run the task as follows:
     2025-09-16 11:06:41 | INFO     | Task shutdown complete
     ```
 
-The resources specified above, including `time`, apply to each individual worker. Workers can be spun up and down dynamically in response to incoming workloads, so it is recommended to allocate only the minimal necessary resources per worker. For example, setting the worker `time` to a smaller value like 2 hours (instead of 12 hours) can reduce scheduling delays, as longer Slurm job requests often result in longer queue times.
+The resources specified above, including `time`, apply to each individual worker. Workers can be
+spun up and down dynamically in response to incoming workloads, so it is recommended to allocate
+only the minimal necessary resources per worker. For example, setting the worker `time` to a smaller
+value like 2 hours (instead of 12 hours) can reduce scheduling delays, as longer Slurm job requests
+often result in longer queue times.
 
 ### Embedding Text Files (`LocalAsyncTask`)
 
@@ -299,7 +319,11 @@ As shown, the task is defined such that it:
 - Utilizes these resources from `context` to send a request to the external API for each input file
 - Cleans up resources (e.g., HTTP session) at the end to ensure a graceful shutdown
 
-Notice that `LocalAsyncTask` requires all operations to adhere to Python's `async`/`await` syntax. For example, file reading and writing should be performed using `aiofiles`, since standard file I/O would block the event loop and prevent concurrent file processing. Similarly, `LocalAsyncTask` should not include compute-intensive logic, as this would also block the event loop and goes against its intended use. For compute-heavy tasks, consider using `SlurmTask` instead.
+Notice that `LocalAsyncTask` requires all operations to adhere to Python's `async`/`await` syntax.
+For example, file reading and writing should be performed using `aiofiles`, since standard file I/O
+would block the event loop and prevent concurrent file processing. Similarly, `LocalAsyncTask` should
+not include compute-intensive logic, as this would also block the event loop and goes against its
+intended use. For compute-heavy tasks, consider using `SlurmTask` instead.
 
 ??? tip "API Rate Limits"
 
