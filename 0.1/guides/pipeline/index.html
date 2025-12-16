@@ -13,19 +13,22 @@
       
       
       
+        
+      
+      
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.20">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
       
-        <title>Pipeline - TigerFlow</title>
+        <title>Pipelines - TigerFlow</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.e53b48f4.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -44,11 +47,12 @@
       
     
     
+      <link rel="stylesheet" href="../../assets/css/extra.css">
+    
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
-    
     
     
   </head>
@@ -61,7 +65,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -70,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pipeline-in-tigerflow" class="md-skip">
+        <a href="#pipelines" class="md-skip">
           Skip to content
         </a>
       
@@ -90,8 +94,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="TigerFlow" class="md-header__button md-logo" aria-label="TigerFlow" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/img/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -108,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pipeline
+              Pipelines
             
           </span>
         </div>
@@ -121,7 +124,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -131,7 +134,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -193,7 +196,7 @@
         <a href="https://github.com/princeton-ddss/tigerflow" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     princeton-ddss/tigerflow
@@ -248,7 +251,7 @@
           
   
   
-  Guides
+  User Guide
 
         </a>
       </li>
@@ -280,8 +283,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="TigerFlow" class="md-nav__button md-logo" aria-label="TigerFlow" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/img/logo.png" alt="logo">
 
     </a>
     TigerFlow
@@ -291,7 +293,7 @@
       <a href="https://github.com/princeton-ddss/tigerflow" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     princeton-ddss/tigerflow
@@ -313,9 +315,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     Home
+  
+
     
   </span>
+  
   
 
       </a>
@@ -354,9 +361,14 @@
   
   
   <span class="md-ellipsis">
-    Guides
+    
+  
+    User Guide
+  
+
     
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
@@ -365,7 +377,11 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
-            Guides
+            
+  
+    User Guide
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -381,9 +397,14 @@
   
   
   <span class="md-ellipsis">
-    Task
+    
+  
+    Tasks
+  
+
     
   </span>
+  
   
 
       </a>
@@ -413,9 +434,14 @@
   
   
   <span class="md-ellipsis">
-    Pipeline
+    
+  
+    Pipelines
+  
+
     
   </span>
+  
   
 
           <span class="md-nav__icon md-icon"></span>
@@ -426,9 +452,14 @@
   
   
   <span class="md-ellipsis">
-    Pipeline
+    
+  
+    Pipelines
+  
+
     
   </span>
+  
   
 
       </a>
@@ -451,7 +482,9 @@
         <li class="md-nav__item">
   <a href="#defining-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Defining a Pipeline
+      
+        Defining a Pipeline
+      
     </span>
   </a>
   
@@ -460,7 +493,9 @@
         <li class="md-nav__item">
   <a href="#running-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Running a Pipeline
+      
+        Running a Pipeline
+      
     </span>
   </a>
   
@@ -469,7 +504,9 @@
         <li class="md-nav__item">
   <a href="#checking-progress" class="md-nav__link">
     <span class="md-ellipsis">
-      Checking Progress
+      
+        Checking Progress
+      
     </span>
   </a>
   
@@ -478,7 +515,9 @@
         <li class="md-nav__item">
   <a href="#checking-errors" class="md-nav__link">
     <span class="md-ellipsis">
-      Checking Errors
+      
+        Checking Errors
+      
     </span>
   </a>
   
@@ -529,7 +568,9 @@
         <li class="md-nav__item">
   <a href="#defining-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Defining a Pipeline
+      
+        Defining a Pipeline
+      
     </span>
   </a>
   
@@ -538,7 +579,9 @@
         <li class="md-nav__item">
   <a href="#running-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Running a Pipeline
+      
+        Running a Pipeline
+      
     </span>
   </a>
   
@@ -547,7 +590,9 @@
         <li class="md-nav__item">
   <a href="#checking-progress" class="md-nav__link">
     <span class="md-ellipsis">
-      Checking Progress
+      
+        Checking Progress
+      
     </span>
   </a>
   
@@ -556,7 +601,9 @@
         <li class="md-nav__item">
   <a href="#checking-errors" class="md-nav__link">
     <span class="md-ellipsis">
-      Checking Errors
+      
+        Checking Errors
+      
     </span>
   </a>
   
@@ -572,6 +619,7 @@
           
           
             <div class="md-content" data-md-component="content">
+              
               <article class="md-content__inner md-typeset">
                 
                   
@@ -581,21 +629,40 @@
   
 
 
-<h1 id="pipeline-in-tigerflow">Pipeline in TigerFlow<a class="headerlink" href="#pipeline-in-tigerflow" title="Permanent link">&para;</a></h1>
+<h1 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Before proceeding, please review how to create and use <a href="../task/">tasks</a> in TigerFlow.</p>
+<p>This guide assumes you are familiar with TigerFlow <a href="../task/">tasks</a>.
+Please review how to create and use tasks in TigerFlow before proceeding.</p>
 </div>
-<p>In TigerFlow, tasks are organized into a pipeline by creating a configuration file.</p>
-<p>Let's build on the <a href="../task/#examples">example</a> from the <em>Task in TigerFlow</em> section,
-where we created a sequence of tasks to:</p>
+<p>In TigerFlow, tasks are organized into a pipeline by creating a configuration file that
+describes the tasks to be run, the resources required by each task, and the dependencies
+between tasks. Tasks communicate through the file system: a parent task writes its outputs
+to a designated directory, which downstream tasks monitor for new inputs.<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup> Since each task
+performs embarrassingly parallel, one-to-one file processing (i.e., each input is transformed
+into a single output independently of all other inputs), multiple tasks may share the same
+parent, but each task can have only one parent.</p>
+<div class="admonition example">
+<p class="admonition-title">Dependency Graph</p>
+<p>The following illustrates a pipeline that can be supported by TigerFlow:</p>
+<p><img align="right" alt="Pipeline Task Dependency" src="../../assets/img/task_dependency.svg" /></p>
+<p>As shown, the pipeline's task dependency graph forms a rooted tree
+(i.e., there is a single root task, and every other task depends on
+exactly one parent), which is required by TigerFlow.</p>
+<p>Because each task performs embarrassingly parallel, one-to-one file
+processing (i.e., each input is transformed into a single output
+independently of all other inputs), the pipeline's dependency graph
+can be represented at the file level as follows:</p>
+<p><img align="right" alt="Pipeline File Dependency" src="../../assets/img/file_dependency.svg" /></p>
+</div>
+<p>Let's build on the <a href="../task/#examples">example</a> from the previous section, where we created a sequence of tasks to:</p>
 <ol>
 <li>Transcribe videos using an open-source model (Whisper)</li>
 <li>Embed the transcriptions using an external API service (Voyage AI)</li>
 <li>Ingest the embeddings into a single-writer database (DuckDB)</li>
 </ol>
 <div class="admonition info">
-<p class="admonition-title">Info</p>
+<p class="admonition-title">Follow Along</p>
 <p>You can follow along with the example using the code and data provided
 <a href="https://github.com/princeton-ddss/tigerflow/tree/main/examples/audio_feature_extraction">here</a>.
 Videos have been substituted with audio files due to intellectual property
@@ -653,10 +720,9 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <li><code>resources</code> is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for running the current task. <code>max_workers</code> specifies the maximum number of parallel workers used for auto-scaling.</li>
 <li><code>concurrency_limit</code> is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).</li>
 </ul>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>TigerFlow supports pipelines where the task dependency graph forms a <em>rooted tree</em>.
-That is, there must be a single root task, and every other task must have exactly one parent.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>TigerFlow only supports pipelines whose task dependency graph forms a <em>rooted tree</em>. That is, there should be a single root task, and every other task must have exactly one parent.</p>
 </div>
 <h2 id="running-a-pipeline">Running a Pipeline<a class="headerlink" href="#running-a-pipeline" title="Permanent link">&para;</a></h2>
 <p>Assuming the configuration file and task scripts are in the current directory,
@@ -815,6 +881,16 @@ request failure. Furthermore, we can confirm that the corresponding videos conta
 which led to the empty transcriptions in the first place.</p>
 <p>We may then exclude such videos from the pipeline to prevent future errors.</p>
 </div>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>TigerFlow uses the dependency information specified in the pipeline configuration
+to automatically organize input and output directories between tasks, so users do not
+need to handle this file organization manually.&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
 
 
 
@@ -850,7 +926,7 @@ which led to the empty transcriptions in the first place.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../task/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Task">
+          <a href="../task/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Tasks">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -860,7 +936,7 @@ which led to the empty transcriptions in the first place.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Task
+                Tasks
               </div>
             </div>
           </a>
@@ -897,10 +973,11 @@ which led to the empty transcriptions in the first place.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.annotate", "content.code.copy", "header.autohide", "navigation.instant", "navigation.tabs", "navigation.top", "navigation.footer", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.annotate", "content.code.copy", "content.footnote.tooltips", "header.autohide", "navigation.instant", "navigation.tabs", "navigation.top", "navigation.footer", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
     
   </body>
