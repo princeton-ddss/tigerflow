@@ -6,7 +6,7 @@ copyright: Copyright &copy; 2025 The Trustees of Princeton University
 
 theme:
   name: material
-  # logo: images/logo.png
+  logo: assets/img/logo.png
   # favicon: images/favicon.png
   palette:
     - media: "(prefers-color-scheme: light)"
@@ -14,14 +14,17 @@ theme:
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
+      primary: black
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+      primary: black
   features:
     - content.code.annotate
     - content.code.copy
+    - content.footnote.tooltips
     - header.autohide
     - navigation.instant
     - navigation.tabs
@@ -49,11 +52,14 @@ extra:
   version:
     provider: mike
 
+extra_css:
+  - assets/css/extra.css
+
 plugins:
   - search
 
 nav:
   - Home: index.md
-  - Guides:
-    - Task: guides/task.md
-    - Pipeline: guides/pipeline.md
+  - User Guide:
+    - Tasks: guides/task.md
+    - Pipelines: guides/pipeline.md
