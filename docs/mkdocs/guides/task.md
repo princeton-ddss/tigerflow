@@ -199,6 +199,7 @@ Calling `Transcribe.cli()` turns this module into a runnable CLI application:
     │ *  --input-ext             TEXT     Input file extension [required]                    │
     │ *  --output-dir            PATH     Output directory to store results [required]       │
     │ *  --output-ext            TEXT     Output file extension [required]                   │
+    │ *  --account               TEXT     Account to charge resources [required]             │
     │ *  --cpus                  INTEGER  Number of CPUs per worker [required]               │
     │ *  --memory                TEXT     Memory per worker [required]                       │
     │ *  --time                  TEXT     Wall time per worker [required]                    │
@@ -221,6 +222,7 @@ We can then run the task as follows:
     --input-ext .mp4 \
     --output-dir path/to/results/ \
     --output-ext .txt \
+    --account sp8538 \
     --cpus 1 \
     --memory "12G" \
     --time "02:00:00" \

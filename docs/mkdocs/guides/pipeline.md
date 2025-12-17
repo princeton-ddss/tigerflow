@@ -61,6 +61,7 @@ tasks:
     input_ext: .mp4
     output_ext: .txt
     resources:
+      account: sp8538
       cpus: 1
       gpus: 1
       memory: "8G"

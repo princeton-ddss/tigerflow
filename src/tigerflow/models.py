@@ -25,6 +25,7 @@ class TaskStatus(BaseModel):
 
 
 class SlurmResourceConfig(BaseModel):
+    account: str
     cpus: int
     gpus: int | None = None
     memory: str
@@ -181,6 +182,7 @@ class SlurmTaskConfig(BaseTaskConfig):
                 f"--input-ext {self.input_ext}",
                 f"--output-dir {self.output_dir}",
                 f"--output-ext {self.output_ext}",
+                f"--account {self.resources.account}",
                 f"--cpus {self.resources.cpus}",
                 f"--memory {self.resources.memory}",
                 f"--time {self.resources.time}",
@@ -195,6 +197,7 @@ class SlurmTaskConfig(BaseTaskConfig):
 
         script = textwrap.dedent(f"""\
             #!/bin/bash
+            #SBATCH --account={self.resources.account}
             #SBATCH --job-name={self.client_job_name}
             #SBATCH --output={self.log_dir}/%x-%j.out
             #SBATCH --error={self.log_dir}/%x-%j.err
