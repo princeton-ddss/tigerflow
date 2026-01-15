@@ -96,11 +96,7 @@ class SlurmTask(Task):
                 if self.config.resources.gpus
                 else "",
             ],
-            job_script_prologue=(
-                self.config.setup_commands.splitlines()
-                if self.config.setup_commands
-                else None
-            ),
+            job_script_prologue=self.config.setup_commands or None,
         )
 
         # Enable autoscaling
@@ -229,14 +225,12 @@ class SlurmTask(Task):
                 ),
             ] = [],
             setup_commands: Annotated[
-                str | None,
+                list[str],
                 typer.Option(
-                    help="""
-                    Shell commands to run before the task starts
-                    (separate commands with a semicolon)
-                    """,
+                    "--setup-command",
+                    help="Shell command to run before the task starts",
                 ),
-            ] = None,
+            ] = [],
             task_name: Annotated[
                 str,
                 typer.Option(

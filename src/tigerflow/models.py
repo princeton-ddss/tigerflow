@@ -41,7 +41,7 @@ class BaseTaskConfig(BaseModel):
     input_ext: str
     output_ext: str = ".out"
     keep_output: bool = True
-    setup_commands: str | None = None
+    setup_commands: list[str] = []
     _input_dir: Path | None = None
     _output_dir: Path | None = None
 
@@ -63,11 +63,6 @@ class BaseTaskConfig(BaseModel):
     @classmethod
     def validate_output_ext(cls, output_ext: str) -> str:
         return validate_file_ext(output_ext)
-
-    @field_validator("setup_commands")
-    @classmethod
-    def transform_setup_commands(cls, setup_commands: str | None) -> str | None:
-        return ";".join(setup_commands.splitlines()) if setup_commands else None
 
     @property
     def input_dir(self) -> Path:
@@ -106,7 +101,7 @@ class LocalTaskConfig(BaseTaskConfig):
     def to_script(self) -> str:
         stdout_file = self.log_dir / f"{self.name}-$$.out"
         stderr_file = self.log_dir / f"{self.name}-$$.err"
-        setup_command = self.setup_commands if self.setup_commands else ""
+        setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
                 "exec",
@@ -136,7 +131,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
     def to_script(self) -> str:
         stdout_file = self.log_dir / f"{self.name}-$$.out"
         stderr_file = self.log_dir / f"{self.name}-$$.err"
-        setup_command = self.setup_commands if self.setup_commands else ""
+        setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
                 "exec",
@@ -173,7 +168,7 @@ class SlurmTaskConfig(BaseTaskConfig):
         return f"{self.name}-worker"
 
     def to_script(self) -> str:
-        setup_command = self.setup_commands if self.setup_commands else ""
+        setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
                 "python",
@@ -189,15 +184,10 @@ class SlurmTaskConfig(BaseTaskConfig):
                 f"--time {self.resources.time}",
                 f"--max-workers {self.resources.max_workers}",
                 f"--gpus {self.resources.gpus}" if self.resources.gpus else "",
-                f"--setup-commands {repr(self.setup_commands)}"
-                if self.setup_commands
-                else "",
                 "--run-directly",
             ]
-            + [
-                f"--extra-option {repr(option)}"
-                for option in self.resources.extra_options
-            ]
+            + [f"--extra-option {repr(opt)}" for opt in self.resources.extra_options]
+            + [f"--setup-command {repr(cmd)}" for cmd in self.setup_commands]
         )
 
         script = textwrap.dedent(f"""\
