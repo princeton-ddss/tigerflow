@@ -25,12 +25,10 @@ class TaskStatus(BaseModel):
 
 
 class SlurmResourceConfig(BaseModel):
-    account: str
     cpus: int
     gpus: int | None = None
     memory: str
     time: str
-    max_workers: int
     extra_options: list[str] = []
 
 
@@ -157,7 +155,9 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
 
 class SlurmTaskConfig(BaseTaskConfig):
     kind: Literal["slurm"]
-    resources: SlurmResourceConfig
+    account: str
+    max_workers: int
+    worker_resources: SlurmResourceConfig
 
     @property
     def client_job_name(self) -> str:
@@ -178,21 +178,26 @@ class SlurmTaskConfig(BaseTaskConfig):
                 f"--input-ext {self.input_ext}",
                 f"--output-dir {self.output_dir}",
                 f"--output-ext {self.output_ext}",
-                f"--account {self.resources.account}",
-                f"--cpus {self.resources.cpus}",
-                f"--memory {self.resources.memory}",
-                f"--time {self.resources.time}",
-                f"--max-workers {self.resources.max_workers}",
-                f"--gpus {self.resources.gpus}" if self.resources.gpus else "",
+                f"--account {self.account}",
+                f"--max-workers {self.max_workers}",
+                f"--cpus {self.worker_resources.cpus}",
+                f"--memory {self.worker_resources.memory}",
+                f"--time {self.worker_resources.time}",
+                f"--gpus {self.worker_resources.gpus}"
+                if self.worker_resources.gpus
+                else "",
                 "--run-directly",
             ]
-            + [f"--extra-option {repr(opt)}" for opt in self.resources.extra_options]
-            + [f"--setup-command {repr(cmd)}" for cmd in self.setup_commands]
+            + [
+                f"--extra-option {repr(option)}"
+                for option in self.worker_resources.extra_options
+            ]
+            + [f"--setup-command {repr(command)}" for command in self.setup_commands]
         )
 
         script = textwrap.dedent(f"""\
             #!/bin/bash
-            #SBATCH --account={self.resources.account}
+            #SBATCH --account={self.account}
             #SBATCH --job-name={self.client_job_name}
             #SBATCH --output={self.log_dir}/%x-%j.out
             #SBATCH --error={self.log_dir}/%x-%j.err

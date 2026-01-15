@@ -82,18 +82,18 @@ class SlurmTask(Task):
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
-            account=self.config.resources.account,
-            cores=self.config.resources.cpus,
-            memory=self.config.resources.memory,
-            walltime=self.config.resources.time,
+            account=self.config.account,
+            cores=self.config.worker_resources.cpus,
+            memory=self.config.worker_resources.memory,
+            walltime=self.config.worker_resources.time,
             processes=1,
-            job_extra_directives=self.config.resources.extra_options
+            job_extra_directives=self.config.worker_resources.extra_options
             + [
                 f"--job-name={self.config.worker_job_name}",
                 f"--output={self.config.log_dir}/%x-%j.out",
                 f"--error={self.config.log_dir}/%x-%j.err",
-                f"--gres=gpu:{self.config.resources.gpus}"
-                if self.config.resources.gpus
+                f"--gres=gpu:{self.config.worker_resources.gpus}"
+                if self.config.worker_resources.gpus
                 else "",
             ],
             job_script_prologue=self.config.setup_commands or None,
@@ -102,7 +102,7 @@ class SlurmTask(Task):
         # Enable autoscaling
         cluster.adapt(
             minimum_jobs=0,
-            maximum_jobs=self.config.resources.max_workers,
+            maximum_jobs=self.config.max_workers,
             interval="15s",  # How often to check for scaling decisions
             wait_count=8,  # Consecutive idle checks before removing a worker
         )
@@ -183,6 +183,13 @@ class SlurmTask(Task):
                     show_default=False,
                 ),
             ],
+            max_workers: Annotated[
+                int,
+                typer.Option(
+                    help="Max number of workers for autoscaling",
+                    show_default=False,
+                ),
+            ],
             cpus: Annotated[
                 int,
                 typer.Option(
@@ -201,13 +208,6 @@ class SlurmTask(Task):
                 str,
                 typer.Option(
                     help="Wall time per worker",
-                    show_default=False,
-                ),
-            ],
-            max_workers: Annotated[
-                int,
-                typer.Option(
-                    help="Max number of workers for autoscaling",
                     show_default=False,
                 ),
             ],
@@ -252,12 +252,11 @@ class SlurmTask(Task):
             """
             Run the task as a CLI application
             """
-            resources = SlurmResourceConfig(
+            worker_resources = SlurmResourceConfig(
                 cpus=cpus,
                 gpus=gpus,
                 memory=memory,
                 time=time,
-                max_workers=max_workers,
                 extra_options=extra_options,
             )
 
@@ -269,7 +268,8 @@ class SlurmTask(Task):
                 output_ext=output_ext,
                 setup_commands=setup_commands,
                 account=account,
-                resources=resources,
+                max_workers=max_workers,
+                worker_resources=worker_resources,
             )
 
             if _run_directly:
