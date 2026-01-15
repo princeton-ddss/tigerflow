@@ -87,7 +87,8 @@ class SlurmTask(Task):
             memory=self.config.resources.memory,
             walltime=self.config.resources.time,
             processes=1,
-            job_extra_directives=[
+            job_extra_directives=self.config.resources.extra_options
+            + [
                 f"--job-name={self.config.worker_job_name}",
                 f"--output={self.config.log_dir}/%x-%j.out",
                 f"--error={self.config.log_dir}/%x-%j.err",
@@ -220,6 +221,13 @@ class SlurmTask(Task):
                     help="Number of GPUs per worker",
                 ),
             ] = None,
+            extra_options: Annotated[
+                list[str],
+                typer.Option(
+                    "--extra-option",
+                    help="Additional Slurm option for workers",
+                ),
+            ] = [],
             setup_commands: Annotated[
                 str | None,
                 typer.Option(
@@ -256,6 +264,7 @@ class SlurmTask(Task):
                 memory=memory,
                 time=time,
                 max_workers=max_workers,
+                extra_options=extra_options,
             )
 
             config = SlurmTaskConfig(

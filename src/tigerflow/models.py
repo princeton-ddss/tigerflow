@@ -31,6 +31,7 @@ class SlurmResourceConfig(BaseModel):
     memory: str
     time: str
     max_workers: int
+    extra_options: list[str] = []
 
 
 class BaseTaskConfig(BaseModel):
@@ -192,6 +193,10 @@ class SlurmTaskConfig(BaseTaskConfig):
                 if self.setup_commands
                 else "",
                 "--run-directly",
+            ]
+            + [
+                f"--extra-option {repr(option)}"
+                for option in self.resources.extra_options
             ]
         )
 
