@@ -221,14 +221,14 @@ class SlurmTask(Task):
                 list[str],
                 typer.Option(
                     "--extra-option",
-                    help="Additional Slurm option for workers",
+                    help="Additional Slurm option for workers (repeatable)",
                 ),
             ] = [],
             setup_commands: Annotated[
                 list[str],
                 typer.Option(
                     "--setup-command",
-                    help="Shell command to run before the task starts",
+                    help="Shell command to run before the task starts (repeatable)",
                 ),
             ] = [],
             task_name: Annotated[
