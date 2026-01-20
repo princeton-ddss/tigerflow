@@ -29,7 +29,7 @@ class SlurmResourceConfig(BaseModel):
     gpus: int | None = None
     memory: str
     time: str
-    extra_options: list[str] = []
+    sbatch_options: list[str] = []
 
 
 class BaseTaskConfig(BaseModel):
@@ -189,8 +189,8 @@ class SlurmTaskConfig(BaseTaskConfig):
                 "--run-directly",
             ]
             + [
-                f"--extra-option {repr(option)}"
-                for option in self.worker_resources.extra_options
+                f"--sbatch-option {repr(option)}"
+                for option in self.worker_resources.sbatch_options
             ]
             + [f"--setup-command {repr(command)}" for command in self.setup_commands]
         )

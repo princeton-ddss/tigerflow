@@ -205,7 +205,7 @@ Calling `Transcribe.cli()` turns this module into a runnable CLI application:
     │ *  --memory                TEXT     Memory per worker [required]                       │
     │ *  --time                  TEXT     Wall time per worker [required]                    │
     │    --gpus                  INTEGER  Number of GPUs per worker                          │
-    │    --extra-option          TEXT     Additional Slurm option for workers (repeatable)   │
+    │    --sbatch-option         TEXT     Additional Slurm option for workers (repeatable)   │
     │    --setup-command         TEXT     Shell command to run before the task starts        │
     │                                     (repeatable)                                       │
     │    --task-name             TEXT     Task name [default: Transcribe]                    │
@@ -229,7 +229,7 @@ We can then run the task as follows:
     --memory "12G" \
     --time "02:00:00" \
     --gpus 1 \
-    --extra-option "--mail-user=sp8538@princeton.edu" \
+    --sbatch-option "--mail-user=sp8538@princeton.edu" \
     --setup-command "module purge" \
     --setup-command "module load anaconda3/2024.6" \
     --setup-command "conda activate tiktok"

@@ -67,7 +67,7 @@ tasks:
       gpus: 1
       memory: 8G
       time: 02:00:00
-      extra_options:
+      sbatch_options:
         - "--mail-user=sp8538@princeton.edu"
     setup_commands:
       - module purge
