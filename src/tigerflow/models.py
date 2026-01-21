@@ -29,7 +29,7 @@ class SlurmResourceConfig(BaseModel):
     gpus: int | None = None
     memory: str
     time: str
-    max_workers: int
+    sbatch_options: list[str] = []
 
 
 class BaseTaskConfig(BaseModel):
@@ -39,7 +39,7 @@ class BaseTaskConfig(BaseModel):
     input_ext: str
     output_ext: str = ".out"
     keep_output: bool = True
-    setup_commands: str | None = None
+    setup_commands: list[str] = []
     _input_dir: Path | None = None
     _output_dir: Path | None = None
 
@@ -61,11 +61,6 @@ class BaseTaskConfig(BaseModel):
     @classmethod
     def validate_output_ext(cls, output_ext: str) -> str:
         return validate_file_ext(output_ext)
-
-    @field_validator("setup_commands")
-    @classmethod
-    def transform_setup_commands(cls, setup_commands: str | None) -> str | None:
-        return ";".join(setup_commands.splitlines()) if setup_commands else None
 
     @property
     def input_dir(self) -> Path:
@@ -104,7 +99,7 @@ class LocalTaskConfig(BaseTaskConfig):
     def to_script(self) -> str:
         stdout_file = self.log_dir / f"{self.name}-$$.out"
         stderr_file = self.log_dir / f"{self.name}-$$.err"
-        setup_command = self.setup_commands if self.setup_commands else ""
+        setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
                 "exec",
@@ -134,7 +129,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
     def to_script(self) -> str:
         stdout_file = self.log_dir / f"{self.name}-$$.out"
         stderr_file = self.log_dir / f"{self.name}-$$.err"
-        setup_command = self.setup_commands if self.setup_commands else ""
+        setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
                 "exec",
@@ -160,7 +155,9 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
 
 class SlurmTaskConfig(BaseTaskConfig):
     kind: Literal["slurm"]
-    resources: SlurmResourceConfig
+    account: str
+    max_workers: int
+    worker_resources: SlurmResourceConfig
 
     @property
     def client_job_name(self) -> str:
@@ -171,7 +168,7 @@ class SlurmTaskConfig(BaseTaskConfig):
         return f"{self.name}-worker"
 
     def to_script(self) -> str:
-        setup_command = self.setup_commands if self.setup_commands else ""
+        setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
                 "python",
@@ -181,20 +178,26 @@ class SlurmTaskConfig(BaseTaskConfig):
                 f"--input-ext {self.input_ext}",
                 f"--output-dir {self.output_dir}",
                 f"--output-ext {self.output_ext}",
-                f"--cpus {self.resources.cpus}",
-                f"--memory {self.resources.memory}",
-                f"--time {self.resources.time}",
-                f"--max-workers {self.resources.max_workers}",
-                f"--gpus {self.resources.gpus}" if self.resources.gpus else "",
-                f"--setup-commands {repr(self.setup_commands)}"
-                if self.setup_commands
+                f"--account {self.account}",
+                f"--max-workers {self.max_workers}",
+                f"--cpus {self.worker_resources.cpus}",
+                f"--memory {self.worker_resources.memory}",
+                f"--time {self.worker_resources.time}",
+                f"--gpus {self.worker_resources.gpus}"
+                if self.worker_resources.gpus
                 else "",
                 "--run-directly",
             ]
+            + [
+                f"--sbatch-option {repr(option)}"
+                for option in self.worker_resources.sbatch_options
+            ]
+            + [f"--setup-command {repr(command)}" for command in self.setup_commands]
         )
 
         script = textwrap.dedent(f"""\
             #!/bin/bash
+            #SBATCH --account={self.account}
             #SBATCH --job-name={self.client_job_name}
             #SBATCH --output={self.log_dir}/%x-%j.out
             #SBATCH --error={self.log_dir}/%x-%j.err

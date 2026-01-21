@@ -60,16 +60,19 @@ tasks:
     module: ./transcribe.py
     input_ext: .mp4
     output_ext: .txt
-    resources:
+    account: sp8538
+    max_workers: 3
+    worker_resources:
       cpus: 1
       gpus: 1
-      memory: "8G"
-      time: "02:00:00"
-      max_workers: 3
-    setup_commands: |
-      module purge
-      module load anaconda3/2024.6
-      conda activate tiktok
+      memory: 8G
+      time: 02:00:00
+      sbatch_options:
+        - "--mail-user=sp8538@princeton.edu"
+    setup_commands:
+      - module purge
+      - module load anaconda3/2024.6
+      - conda activate tiktok
   - name: embed
     depends_on: transcribe
     kind: local_async
@@ -78,20 +81,20 @@ tasks:
     output_ext: .json
     keep_output: false
     concurrency_limit: 10
-    setup_commands: |
-      module purge
-      module load anaconda3/2024.6
-      conda activate tiktok
+    setup_commands:
+      - module purge
+      - module load anaconda3/2024.6
+      - conda activate tiktok
   - name: ingest
     depends_on: embed
     kind: local
     module: ./ingest.py
     input_ext: .json
     keep_output: false
-    setup_commands: |
-      module purge
-      module load anaconda3/2024.6
-      conda activate tiktok
+    setup_commands:
+      - module purge
+      - module load anaconda3/2024.6
+      - conda activate tiktok
 ```
 
 where:
@@ -100,8 +103,10 @@ where:
 - `module` specifies the Python script defining task logic. Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.
 - `depends_on` specifies the name of the parent task whose output is used as input for the current task.
 - `keep_output` specifies whether to retain output files from the current task. If unspecified, it defaults to `true`.
-- `setup_commands` specifies Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.
-- `resources` is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for running the current task. `max_workers` specifies the maximum number of parallel workers used for auto-scaling.
+- `setup_commands` specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.
+- `account` is a field applicable only to Slurm tasks. It specifies the account to charge for resource usage.
+- `max_workers` is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.
+- `worker_resources` is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.
 - `concurrency_limit` is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).
 
 !!! warning

@@ -199,13 +199,15 @@ Calling `Transcribe.cli()` turns this module into a runnable CLI application:
     │ *  --input-ext             TEXT     Input file extension [required]                    │
     │ *  --output-dir            PATH     Output directory to store results [required]       │
     │ *  --output-ext            TEXT     Output file extension [required]                   │
+    │ *  --account               TEXT     Account to charge resources [required]             │
+    │ *  --max-workers           INTEGER  Max number of workers for autoscaling [required]   │
     │ *  --cpus                  INTEGER  Number of CPUs per worker [required]               │
     │ *  --memory                TEXT     Memory per worker [required]                       │
     │ *  --time                  TEXT     Wall time per worker [required]                    │
-    │ *  --max-workers           INTEGER  Max number of workers for autoscaling [required]   │
     │    --gpus                  INTEGER  Number of GPUs per worker                          │
-    │    --setup-commands        TEXT     Shell commands to run before the task starts       │
-    │                                     (separate commands with a semicolon)               │
+    │    --sbatch-option         TEXT     Additional Slurm option for workers (repeatable)   │
+    │    --setup-command         TEXT     Shell command to run before the task starts        │
+    │                                     (repeatable)                                       │
     │    --task-name             TEXT     Task name [default: Transcribe]                    │
     │    --help                           Show this message and exit.                        │
     ╰────────────────────────────────────────────────────────────────────────────────────────╯
@@ -221,12 +223,16 @@ We can then run the task as follows:
     --input-ext .mp4 \
     --output-dir path/to/results/ \
     --output-ext .txt \
+    --account sp8538 \
+    --max-workers 3 \
     --cpus 1 \
     --memory "12G" \
     --time "02:00:00" \
-    --max-workers 3 \
     --gpus 1 \
-    --setup-commands "module purge; module load anaconda3/2024.6; conda activate tiktok"
+    --sbatch-option "--mail-user=sp8538@princeton.edu" \
+    --setup-command "module purge" \
+    --setup-command "module load anaconda3/2024.6" \
+    --setup-command "conda activate tiktok"
     ```
 
 === "Output"

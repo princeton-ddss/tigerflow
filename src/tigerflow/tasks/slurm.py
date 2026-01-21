@@ -82,29 +82,27 @@ class SlurmTask(Task):
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
-            cores=self.config.resources.cpus,
-            memory=self.config.resources.memory,
-            walltime=self.config.resources.time,
+            account=self.config.account,
+            cores=self.config.worker_resources.cpus,
+            memory=self.config.worker_resources.memory,
+            walltime=self.config.worker_resources.time,
             processes=1,
-            job_extra_directives=[
+            job_extra_directives=self.config.worker_resources.sbatch_options
+            + [
                 f"--job-name={self.config.worker_job_name}",
                 f"--output={self.config.log_dir}/%x-%j.out",
                 f"--error={self.config.log_dir}/%x-%j.err",
-                f"--gres=gpu:{self.config.resources.gpus}"
-                if self.config.resources.gpus
+                f"--gres=gpu:{self.config.worker_resources.gpus}"
+                if self.config.worker_resources.gpus
                 else "",
             ],
-            job_script_prologue=(
-                self.config.setup_commands.splitlines()
-                if self.config.setup_commands
-                else None
-            ),
+            job_script_prologue=self.config.setup_commands or None,
         )
 
         # Enable autoscaling
         cluster.adapt(
             minimum_jobs=0,
-            maximum_jobs=self.config.resources.max_workers,
+            maximum_jobs=self.config.max_workers,
             interval="15s",  # How often to check for scaling decisions
             wait_count=8,  # Consecutive idle checks before removing a worker
         )
@@ -178,6 +176,20 @@ class SlurmTask(Task):
                     show_default=False,
                 ),
             ],
+            account: Annotated[
+                str,
+                typer.Option(
+                    help="Account to charge resources",
+                    show_default=False,
+                ),
+            ],
+            max_workers: Annotated[
+                int,
+                typer.Option(
+                    help="Max number of workers for autoscaling",
+                    show_default=False,
+                ),
+            ],
             cpus: Annotated[
                 int,
                 typer.Option(
@@ -199,28 +211,26 @@ class SlurmTask(Task):
                     show_default=False,
                 ),
             ],
-            max_workers: Annotated[
-                int,
-                typer.Option(
-                    help="Max number of workers for autoscaling",
-                    show_default=False,
-                ),
-            ],
             gpus: Annotated[
                 int | None,
                 typer.Option(
                     help="Number of GPUs per worker",
                 ),
             ] = None,
-            setup_commands: Annotated[
-                str | None,
+            sbatch_options: Annotated[
+                list[str],
                 typer.Option(
-                    help="""
-                    Shell commands to run before the task starts
-                    (separate commands with a semicolon)
-                    """,
+                    "--sbatch-option",
+                    help="Additional Slurm option for workers (repeatable)",
                 ),
-            ] = None,
+            ] = [],
+            setup_commands: Annotated[
+                list[str],
+                typer.Option(
+                    "--setup-command",
+                    help="Shell command to run before the task starts (repeatable)",
+                ),
+            ] = [],
             task_name: Annotated[
                 str,
                 typer.Option(
@@ -242,12 +252,12 @@ class SlurmTask(Task):
             """
             Run the task as a CLI application
             """
-            resources = SlurmResourceConfig(
+            worker_resources = SlurmResourceConfig(
                 cpus=cpus,
                 gpus=gpus,
                 memory=memory,
                 time=time,
-                max_workers=max_workers,
+                sbatch_options=sbatch_options,
             )
 
             config = SlurmTaskConfig(
@@ -257,7 +267,9 @@ class SlurmTask(Task):
                 input_ext=input_ext,
                 output_ext=output_ext,
                 setup_commands=setup_commands,
-                resources=resources,
+                account=account,
+                max_workers=max_workers,
+                worker_resources=worker_resources,
             )
 
             if _run_directly:
