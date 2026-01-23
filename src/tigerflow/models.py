@@ -234,6 +234,12 @@ class PipelineConfig(BaseModel):
         cls,
         tasks: list[TaskConfig],
     ) -> list[TaskConfig]:
+        """
+        Validate if the graph of task input/output files forms an arborescence.
+        """
+        if not tasks:
+            raise ValueError("Pipeline must have at least one task")
+
         # Validate task names are unique
         seen_names = set()
         for task in tasks:
@@ -258,19 +264,19 @@ class PipelineConfig(BaseModel):
                     f"its dependent task '{task.name}' expects '{task.input_ext}'"
                 )
 
-        # Build the dependency graph
+        # Build the task dependency graph
         G = nx.DiGraph()
         for task in tasks:
             G.add_node(task.name)
             if task.depends_on:
                 G.add_edge(task.depends_on, task.name)
 
-        # Validate the dependency graph is a rooted tree
-        if not nx.is_tree(G):
-            raise ValueError("Task dependency graph is not a tree")
-        roots = [node for node in G.nodes() if G.in_degree(node) == 0]
-        if len(roots) != 1:
-            raise ValueError("Task dependency graph must have exactly one root")
+        # Validate the graph of input/output files forms an arborescence
+        if not nx.is_branching(G):
+            raise ValueError("Task dependency graph contains a cycle")
+        root_input_ext = {task.input_ext for task in tasks if not task.depends_on}
+        if len(root_input_ext) > 1:  # Cannot be zero due to earlier validations
+            raise ValueError("Root tasks must have the same input extension")
 
         # Sort tasks topologically
         order_map = {name: index for index, name in enumerate(nx.topological_sort(G))}
@@ -279,11 +285,16 @@ class PipelineConfig(BaseModel):
         return tasks
 
     @property
-    def root_task(self) -> TaskConfig:
+    def root_input_ext(self) -> str:
+        # Assumes all root tasks share the same input extension
         for task in self.tasks:
             if not task.depends_on:
-                return task
+                return task.input_ext
         raise ValueError("No root task found")
+
+    @property
+    def root_tasks(self) -> list[TaskConfig]:
+        return [task for task in self.tasks if not task.depends_on]
 
     @property
     def terminal_tasks(self) -> list[TaskConfig]:

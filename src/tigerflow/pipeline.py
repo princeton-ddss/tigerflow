@@ -94,7 +94,7 @@ class Pipeline:
             elif not file.exists():
                 file.unlink()
                 # Remove all downstream task outputs since source data is missing
-                file_id = file.name.removesuffix(self._config.root_task.input_ext)
+                file_id = file.name.removesuffix(self._config.root_input_ext)
                 for task in self._config.tasks:
                     file = task.output_dir / f"{file_id}{task.output_ext}"
                     file.unlink(missing_ok=True)
@@ -206,7 +206,7 @@ class Pipeline:
         for file in self._input_dir.iterdir():
             if (
                 file.is_file()
-                and file.name.endswith(self._config.root_task.input_ext)
+                and file.name.endswith(self._config.root_input_ext)
                 and file.name not in self._filenames
             ):
                 self._symlinks_dir.joinpath(file.name).symlink_to(file)
@@ -302,7 +302,7 @@ class Pipeline:
 
         # Record completion
         for file_id in completed_file_ids:
-            filename = f"{file_id}{self._config.root_task.input_ext}"
+            filename = f"{file_id}{self._config.root_input_ext}"
             self._symlinks_dir.joinpath(filename).unlink()
             if self._delete_input:
                 self._input_dir.joinpath(filename).unlink(missing_ok=True)

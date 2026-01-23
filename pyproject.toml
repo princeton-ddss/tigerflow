@@ -40,4 +40,9 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "mkdocs-material>=9.7.0",
+    "pytest>=9.0.2",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

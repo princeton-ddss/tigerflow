@@ -11,29 +11,22 @@ between tasks. Tasks communicate through the file system: a parent task writes i
 to a designated directory, which downstream tasks monitor for new inputs.[^1] Since each task
 performs embarrassingly parallel, one-to-one file processing (i.e., each input is transformed
 into a single output independently of all other inputs), multiple tasks may share the same
-parent, but each task can have only one parent.
+parent, but each task can have at most one parent.
 
 [^1]:
     TigerFlow uses the dependency information specified in the pipeline configuration
     to automatically organize input and output directories between tasks, so users do not
     need to handle this file organization manually.
 
-!!! example "Dependency Graph"
+!!! info "Dependency Graph"
 
-    The following illustrates a pipeline that can be supported by TigerFlow:
+    TigerFlow supports pipelines where the graph of task input/output files
+    forms an [arborescence](https://en.wikipedia.org/wiki/Arborescence_(graph_theory)).
+    That is, there is a single root file, and every other file depends on exactly one parent.
+    This means that the pipeline can contain multiple root tasks (i.e., tasks that
+    depend on no other tasks), but they should share the same input file.
 
-    ![Pipeline Task Dependency](../assets/img/task_dependency.svg){ align=right }
-
-    As shown, the pipeline's task dependency graph forms a rooted tree
-    (i.e., there is a single root task, and every other task depends on
-    exactly one parent), which is required by TigerFlow.
-
-    Because each task performs embarrassingly parallel, one-to-one file
-    processing (i.e., each input is transformed into a single output
-    independently of all other inputs), the pipeline's dependency graph
-    can be represented at the file level as follows:
-
-    ![Pipeline File Dependency](../assets/img/file_dependency.svg){ align=right }
+    ![Pipeline File Dependency](../assets/img/file_dependency.svg)
 
 Let's build on the [example](task.md#examples) from the previous section, where we created a sequence of tasks to:
 
@@ -108,10 +101,6 @@ where:
 - `max_workers` is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.
 - `worker_resources` is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.
 - `concurrency_limit` is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).
-
-!!! warning
-
-    TigerFlow only supports pipelines whose task dependency graph forms a *rooted tree*. That is, there should be a single root task, and every other task must have exactly one parent.
 
 ## Running a Pipeline
 
