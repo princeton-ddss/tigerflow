@@ -14,14 +14,14 @@ it should be run on a login/head node of a Slurm-managed HPC cluster.
 - [ ] Install the package with the additional dependencies required to run the examples:
 
     ```bash
-    pip install tigerflow[examples]
+    pip install tigerflow aiohttp duckdb openai-whisper
     ```
 
 - [ ] Update `setup_commands` in `code/config.yaml` to correctly activate the virtual environment where TigerFlow is installed.
 
 - [ ] Download the model for transcription (Step 1):
 
-    ```py
+    ```bash
     python models/whisper/download.py
     ```
 
@@ -40,5 +40,4 @@ cd code/
 tigerflow run config.yaml ../data/ ../results/
 ```
 
-Explore more commands and features in the user
-[guides](https://princeton-ddss.github.io/tigerflow/latest/guides/task/).
+Check out the user [guide](https://princeton-ddss.github.io/tigerflow/latest/guides/task/) for more details.
