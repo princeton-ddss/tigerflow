@@ -14,7 +14,7 @@ including a personal laptop.
 - [ ] Install the package with the additional dependencies required to run the examples:
 
     ```bash
-    pip install tigerflow[examples]
+    pip install tigerflow aiohttp
     ```
 
 ## Running the Pipeline
@@ -26,5 +26,4 @@ cd code/
 tigerflow run config.yaml ../data/ ../results/
 ```
 
-Explore more commands and features in the user
-[guides](https://princeton-ddss.github.io/tigerflow/latest/guides/task/).
+Check out the user [guide](https://princeton-ddss.github.io/tigerflow/latest/guides/task/) for more details.
