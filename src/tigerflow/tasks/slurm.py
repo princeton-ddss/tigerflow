@@ -20,6 +20,7 @@ from tigerflow.models import (
     TaskStatus,
     TaskStatusKind,
 )
+from tigerflow.settings import settings
 from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
 
 from ._base import Task
@@ -103,8 +104,8 @@ class SlurmTask(Task):
         cluster.adapt(
             minimum_jobs=0,
             maximum_jobs=self.config.max_workers,
-            interval="15s",  # How often to check for scaling decisions
-            wait_count=8,  # Consecutive idle checks before removing a worker
+            interval=f"{settings.slurm_task_scale_interval}s",
+            wait_count=settings.slurm_task_scale_wait_count,
         )
 
         # Instantiate a cluster client
@@ -139,7 +140,7 @@ class SlurmTask(Task):
                     active_futures[key].release()
                     del active_futures[key]
 
-            time.sleep(3)
+            time.sleep(settings.task_poll_interval)
 
     @classmethod
     def cli(cls):
@@ -374,7 +375,7 @@ class SlurmTaskRunner:
                 self._handle_timeout()
                 self._report_processed_files()
                 self._report_failed_files()
-                self._shutdown_event.wait(timeout=10)  # Interruptible sleep
+                self._shutdown_event.wait(timeout=settings.task_poll_interval)
         finally:
             logger.info("Shutting down task")
             if self._status.is_alive:
