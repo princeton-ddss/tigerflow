@@ -33,7 +33,14 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    {include-group = "docs"},
+    {include-group = "test"},
+]
+docs = [
+    "mike>=2.1.3",
     "mkdocs-material>=9.7.0",
+]
+test = [
     "pytest>=9.0.2",
 ]
 
