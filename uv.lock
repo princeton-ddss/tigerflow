@@ -971,6 +971,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mike" },
     { name = "mkdocs-material" },
     { name = "pytest" },
 ]
@@ -996,6 +997,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "mike", specifier = ">=2.1.3" },
     { name = "mkdocs-material", specifier = ">=9.7.0" },
     { name = "pytest", specifier = ">=9.0.2" },
 ]
