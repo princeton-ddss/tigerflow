@@ -63,3 +63,4 @@ nav:
   - User Guide:
     - Tasks: guides/task.md
     - Pipelines: guides/pipeline.md
+    - Configuration: guides/configuration.md

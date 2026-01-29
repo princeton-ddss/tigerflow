@@ -17,7 +17,7 @@ class TigerflowSettings(BaseSettings):
     task_validation_timeout: int = Field(
         default=60,
         gt=0,
-        description="Timeout for task CLI validation in seconds",
+        description="Timeout in seconds for validating task modules",
     )
 
     pipeline_poll_interval: int = Field(
@@ -42,13 +42,13 @@ class TigerflowSettings(BaseSettings):
     slurm_task_scale_interval: int = Field(
         default=15,
         gt=0,
-        description="Slurm task scaling check interval in seconds",
+        description="Interval in seconds between Slurm task scaling checks",
     )
 
     slurm_task_scale_wait_count: int = Field(
         default=8,
         gt=0,
-        description="Consecutive idle checks before removing a worker",
+        description="Number of consecutive idle checks before removing a worker",
     )
 
     slurm_task_worker_startup_timeout: int = Field(
