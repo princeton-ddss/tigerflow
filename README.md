@@ -2,6 +2,8 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/princeton-ddss/tigerflow/actions/workflows/ci.yml/badge.svg)](https://github.com/princeton-ddss/tigerflow/actions/workflows/ci.yml)
+[![CD](https://github.com/princeton-ddss/tigerflow/actions/workflows/cd.yml/badge.svg)](https://github.com/princeton-ddss/tigerflow/actions/workflows/cd.yml)
 
 <p align="center">
   <img alt="tigerflow-logo" src="https://raw.githubusercontent.com/princeton-ddss/tigerflow/refs/heads/main/docs/mkdocs/assets/img/logo.png" width="350" />
