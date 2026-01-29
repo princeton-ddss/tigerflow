@@ -2,7 +2,7 @@ docs_dir: mkdocs
 site_name: TigerFlow
 repo_name: princeton-ddss/tigerflow
 repo_url: https://github.com/princeton-ddss/tigerflow
-copyright: Copyright &copy; 2025 The Trustees of Princeton University
+copyright: Copyright &copy; 2025-2026 The Trustees of Princeton University
 
 theme:
   name: material
@@ -61,6 +61,6 @@ plugins:
 nav:
   - Home: index.md
   - User Guide:
-    - Tasks: guides/task.md
-    - Pipelines: guides/pipeline.md
-    - Configuration: guides/configuration.md
+      - Tasks: guides/task.md
+      - Pipelines: guides/pipeline.md
+      - Configuration: guides/configuration.md
