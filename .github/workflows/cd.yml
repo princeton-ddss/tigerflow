@@ -4,6 +4,13 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.7.15"
+
 permissions:
   contents: write
 
@@ -18,10 +25,12 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
 
-      - name: Install uv
+      - name: Install uv and set up Python
         uses: astral-sh/setup-uv@v5
         with:
-          version: "0.7.15"
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          python-version-file: ".python-version"
 
       - name: Sync version with tag name
         run: |
@@ -51,16 +60,18 @@ jobs:
           git fetch origin
           git checkout ${{ github.ref_name }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv and set up Python
+        uses: astral-sh/setup-uv@v5
         with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
           python-version-file: ".python-version"
 
       - name: Install dependencies
-        run: pip install mkdocs-material mike
+        run: uv sync --locked --group docs
 
       - name: Publish docs to gh-pages
         run: |
           cd docs
           MINOR_VERSION=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v\?\([0-9]*\.[0-9]*\).*/\1/')
-          mike deploy --push --update-aliases $MINOR_VERSION latest
+          uv run mike deploy --push --update-aliases $MINOR_VERSION latest
