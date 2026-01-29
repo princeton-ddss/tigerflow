@@ -51,5 +51,11 @@ class TigerflowSettings(BaseSettings):
         description="Consecutive idle checks before removing a worker",
     )
 
+    slurm_task_worker_startup_timeout: int = Field(
+        default=600,
+        gt=0,
+        description="Timeout in seconds for each Slurm task worker to initialize",
+    )
+
 
 settings = TigerflowSettings()

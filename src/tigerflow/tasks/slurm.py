@@ -88,6 +88,7 @@ class SlurmTask(Task):
             memory=self.config.worker_resources.memory,
             walltime=self.config.worker_resources.time,
             processes=1,
+            death_timeout=settings.slurm_task_worker_startup_timeout,
             job_extra_directives=self.config.worker_resources.sbatch_options
             + [
                 f"--job-name={self.config.worker_job_name}",
