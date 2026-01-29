@@ -23,6 +23,12 @@ hide:
     <a href="https://opensource.org/licenses/MIT">
       <img alt="mit-license" src="https://img.shields.io/badge/License-MIT-yellow.svg"/>
     </a>
+    <a href="https://github.com/princeton-ddss/tigerflow/actions/workflows/ci.yml">
+      <img alt="ci-status" src="https://github.com/princeton-ddss/tigerflow/actions/workflows/ci.yml/badge.svg"/>
+    </a>
+    <a href="https://github.com/princeton-ddss/tigerflow/actions/workflows/cd.yml">
+      <img alt="cd-status" src="https://github.com/princeton-ddss/tigerflow/actions/workflows/cd.yml/badge.svg"/>
+    </a>
 </p>
 
 **TigerFlow** is a Python framework that simplifies the creation and execution of data pipelines on Slurm-managed HPC clusters. It supports data pipelines where:
