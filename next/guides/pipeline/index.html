@@ -1,0 +1,1027 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../task/">
+      
+      
+        <link rel="next" href="../configuration/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Pipelines - TigerFlow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pipelines" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="TigerFlow" class="md-header__button md-logo" aria-label="TigerFlow" data-md-component="logo">
+      
+  <img src="../../assets/img/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TigerFlow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Pipelines
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/princeton-ddss/tigerflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    princeton-ddss/tigerflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../task/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="TigerFlow" class="md-nav__button md-logo" aria-label="TigerFlow" data-md-component="logo">
+      
+  <img src="../../assets/img/logo.png" alt="logo">
+
+    </a>
+    TigerFlow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/princeton-ddss/tigerflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    princeton-ddss/tigerflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../task/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tasks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#defining-a-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defining a Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-a-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running a Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checking-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking Progress
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checking-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#defining-a-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defining a Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-a-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running a Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checking-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking Progress
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checking-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This guide assumes you are familiar with TigerFlow <a href="../task/">tasks</a>.
+Please review how to create and use tasks in TigerFlow before proceeding.</p>
+</div>
+<p>In TigerFlow, tasks are organized into a pipeline by creating a configuration file that
+describes the tasks to be run, the resources required by each task, and the dependencies
+between tasks. Tasks communicate through the file system: a parent task writes its outputs
+to a designated directory, which downstream tasks monitor for new inputs.<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup> Since each task
+performs embarrassingly parallel, one-to-one file processing (i.e., each input is transformed
+into a single output independently of all other inputs), multiple tasks may share the same
+parent, but each task can have at most one parent.</p>
+<div class="admonition info">
+<p class="admonition-title">Dependency Graph</p>
+<p>TigerFlow supports pipelines where the graph of task input/output files
+forms an <a href="https://en.wikipedia.org/wiki/Arborescence_(graph_theory)">arborescence</a>.
+That is, there is a single root file, and every other file depends on exactly one parent.
+This means that the pipeline can contain multiple root tasks (i.e., tasks that
+depend on no other tasks), but they should share the same input file.</p>
+<p><img alt="Pipeline File Dependency" src="../../assets/img/file_dependency.svg" /></p>
+</div>
+<p>Let's build on the <a href="../task/#examples">example</a> from the previous section, where we created a sequence of tasks to:</p>
+<ol>
+<li>Transcribe videos using an open-source model (Whisper)</li>
+<li>Embed the transcriptions using an external API service (Voyage AI)</li>
+<li>Ingest the embeddings into a single-writer database (DuckDB)</li>
+</ol>
+<div class="admonition info">
+<p class="admonition-title">Follow Along</p>
+<p>You can follow along with the example using the code and data provided
+<a href="https://github.com/princeton-ddss/tigerflow/tree/main/examples/audio_feature_extraction">here</a>.
+Videos have been substituted with audio files due to intellectual property
+constraints and storage limitations, but the pipeline remains otherwise identical.</p>
+</div>
+<h2 id="defining-a-pipeline">Defining a Pipeline<a class="headerlink" href="#defining-a-pipeline" title="Permanent link">&para;</a></h2>
+<p>A pipeline is configured using a <a href="https://circleci.com/blog/what-is-yaml-a-beginner-s-guide/">YAML</a> file.
+For example, the tasks above can be structured into a pipeline as follows:</p>
+<div class="highlight"><span class="filename">config.yaml</span><pre><span></span><code><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transcribe</span>
+<span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slurm</span>
+<span class="w">    </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./transcribe.py</span>
+<span class="w">    </span><span class="nt">input_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.mp4</span>
+<span class="w">    </span><span class="nt">output_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.txt</span>
+<span class="w">    </span><span class="nt">account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sp8538</span>
+<span class="w">    </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">    </span><span class="nt">worker_resources</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">cpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">      </span><span class="nt">gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">      </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8G</span>
+<span class="w">      </span><span class="nt">time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">02:00:00</span>
+<span class="w">      </span><span class="nt">sbatch_options</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--mail-user=sp8538@princeton.edu&quot;</span>
+<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module purge</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module load anaconda3/2024.6</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda activate tiktok</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embed</span>
+<span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transcribe</span>
+<span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local_async</span>
+<span class="w">    </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./embed.py</span>
+<span class="w">    </span><span class="nt">input_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.txt</span>
+<span class="w">    </span><span class="nt">output_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.json</span>
+<span class="w">    </span><span class="nt">keep_output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">concurrency_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module purge</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module load anaconda3/2024.6</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda activate tiktok</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingest</span>
+<span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embed</span>
+<span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local</span>
+<span class="w">    </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./ingest.py</span>
+<span class="w">    </span><span class="nt">input_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.json</span>
+<span class="w">    </span><span class="nt">keep_output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module purge</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module load anaconda3/2024.6</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda activate tiktok</span>
+</code></pre></div>
+<p>where:</p>
+<ul>
+<li><code>kind</code> specifies the task type (one of: <code>local</code>, <code>local_async</code>, or <code>slurm</code>).</li>
+<li><code>module</code> specifies the Python script defining task logic. Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.</li>
+<li><code>depends_on</code> specifies the name of the parent task whose output is used as input for the current task.</li>
+<li><code>keep_output</code> specifies whether to retain output files from the current task. If unspecified, it defaults to <code>true</code>.</li>
+<li><code>setup_commands</code> specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.</li>
+<li><code>account</code> is a field applicable only to Slurm tasks. It specifies the account to charge for resource usage.</li>
+<li><code>max_workers</code> is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.</li>
+<li><code>worker_resources</code> is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.</li>
+<li><code>concurrency_limit</code> is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).</li>
+</ul>
+<h2 id="running-a-pipeline">Running a Pipeline<a class="headerlink" href="#running-a-pipeline" title="Permanent link">&para;</a></h2>
+<p>Assuming the configuration file and task scripts are in the current directory,
+we can run the pipeline as follows:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Command</label><label for="__tabbed_1_2">Output</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>run<span class="w"> </span>config.yaml<span class="w"> </span>path/to/data/<span class="w"> </span>path/to/results/
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>2025-09-22 09:20:10 | INFO     | Starting pipeline execution
+2025-09-22 09:20:10 | INFO     | [transcribe] Starting as a SLURM task
+2025-09-22 09:20:10 | INFO     | [transcribe] Submitted with Slurm job ID 847632
+2025-09-22 09:20:10 | INFO     | [embed] Starting as a LOCAL_ASYNC task
+2025-09-22 09:20:10 | INFO     | [embed] Started with PID 3007442
+2025-09-22 09:20:10 | INFO     | [ingest] Starting as a LOCAL task
+2025-09-22 09:20:10 | INFO     | [ingest] Started with PID 3007443
+2025-09-22 09:20:10 | INFO     | All tasks started, beginning pipeline tracking loop
+2025-09-22 09:20:10 | INFO     | [transcribe] Status changed: INACTIVE -&gt; PENDING (Reason: (None))
+2025-09-22 09:20:10 | INFO     | [embed] Status changed: INACTIVE -&gt; ACTIVE
+2025-09-22 09:20:10 | INFO     | [ingest] Status changed: INACTIVE -&gt; ACTIVE
+2025-09-22 09:20:11 | INFO     | Staged 91 new file(s) for processing
+2025-09-22 09:20:31 | INFO     | [transcribe] Status changed: PENDING (Reason: (None)) -&gt; ACTIVE (0 workers)
+2025-09-22 09:21:01 | INFO     | [transcribe] Status changed: ACTIVE (0 workers) -&gt; ACTIVE (3 workers)
+2025-09-22 09:21:54 | ERROR    | [embed] 4 failed file(s)
+2025-09-22 09:21:55 | INFO     | Completed processing 25 file(s)
+2025-09-22 09:22:05 | ERROR    | [embed] 1 failed file(s)
+2025-09-22 09:22:05 | INFO     | Completed processing 7 file(s)
+2025-09-22 09:22:15 | ERROR    | [embed] 1 failed file(s)
+2025-09-22 09:22:15 | INFO     | Completed processing 13 file(s)
+2025-09-22 09:22:25 | INFO     | Completed processing 11 file(s)
+2025-09-22 09:22:35 | INFO     | Completed processing 3 file(s)
+2025-09-22 09:22:45 | INFO     | Completed processing 5 file(s)
+2025-09-22 09:22:55 | ERROR    | [embed] 1 failed file(s)
+2025-09-22 09:22:55 | INFO     | Completed processing 8 file(s)
+2025-09-22 09:23:05 | ERROR    | [embed] 1 failed file(s)
+2025-09-22 09:23:05 | INFO     | Completed processing 4 file(s)
+2025-09-22 09:23:15 | INFO     | Completed processing 6 file(s)
+2025-09-22 09:23:55 | INFO     | Completed processing 1 file(s)
+2025-09-22 09:25:06 | INFO     | [transcribe] Status changed: ACTIVE (3 workers) -&gt; ACTIVE (1 workers)
+2025-09-22 09:25:46 | INFO     | [transcribe] Status changed: ACTIVE (1 workers) -&gt; ACTIVE (0 workers)
+2025-09-22 09:33:48 | WARNING  | Idle timeout reached, initiating shutdown
+2025-09-22 09:33:48 | INFO     | Shutting down pipeline
+2025-09-22 09:33:48 | INFO     | [embed] Terminating...
+2025-09-22 09:33:48 | INFO     | [ingest] Terminating...
+2025-09-22 09:33:48 | INFO     | [transcribe] Terminating...
+2025-09-22 09:33:49 | ERROR    | [transcribe] Status changed: ACTIVE (0 workers) -&gt; INACTIVE (Reason: CANCELLED+)
+2025-09-22 09:33:50 | ERROR    | [embed] Status changed: ACTIVE -&gt; INACTIVE (Exit Code: 143)
+2025-09-22 09:33:50 | ERROR    | [ingest] Status changed: ACTIVE -&gt; INACTIVE (Exit Code: 143)
+2025-09-22 09:33:51 | INFO     | Pipeline shutdown complete
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Run each task individually (see <a href="../task/#examples">examples</a>) to ensure
+they work correctly before executing the entire pipeline.</p>
+</div>
+<p>The console output shows that the pipeline:</p>
+<ul>
+<li>Runs like a server, "listening" for and staging new files for processing</li>
+<li>Acts as a central orchestrator that launches, monitors, and manages the lifecycle of tasks</li>
+<li>Optimizes resource usage through autoscaling and idle timeout</li>
+</ul>
+<p>By default, pipelines time out after 10 minutes of inactivity (i.e., when there are no more files
+left to process). We can override this behavior using the <code>--idle-timeout</code> option, like so:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Time out after 30 days of inactivity</span>
+tigerflow<span class="w"> </span>run<span class="w"> </span>config.yaml<span class="w"> </span>path/to/data/<span class="w"> </span>path/to/results/<span class="w"> </span>--idle-timeout<span class="w"> </span><span class="m">43200</span>
+</code></pre></div>
+<p>Before the timeout threshold is reached, the pipeline will remain active with a minimal
+resource footprint, ready to stage and process any new files placed in the input directory.
+This behavior is useful for streaming-like workflows where data may arrive sporadically.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>To see all available options for the <code>run</code> subcommand, run <code>tigerflow run --help</code>.</p>
+</div>
+<p>Since the pipeline has been configured to retain output files only for the transcription task,
+the output directory (i.e., <code>path/to/results/</code>) will look as follows:</p>
+<div class="highlight"><pre><span></span><code>path/to/results/
+├── .tigerflow/
+└── transcribe/
+    ├── 1.txt
+    ├── 2.txt
+    └── ...
+</code></pre></div>
+<p>where <code>.tigerflow/</code> is an internal directory storing the pipeline's operational state and related metadata.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code>.tigerflow/</code> is what enables resuming a previous pipeline run, so it should not be deleted or modified.</p>
+</div>
+<h2 id="checking-progress">Checking Progress<a class="headerlink" href="#checking-progress" title="Permanent link">&para;</a></h2>
+<p>We can check the pipeline's progress at any point by running:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Command</label><label for="__tabbed_2_2">Output</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>progress<span class="w"> </span>path/to/results/
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>┏━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
+┃ Task       ┃ Processed ┃ Ongoing ┃ Failed ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━┩
+│ transcribe │        91 │       0 │      0 │
+│ embed      │        83 │       0 │      8 │
+│ ingest     │        83 │       0 │      0 │
+└────────────┴───────────┴─────────┴────────┘
+██████████████████████████████ 91/91 (100.0%)
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>where <code>path/to/results/</code> must be a valid output directory containing <code>.tigerflow/</code>.</p>
+<h2 id="checking-errors">Checking Errors<a class="headerlink" href="#checking-errors" title="Permanent link">&para;</a></h2>
+<p>If the progress reports any failed files, we can identify them by running:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>errors<span class="w"> </span>path/to/results/
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>[embed] 8 failed files (open to view errors):
+  results/.tigerflow/embed/7501863358941940997.err
+  results/.tigerflow/embed/7501867598829702430.err
+  results/.tigerflow/embed/7501869468910423326.err
+  results/.tigerflow/embed/7501869707121757470.err
+  results/.tigerflow/embed/7501870655906860306.err
+  results/.tigerflow/embed/7501870694288985390.err
+  results/.tigerflow/embed/7501870878855154987.err
+  results/.tigerflow/embed/7501870943883545899.err
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Each error file contains specific error messages that help identify and resolve issues
+in the code or data.</p>
+<div class="admonition example">
+<p class="admonition-title">Example</p>
+<p>In this case, all error files contain the same message:</p>
+<div class="highlight"><pre><span></span><code>Traceback (most recent call last):
+File &quot;/home/sp8538/.conda/envs/tiktok/lib/python3.12/site-packages/tigerflow/tasks/local_async.py&quot;, line 47, in task
+    await self.run(self._context, input_file, temp_file)
+File &quot;/home/sp8538/tiktok/pipeline/tigerflow/demo/code/embed.py&quot;, line 35, in run
+    resp.raise_for_status()  # Raise error if unsuccessful
+    ^^^^^^^^^^^^^^^^^^^^^^^
+File &quot;/home/sp8538/.conda/envs/tiktok/lib/python3.12/site-packages/aiohttp/client_reqrep.py&quot;, line 629, in raise_for_status
+    raise ClientResponseError(
+aiohttp.client_exceptions.ClientResponseError: 400, message=&#39;Bad Request&#39;, url=&#39;https://api.voyageai.com/v1/embeddings&#39;
+</code></pre></div>
+<p>which suggests an issue with the embedding API request. However, since the same request was
+successful for other files, the issue likely lies in the input data (i.e., transcription).</p>
+<p>Upon inspection, we find the failed files have empty transcriptions, which explains the API
+request failure. Furthermore, we can confirm that the corresponding videos contain no audio,
+which led to the empty transcriptions in the first place.</p>
+<p>We may then exclude such videos from the pipeline to prevent future errors.</p>
+</div>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>TigerFlow uses the dependency information specified in the pipeline configuration
+to automatically organize input and output directories between tasks, so users do not
+need to handle this file organization manually.&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../task/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Tasks">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Tasks
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../configuration/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuration">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Configuration
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 The Trustees of Princeton University
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.annotate", "content.code.copy", "content.footnote.tooltips", "header.autohide", "navigation.instant", "navigation.tabs", "navigation.top", "navigation.footer", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
