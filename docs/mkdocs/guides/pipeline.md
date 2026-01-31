@@ -53,7 +53,6 @@ tasks:
     module: ./transcribe.py
     input_ext: .mp4
     output_ext: .txt
-    account: sp8538
     max_workers: 3
     worker_resources:
       cpus: 1
@@ -97,7 +96,6 @@ where:
 - `depends_on` specifies the name of the parent task whose output is used as input for the current task.
 - `keep_output` specifies whether to retain output files from the current task. If unspecified, it defaults to `true`.
 - `setup_commands` specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.
-- `account` is a field applicable only to Slurm tasks. It specifies the account to charge for resource usage.
 - `max_workers` is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.
 - `worker_resources` is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.
 - `concurrency_limit` is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).

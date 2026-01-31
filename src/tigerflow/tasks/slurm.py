@@ -83,7 +83,6 @@ class SlurmTask(Task):
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
-            account=self.config.account,
             cores=self.config.worker_resources.cpus,
             memory=self.config.worker_resources.memory,
             walltime=self.config.worker_resources.time,
@@ -178,13 +177,6 @@ class SlurmTask(Task):
                     show_default=False,
                 ),
             ],
-            account: Annotated[
-                str,
-                typer.Option(
-                    help="Account to charge resources",
-                    show_default=False,
-                ),
-            ],
             max_workers: Annotated[
                 int,
                 typer.Option(
@@ -269,7 +261,6 @@ class SlurmTask(Task):
                 input_ext=input_ext,
                 output_ext=output_ext,
                 setup_commands=setup_commands,
-                account=account,
                 max_workers=max_workers,
                 worker_resources=worker_resources,
             )

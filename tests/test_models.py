@@ -219,7 +219,6 @@ class TestSlurmTaskConfig:
             module=tmp_module,
             input_ext=".txt",
             output_ext=".json",
-            account="myaccount",
             max_workers=4,
             worker_resources=SlurmResourceConfig(
                 cpus=8,
@@ -241,7 +240,6 @@ class TestSlurmTaskConfig:
     def test_to_script_contains_sbatch_directives(self, slurm_config: SlurmTaskConfig):
         script = slurm_config.to_script()
 
-        assert "#SBATCH --account=myaccount" in script
         assert "#SBATCH --job-name=slurm_task-client" in script
         assert "#SBATCH --nodes=1" in script
         assert "#SBATCH --ntasks=1" in script
@@ -265,7 +263,6 @@ class TestSlurmTaskConfig:
             kind="slurm",
             module=tmp_module,
             input_ext=".txt",
-            account="myaccount",
             max_workers=2,
             worker_resources=SlurmResourceConfig(
                 cpus=4,
@@ -289,7 +286,6 @@ class TestSlurmTaskConfig:
             kind="slurm",
             module=tmp_module,
             input_ext=".txt",
-            account="myaccount",
             max_workers=2,
             worker_resources=SlurmResourceConfig(
                 cpus=4,
