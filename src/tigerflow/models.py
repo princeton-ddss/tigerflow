@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 import networkx as nx
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from tigerflow.settings import settings
 from tigerflow.utils import validate_file_ext
 
 
@@ -197,6 +198,10 @@ class SlurmTaskConfig(BaseTaskConfig):
     worker_resources: SlurmResourceConfig
 
     @property
+    def client_job_time(self) -> str:
+        return f"{settings.slurm_task_client_hours}:00:00"
+
+    @property
     def client_job_name(self) -> str:
         return f"{self.name}-client"
 
@@ -242,7 +247,7 @@ class SlurmTaskConfig(BaseTaskConfig):
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=1
             #SBATCH --mem-per-cpu=2G
-            #SBATCH --time=24:00:00
+            #SBATCH --time={self.client_job_time}
 
             echo "Starting Dask client for: {self.name}"
             echo "With SLURM_JOB_ID: $SLURM_JOB_ID"

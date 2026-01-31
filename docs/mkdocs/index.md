@@ -18,10 +18,16 @@ hide:
 
 <p align="center">
     <a href="https://www.python.org">
-      <img alt="python-shield" src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat&logo=python&logoColor=white"/>
+      <img alt="python-shield" src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB.svg?style=flat&logo=python&logoColor=white"/>
     </a>
     <a href="https://opensource.org/licenses/MIT">
       <img alt="mit-license" src="https://img.shields.io/badge/License-MIT-yellow.svg"/>
+    </a>
+    <a href="https://github.com/princeton-ddss/tigerflow/actions/workflows/ci.yml">
+      <img alt="ci-status" src="https://github.com/princeton-ddss/tigerflow/actions/workflows/ci.yml/badge.svg"/>
+    </a>
+    <a href="https://github.com/princeton-ddss/tigerflow/actions/workflows/cd.yml">
+      <img alt="cd-status" src="https://github.com/princeton-ddss/tigerflow/actions/workflows/cd.yml/badge.svg"/>
     </a>
 </p>
 
@@ -54,7 +60,7 @@ These features make TigerFlow especially well-suited for running large-scale or 
 
 ## Quickstart
 
-TigerFlow can be run on any HPC cluster managed by Slurm. Since it is written in Python, the system must have Python (version 3.10 or higher) installed.
+TigerFlow can be run on any HPC cluster managed by Slurm. Since it is written in Python, the system must have Python (versions 3.10 through 3.13) installed.
 
 ### Installation
 

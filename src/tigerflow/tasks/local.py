@@ -12,6 +12,7 @@ from typing_extensions import Annotated
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalTaskConfig
 from tigerflow.utils import SetupContext, atomic_write, build_cli
+from tigerflow.settings import settings
 
 from ._base import Task
 
@@ -87,7 +88,7 @@ class LocalTask(Task):
                     output_file = output_dir / output_fname
                     task(file, output_file)
 
-                self._shutdown_event.wait(timeout=3)  # Interruptible sleep
+                self._shutdown_event.wait(timeout=settings.task_poll_interval)
         finally:
             logger.info("Shutting down task")
             self.teardown(self._context)

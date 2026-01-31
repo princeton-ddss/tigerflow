@@ -12,6 +12,7 @@ from typing_extensions import Annotated
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalAsyncTaskConfig
 from tigerflow.utils import SetupContext, atomic_write, build_cli
+from tigerflow.settings import settings
 
 from ._base import Task
 
@@ -87,7 +88,7 @@ class LocalAsyncTask(Task):
                         self._in_queue.add(file)
                         await self._queue.put(file)
 
-                await asyncio.sleep(3)
+                await asyncio.sleep(settings.task_poll_interval)
 
         async def main():
             # Run common setup

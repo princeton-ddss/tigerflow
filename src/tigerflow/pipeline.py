@@ -11,6 +11,7 @@ from types import FrameType
 import yaml
 
 from tigerflow.logconfig import logger
+from tigerflow.settings import settings
 from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
@@ -63,7 +64,7 @@ class Pipeline:
 
         for task in self._config.tasks:
             if task.module is not None:
-                if not is_valid_module_cli(task.module):
+                if not is_valid_module_cli(task.module, timeout=settings.task_validation_timeout):
                     raise ValueError(f"Invalid CLI: {task.module}")
             elif task.library is not None:
                 if not is_valid_library_cli(task.library):
@@ -171,7 +172,7 @@ class Pipeline:
                 self._report_failed_files()
                 self._handle_processed_files()
                 self._check_inactivity()
-                self._shutdown_event.wait(timeout=10)  # Interruptible sleep
+                self._shutdown_event.wait(timeout=settings.pipeline_poll_interval)
         finally:
             self._handle_processed_files()
             logger.info("Shutting down pipeline")

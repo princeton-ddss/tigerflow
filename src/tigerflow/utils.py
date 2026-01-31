@@ -29,29 +29,24 @@ def validate_file_ext(ext: str) -> str:
     return ext
 
 
-def is_valid_module_cli(file: Path) -> bool:
-    """
-    Check if the given file is a Typer CLI application.
-
-    Notes
-    -----
-    The current implementation is a bit hacky;
-    replace it with a more robust one if found.
-    """
-    expected_phrase = f"Usage: {file.name} [OPTIONS]"
+def is_valid_module_cli(file: Path, *, timeout: int = 60) -> bool:
+    required_options = ["--input-dir", "--input-ext", "--output-dir", "--output-ext"]
     try:
         result = subprocess.run(
             [sys.executable, str(file), "--help"],
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=timeout,
         )
-        return expected_phrase in result.stdout
     except TimeoutExpired:
-        return False
+        raise TimeoutError(f"CLI validation timed out after {timeout}s: {file}")
+
+    return result.returncode == 0 and all(
+        opt in result.stdout for opt in required_options
+    )
 
 
-def is_valid_library_cli(module_name: str) -> bool:
+def is_valid_library_cli(module_name: str, *, timeout: int = 60) -> bool:
     """
     Check if the given module name is a valid Typer CLI application.
 
@@ -72,7 +67,7 @@ def is_valid_library_cli(module_name: str) -> bool:
     except TimeoutExpired:
         return False
 
-
+        
 def submit_to_slurm(script: str) -> int:
     result = subprocess.run(
         ["sbatch"],
