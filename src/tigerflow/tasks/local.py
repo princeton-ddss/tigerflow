@@ -5,14 +5,14 @@ import traceback
 from abc import abstractmethod
 from pathlib import Path
 from types import FrameType
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalTaskConfig
 from tigerflow.settings import settings
-from tigerflow.utils import SetupContext, atomic_write
+from tigerflow.utils import SetupContext, atomic_write, build_cli
 
 from ._base import Task
 
@@ -137,6 +137,7 @@ class LocalTask(Task):
                     help="Task name",
                 ),
             ] = cls.get_name(),
+            _params: dict | None = None,
         ):
             """
             Run the task as a CLI application
@@ -150,9 +151,15 @@ class LocalTask(Task):
             )
 
             task = cls(config)
+
+            # Inject custom params into context before start
+            if _params:
+                for key, value in _params.items():
+                    setattr(task._context, key, value)
+
             task.start(input_dir, output_dir)
 
-        typer.run(main)
+        typer.run(build_cli(cls, main))
 
     @staticmethod
     def setup(context: SetupContext):
