@@ -20,7 +20,7 @@ from tigerflow.models import (
     TaskStatus,
     TaskStatusKind,
 )
-from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
+from tigerflow.utils import SetupContext, atomic_write, build_cli, submit_to_slurm
 
 from ._base import Task
 from .utils import get_slurm_task_status
@@ -33,8 +33,9 @@ class SlurmTask(Task):
     """
 
     @logger.catch(reraise=True)
-    def __init__(self, config: SlurmTaskConfig):
+    def __init__(self, config: SlurmTaskConfig, params: dict | None = None):
         self.config = config
+        self._params = params or {}
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
@@ -46,14 +47,20 @@ class SlurmTask(Task):
         self.config.output_dir = output_dir
         self.config.log_dir.mkdir(exist_ok=True)
 
-        # Reference functions to use in plugin
+        # Reference functions and params to use in plugin
         setup_func = type(self).setup
         teardown_func = type(self).teardown
+        params = self._params
 
         class TaskWorkerPlugin(WorkerPlugin):
             def setup(self, worker: Worker):
                 logger.info("Setting up task")
                 worker.context = SetupContext()
+
+                # Inject params into context
+                for key, value in params.items():
+                    setattr(worker.context, key, value)
+
                 setup_func(worker.context)
                 worker.context.freeze()  # Make it read-only
                 logger.info("Task setup complete")
@@ -248,6 +255,7 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
+            _params: dict | None = None,
         ):
             """
             Run the task as a CLI application
@@ -273,13 +281,13 @@ class SlurmTask(Task):
             )
 
             if _run_directly:
-                task = cls(config)
+                task = cls(config, params=_params)
                 task.start(input_dir, output_dir)
             else:
-                runner = SlurmTaskRunner(config)
+                runner = SlurmTaskRunner(config, params=_params)
                 runner.start(input_dir, output_dir)
 
-        typer.run(main)
+        typer.run(build_cli(cls, main))
 
     @staticmethod
     def setup(context: SetupContext):
@@ -338,8 +346,9 @@ class SlurmTaskRunner:
     """
 
     @logger.catch(reraise=True)
-    def __init__(self, config: SlurmTaskConfig):
+    def __init__(self, config: SlurmTaskConfig, params: dict | None = None):
         self.config = config
+        self._params = params or {}
         self._job_id: int | None = None
         self._status: TaskStatus = TaskStatus(kind=TaskStatusKind.INACTIVE)
         self._processed_filenames: set[str] = set()
