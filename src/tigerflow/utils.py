@@ -67,7 +67,7 @@ def is_valid_library_cli(module_name: str, *, timeout: int = 60) -> bool:
     except TimeoutExpired:
         return False
 
-        
+
 def submit_to_slurm(script: str) -> int:
     result = subprocess.run(
         ["sbatch"],
@@ -156,8 +156,7 @@ def build_cli(cls, base_main):
     # Get the base function's signature, excluding internal params
     base_sig = inspect.signature(base_main)
     base_params = [
-        p for p in base_sig.parameters.values()
-        if not p.name.startswith("_")
+        p for p in base_sig.parameters.values() if not p.name.startswith("_")
     ]
 
     # Build new parameters from Params class

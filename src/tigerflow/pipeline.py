@@ -11,7 +11,6 @@ from types import FrameType
 import yaml
 
 from tigerflow.logconfig import logger
-from tigerflow.settings import settings
 from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
@@ -22,8 +21,9 @@ from tigerflow.models import (
     TaskStatus,
     TaskStatusKind,
 )
+from tigerflow.settings import settings
 from tigerflow.tasks.utils import get_slurm_task_status
-from tigerflow.utils import is_valid_module_cli, is_valid_library_cli, submit_to_slurm
+from tigerflow.utils import is_valid_library_cli, is_valid_module_cli, submit_to_slurm
 
 
 class Pipeline:
@@ -64,7 +64,9 @@ class Pipeline:
 
         for task in self._config.tasks:
             if task.module is not None:
-                if not is_valid_module_cli(task.module, timeout=settings.task_validation_timeout):
+                if not is_valid_module_cli(
+                    task.module, timeout=settings.task_validation_timeout
+                ):
                     raise ValueError(f"Invalid CLI: {task.module}")
             elif task.library is not None:
                 if not is_valid_library_cli(task.library):

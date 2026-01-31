@@ -7,11 +7,11 @@ import traceback
 from abc import abstractmethod
 from pathlib import Path
 from types import FrameType
+from typing import Annotated
 
 import typer
 from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
 from dask_jobqueue import SLURMCluster
-from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
 from tigerflow.models import (
@@ -20,8 +20,8 @@ from tigerflow.models import (
     TaskStatus,
     TaskStatusKind,
 )
-from tigerflow.utils import SetupContext, atomic_write, build_cli, submit_to_slurm
 from tigerflow.settings import settings
+from tigerflow.utils import SetupContext, atomic_write, build_cli, submit_to_slurm
 
 from ._base import Task
 from .utils import get_slurm_task_status

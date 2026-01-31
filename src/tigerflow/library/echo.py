@@ -14,9 +14,9 @@ Usage:
 """
 
 from pathlib import Path
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from tigerflow.tasks import LocalTask
 from tigerflow.utils import SetupContext
@@ -41,7 +41,7 @@ class Echo(LocalTask):
 
     @staticmethod
     def run(context: SetupContext, input_file: Path, output_file: Path):
-        with open(input_file, "r") as f:
+        with open(input_file) as f:
             content = f.read()
 
         if context.uppercase:

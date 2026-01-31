@@ -1,5 +1,6 @@
+from typing import Annotated
+
 import typer
-from typing_extensions import Annotated
 
 from tigerflow.utils import get_version
 

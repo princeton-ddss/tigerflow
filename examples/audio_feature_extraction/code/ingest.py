@@ -26,7 +26,7 @@ class Ingest(LocalTask):
 
     @staticmethod
     def run(context, input_file, output_file):
-        with open(input_file, "r") as f:
+        with open(input_file) as f:
             content = json.load(f)
 
         embedding = content["data"][0]["embedding"]

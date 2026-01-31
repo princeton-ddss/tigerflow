@@ -1,4 +1,3 @@
-import pytest
 from typer.testing import CliRunner
 
 from tigerflow.cli import app
@@ -40,7 +39,7 @@ class TestGetTaskDescription:
         assert "Echo" in desc or "echo" in desc.lower()
 
     def test_returns_none_for_nonexistent_module(self):
-        desc = _get_task_description("nonexistent.module.that.doesnt.exist")
+        desc = _get_task_description("nonexistent.module.that.does.not.exist")
         assert desc is None
 
 

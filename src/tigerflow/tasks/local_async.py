@@ -4,15 +4,15 @@ import sys
 import traceback
 from abc import abstractmethod
 from pathlib import Path
+from typing import Annotated
 
 import aiofiles
 import typer
-from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalAsyncTaskConfig
-from tigerflow.utils import SetupContext, atomic_write, build_cli
 from tigerflow.settings import settings
+from tigerflow.utils import SetupContext, atomic_write, build_cli
 
 from ._base import Task
 

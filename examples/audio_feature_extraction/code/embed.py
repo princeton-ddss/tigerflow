@@ -20,7 +20,7 @@ class Embed(LocalAsyncTask):
 
     @staticmethod
     async def run(context, input_file, output_file):
-        async with aiofiles.open(input_file, "r") as f:
+        async with aiofiles.open(input_file) as f:
             text = await f.read()
 
         async with context.session.post(

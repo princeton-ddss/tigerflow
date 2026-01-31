@@ -3,9 +3,9 @@
 import importlib
 import pkgutil
 from importlib.metadata import entry_points
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 app = typer.Typer()
 
