@@ -355,4 +355,6 @@ class PipelineProgress(BaseModel):
 
     @property
     def failed(self) -> set[Path]:
+        if not self.tasks:
+            return set()
         return set.union(*(task.failed for task in self.tasks))
