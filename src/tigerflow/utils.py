@@ -145,19 +145,28 @@ def build_cli(cls, base_main):
     Wrap a base CLI main function to include custom Params as CLI options.
 
     Inspects cls.Params for additional parameters and creates a new function
-    with a combined signature that Typer can use.
+    with a combined signature that Typer can use. Also filters out internal
+    parameters (starting with _) that Typer cannot handle.
     """
     import inspect
 
-    params_spec = get_params_from_class(cls)
-    if not params_spec:
-        return base_main
-
-    # Get the base function's signature, excluding internal params
+    # Get the base function's signature, excluding internal params (like _params)
     base_sig = inspect.signature(base_main)
     base_params = [
         p for p in base_sig.parameters.values() if not p.name.startswith("_")
     ]
+
+    params_spec = get_params_from_class(cls)
+    if not params_spec:
+        # No custom params, but still need to filter out internal params
+        new_sig = base_sig.replace(parameters=base_params)
+
+        def wrapper(*args, **kwargs):
+            return base_main(*args, _params=None, **kwargs)
+
+        wrapper.__signature__ = new_sig
+        wrapper.__doc__ = base_main.__doc__
+        return wrapper
 
     # Build new parameters from Params class
     custom_params = []
