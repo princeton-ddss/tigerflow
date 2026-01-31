@@ -703,7 +703,6 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <span class="w">    </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./transcribe.py</span>
 <span class="w">    </span><span class="nt">input_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.mp4</span>
 <span class="w">    </span><span class="nt">output_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.txt</span>
-<span class="w">    </span><span class="nt">account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sp8538</span>
 <span class="w">    </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
 <span class="w">    </span><span class="nt">worker_resources</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">cpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
@@ -746,7 +745,6 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <li><code>depends_on</code> specifies the name of the parent task whose output is used as input for the current task.</li>
 <li><code>keep_output</code> specifies whether to retain output files from the current task. If unspecified, it defaults to <code>true</code>.</li>
 <li><code>setup_commands</code> specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.</li>
-<li><code>account</code> is a field applicable only to Slurm tasks. It specifies the account to charge for resource usage.</li>
 <li><code>max_workers</code> is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.</li>
 <li><code>worker_resources</code> is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.</li>
 <li><code>concurrency_limit</code> is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).</li>
