@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from tigerflow.utils import is_valid_task_cli
+from tigerflow.utils import is_valid_library_cli, is_valid_module_cli
 
 
-class TestTaskCliValidation:
+class TestModuleCliValidation:
     @pytest.fixture
     def valid_cli(self, tmp_path: Path) -> Path:
         script = tmp_path / "valid_cli.py"
@@ -77,17 +77,29 @@ class TestTaskCliValidation:
         return script
 
     def test_valid_cli_returns_true(self, valid_cli: Path):
-        assert is_valid_task_cli(valid_cli) is True
+        assert is_valid_module_cli(valid_cli) is True
 
     def test_missing_options_returns_false(self, cli_missing_options: Path):
-        assert is_valid_task_cli(cli_missing_options) is False
+        assert is_valid_module_cli(cli_missing_options) is False
 
     def test_nonzero_exit_returns_false(self, cli_nonzero_exit: Path):
-        assert is_valid_task_cli(cli_nonzero_exit) is False
+        assert is_valid_module_cli(cli_nonzero_exit) is False
 
     def test_timeout_raises_timeout_error(self, cli_slow: Path):
         with pytest.raises(TimeoutError, match="timed out after 1s"):
-            is_valid_task_cli(cli_slow, timeout=1)
+            is_valid_module_cli(cli_slow, timeout=1)
 
     def test_custom_timeout(self, valid_cli: Path):
-        assert is_valid_task_cli(valid_cli, timeout=5) is True
+        assert is_valid_module_cli(valid_cli, timeout=5) is True
+
+
+class TestLibraryCliValidation:
+    def test_valid_library_returns_true(self):
+        assert is_valid_library_cli("tigerflow.library.echo") is True
+
+    def test_nonexistent_module_returns_false(self):
+        assert is_valid_library_cli("nonexistent.module.path") is False
+
+    def test_module_without_cli_returns_false(self):
+        # A module that exists but isn't a CLI
+        assert is_valid_library_cli("tigerflow.utils") is False
