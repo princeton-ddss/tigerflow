@@ -38,7 +38,9 @@ def status(
         raise typer.Exit(1)
 
     if not internal_dir.exists():
-        _output_error("Not a valid pipeline directory (missing .tigerflow)", output_json)
+        _output_error(
+            "Not a valid pipeline directory (missing .tigerflow)", output_json
+        )
         raise typer.Exit(1)
 
     pid = read_pid_file(pid_file)
@@ -103,7 +105,9 @@ def _output_rich(pid: int | None, running: bool, progress):
 
     # Progress summary
     total = len(progress.staged) + len(progress.finished)
-    print(f"Files: {len(progress.finished)}/{total} finished, {len(progress.failed)} failed")
+    print(
+        f"Files: {len(progress.finished)}/{total} finished, {len(progress.failed)} failed"
+    )
 
     # Task table
     if progress.tasks:

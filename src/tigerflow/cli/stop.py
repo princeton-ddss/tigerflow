@@ -37,7 +37,9 @@ def stop(
         raise typer.Exit(1)
 
     if not internal_dir.exists():
-        typer.echo("Error: Not a valid pipeline directory (missing .tigerflow)", err=True)
+        typer.echo(
+            "Error: Not a valid pipeline directory (missing .tigerflow)", err=True
+        )
         raise typer.Exit(1)
 
     pid = read_pid_file(pid_file)
