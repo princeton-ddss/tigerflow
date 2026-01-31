@@ -156,7 +156,6 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
 
 class SlurmTaskConfig(BaseTaskConfig):
     kind: Literal["slurm"]
-    account: str
     max_workers: int
     worker_resources: SlurmResourceConfig
 
@@ -183,7 +182,6 @@ class SlurmTaskConfig(BaseTaskConfig):
                 f"--input-ext {self.input_ext}",
                 f"--output-dir {self.output_dir}",
                 f"--output-ext {self.output_ext}",
-                f"--account {self.account}",
                 f"--max-workers {self.max_workers}",
                 f"--cpus {self.worker_resources.cpus}",
                 f"--memory {self.worker_resources.memory}",
@@ -202,7 +200,6 @@ class SlurmTaskConfig(BaseTaskConfig):
 
         script = textwrap.dedent(f"""\
             #!/bin/bash
-            #SBATCH --account={self.account}
             #SBATCH --job-name={self.client_job_name}
             #SBATCH --output={self.log_dir}/%x-%j.out
             #SBATCH --error={self.log_dir}/%x-%j.err
