@@ -32,6 +32,11 @@ class SlurmResourceConfig(BaseModel):
     time: str
     sbatch_options: list[str] = []
 
+    @field_validator("sbatch_options")
+    @classmethod
+    def transform_sbatch_options(cls, sbatch_options: list[str]) -> list[str]:
+        return [option.strip() for option in sbatch_options]
+
 
 class BaseTaskConfig(BaseModel):
     name: str
@@ -172,6 +177,15 @@ class SlurmTaskConfig(BaseTaskConfig):
         return f"{self.name}-worker"
 
     def to_script(self) -> str:
+        sbatch_account = next(
+            (
+                f"#SBATCH {option}"
+                for option in self.worker_resources.sbatch_options
+                if option.startswith(("--account", "-A"))
+            ),
+            "",
+        )
+
         setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
@@ -208,6 +222,7 @@ class SlurmTaskConfig(BaseTaskConfig):
             #SBATCH --cpus-per-task=1
             #SBATCH --mem-per-cpu=2G
             #SBATCH --time={self.client_job_time}
+            {sbatch_account}
 
             echo "Starting Dask client for: {self.name}"
             echo "With SLURM_JOB_ID: $SLURM_JOB_ID"
