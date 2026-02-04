@@ -551,6 +551,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -866,13 +894,14 @@ and we want to process files in parallel.</p>
 <span class="go">│ *  --input-ext             TEXT     Input file extension [required]                    │</span>
 <span class="go">│ *  --output-dir            PATH     Output directory to store results [required]       │</span>
 <span class="go">│ *  --output-ext            TEXT     Output file extension [required]                   │</span>
+<span class="go">│ *  --max-workers           INTEGER  Max number of workers for autoscaling [required]   │</span>
 <span class="go">│ *  --cpus                  INTEGER  Number of CPUs per worker [required]               │</span>
 <span class="go">│ *  --memory                TEXT     Memory per worker [required]                       │</span>
 <span class="go">│ *  --time                  TEXT     Wall time per worker [required]                    │</span>
-<span class="go">│ *  --max-workers           INTEGER  Max number of workers for autoscaling [required]   │</span>
 <span class="go">│    --gpus                  INTEGER  Number of GPUs per worker                          │</span>
-<span class="go">│    --setup-commands        TEXT     Shell commands to run before the task starts       │</span>
-<span class="go">│                                     (separate commands with a semicolon)               │</span>
+<span class="go">│    --sbatch-option         TEXT     Additional Slurm option for workers (repeatable)   │</span>
+<span class="go">│    --setup-command         TEXT     Shell command to run before the task starts        │</span>
+<span class="go">│                                     (repeatable)                                       │</span>
 <span class="go">│    --task-name             TEXT     Task name [default: Transcribe]                    │</span>
 <span class="go">│    --help                           Show this message and exit.                        │</span>
 <span class="go">╰────────────────────────────────────────────────────────────────────────────────────────╯</span>
@@ -889,12 +918,15 @@ and we want to process files in parallel.</p>
 --input-ext<span class="w"> </span>.mp4<span class="w"> </span><span class="se">\</span>
 --output-dir<span class="w"> </span>path/to/results/<span class="w"> </span><span class="se">\</span>
 --output-ext<span class="w"> </span>.txt<span class="w"> </span><span class="se">\</span>
+--max-workers<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
 --cpus<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 --memory<span class="w"> </span><span class="s2">&quot;12G&quot;</span><span class="w"> </span><span class="se">\</span>
 --time<span class="w"> </span><span class="s2">&quot;02:00:00&quot;</span><span class="w"> </span><span class="se">\</span>
---max-workers<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
 --gpus<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
---setup-commands<span class="w"> </span><span class="s2">&quot;module purge; module load anaconda3/2024.6; conda activate tiktok&quot;</span>
+--sbatch-option<span class="w"> </span><span class="s2">&quot;--mail-user=sp8538@princeton.edu&quot;</span><span class="w"> </span><span class="se">\</span>
+--setup-command<span class="w"> </span><span class="s2">&quot;module purge&quot;</span><span class="w"> </span><span class="se">\</span>
+--setup-command<span class="w"> </span><span class="s2">&quot;module load anaconda3/2024.6&quot;</span><span class="w"> </span><span class="se">\</span>
+--setup-command<span class="w"> </span><span class="s2">&quot;conda activate tiktok&quot;</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -1261,7 +1293,7 @@ output was produced.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Copyright &copy; 2025 The Trustees of Princeton University
+      Copyright &copy; 2025-2026 The Trustees of Princeton University
     </div>
   
   

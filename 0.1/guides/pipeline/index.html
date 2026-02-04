@@ -12,6 +12,8 @@
         <link rel="prev" href="../task/">
       
       
+        <link rel="next" href="../configuration/">
+      
       
         
       
@@ -532,6 +534,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -641,19 +671,15 @@ between tasks. Tasks communicate through the file system: a parent task writes i
 to a designated directory, which downstream tasks monitor for new inputs.<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup> Since each task
 performs embarrassingly parallel, one-to-one file processing (i.e., each input is transformed
 into a single output independently of all other inputs), multiple tasks may share the same
-parent, but each task can have only one parent.</p>
-<div class="admonition example">
+parent, but each task can have at most one parent.</p>
+<div class="admonition info">
 <p class="admonition-title">Dependency Graph</p>
-<p>The following illustrates a pipeline that can be supported by TigerFlow:</p>
-<p><img align="right" alt="Pipeline Task Dependency" src="../../assets/img/task_dependency.svg" /></p>
-<p>As shown, the pipeline's task dependency graph forms a rooted tree
-(i.e., there is a single root task, and every other task depends on
-exactly one parent), which is required by TigerFlow.</p>
-<p>Because each task performs embarrassingly parallel, one-to-one file
-processing (i.e., each input is transformed into a single output
-independently of all other inputs), the pipeline's dependency graph
-can be represented at the file level as follows:</p>
-<p><img align="right" alt="Pipeline File Dependency" src="../../assets/img/file_dependency.svg" /></p>
+<p>TigerFlow supports pipelines where the graph of task input/output files
+forms an <a href="https://en.wikipedia.org/wiki/Arborescence_(graph_theory)">arborescence</a>.
+That is, there is a single root file, and every other file depends on exactly one parent.
+This means that the pipeline can contain multiple root tasks (i.e., tasks that
+depend on no other tasks), but they should share the same input file.</p>
+<p><img alt="Pipeline File Dependency" src="../../assets/img/file_dependency.svg" /></p>
 </div>
 <p>Let's build on the <a href="../task/#examples">example</a> from the previous section, where we created a sequence of tasks to:</p>
 <ol>
@@ -677,16 +703,18 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <span class="w">    </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./transcribe.py</span>
 <span class="w">    </span><span class="nt">input_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.mp4</span>
 <span class="w">    </span><span class="nt">output_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.txt</span>
-<span class="w">    </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">    </span><span class="nt">worker_resources</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">cpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">      </span><span class="nt">gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">      </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8G&quot;</span>
-<span class="w">      </span><span class="nt">time</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;02:00:00&quot;</span>
-<span class="w">      </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
-<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">      </span><span class="no">module purge</span>
-<span class="w">      </span><span class="no">module load anaconda3/2024.6</span>
-<span class="w">      </span><span class="no">conda activate tiktok</span>
+<span class="w">      </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8G</span>
+<span class="w">      </span><span class="nt">time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">02:00:00</span>
+<span class="w">      </span><span class="nt">sbatch_options</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--mail-user=sp8538@princeton.edu&quot;</span>
+<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module purge</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module load anaconda3/2024.6</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda activate tiktok</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embed</span>
 <span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transcribe</span>
 <span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local_async</span>
@@ -695,20 +723,20 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <span class="w">    </span><span class="nt">output_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.json</span>
 <span class="w">    </span><span class="nt">keep_output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="w">    </span><span class="nt">concurrency_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">      </span><span class="no">module purge</span>
-<span class="w">      </span><span class="no">module load anaconda3/2024.6</span>
-<span class="w">      </span><span class="no">conda activate tiktok</span>
+<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module purge</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module load anaconda3/2024.6</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda activate tiktok</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingest</span>
 <span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embed</span>
 <span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local</span>
 <span class="w">    </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./ingest.py</span>
 <span class="w">    </span><span class="nt">input_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.json</span>
 <span class="w">    </span><span class="nt">keep_output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">      </span><span class="no">module purge</span>
-<span class="w">      </span><span class="no">module load anaconda3/2024.6</span>
-<span class="w">      </span><span class="no">conda activate tiktok</span>
+<span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module purge</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module load anaconda3/2024.6</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda activate tiktok</span>
 </code></pre></div>
 <p>where:</p>
 <ul>
@@ -716,14 +744,11 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <li><code>module</code> specifies the Python script defining task logic. Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.</li>
 <li><code>depends_on</code> specifies the name of the parent task whose output is used as input for the current task.</li>
 <li><code>keep_output</code> specifies whether to retain output files from the current task. If unspecified, it defaults to <code>true</code>.</li>
-<li><code>setup_commands</code> specifies Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.</li>
-<li><code>resources</code> is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for running the current task. <code>max_workers</code> specifies the maximum number of parallel workers used for auto-scaling.</li>
+<li><code>setup_commands</code> specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.</li>
+<li><code>max_workers</code> is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.</li>
+<li><code>worker_resources</code> is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.</li>
 <li><code>concurrency_limit</code> is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).</li>
 </ul>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>TigerFlow only supports pipelines whose task dependency graph forms a <em>rooted tree</em>. That is, there should be a single root task, and every other task must have exactly one parent.</p>
-</div>
 <h2 id="running-a-pipeline">Running a Pipeline<a class="headerlink" href="#running-a-pipeline" title="Permanent link">&para;</a></h2>
 <p>Assuming the configuration file and task scripts are in the current directory,
 we can run the pipeline as follows:</p>
@@ -763,6 +788,7 @@ we can run the pipeline as follows:</p>
 2025-09-22 09:23:05 | INFO     | Completed processing 4 file(s)
 2025-09-22 09:23:15 | INFO     | Completed processing 6 file(s)
 2025-09-22 09:23:55 | INFO     | Completed processing 1 file(s)
+2025-09-22 09:23:55 | INFO     | No more files to process, starting idle time count
 2025-09-22 09:25:06 | INFO     | [transcribe] Status changed: ACTIVE (3 workers) -&gt; ACTIVE (1 workers)
 2025-09-22 09:25:46 | INFO     | [transcribe] Status changed: ACTIVE (1 workers) -&gt; ACTIVE (0 workers)
 2025-09-22 09:33:48 | WARNING  | Idle timeout reached, initiating shutdown
@@ -942,6 +968,22 @@ need to handle this file organization manually.&#160;<a class="footnote-backref"
           </a>
         
         
+          
+          <a href="../configuration/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuration">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Configuration
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
       </nav>
     
   
@@ -950,7 +992,7 @@ need to handle this file organization manually.&#160;<a class="footnote-backref"
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Copyright &copy; 2025 The Trustees of Princeton University
+      Copyright &copy; 2025-2026 The Trustees of Princeton University
     </div>
   
   
