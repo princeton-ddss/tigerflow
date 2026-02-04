@@ -9,7 +9,7 @@ from tigerflow.tasks import LocalTask
 class CountUniqueWords(LocalTask):
     @staticmethod
     def run(context, input_file, output_file):
-        with open(input_file, "r") as fi:
+        with open(input_file) as fi:
             content = fi.read()
 
         # Extract and count words made of letters
@@ -17,8 +17,8 @@ class CountUniqueWords(LocalTask):
         word_counts = Counter(words)
         time.sleep(3)  # Simulate heavy computation
 
-        with open(output_file, "w") as fo:
-            json.dump(dict(word_counts), fo, indent=2)
+        with open(output_file, "w") as f:
+            json.dump(dict(word_counts), f, indent=2)
 
 
 CountUniqueWords.cli()

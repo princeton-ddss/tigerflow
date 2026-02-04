@@ -48,8 +48,8 @@ class HelloWorld(LocalTask):
 
         new_content = context.greeting + ", " + content.upper()
 
-        with open(output_file, "w") as fo:
-            fo.write(new_content)
+        with open(output_file, "w") as f:
+            f.write(new_content)
 
     @staticmethod
     def teardown(context):
