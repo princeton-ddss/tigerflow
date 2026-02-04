@@ -143,6 +143,7 @@ we can run the pipeline as follows:
     2025-09-22 09:23:05 | INFO     | Completed processing 4 file(s)
     2025-09-22 09:23:15 | INFO     | Completed processing 6 file(s)
     2025-09-22 09:23:55 | INFO     | Completed processing 1 file(s)
+    2025-09-22 09:23:55 | INFO     | No more files to process, starting idle time count
     2025-09-22 09:25:06 | INFO     | [transcribe] Status changed: ACTIVE (3 workers) -> ACTIVE (1 workers)
     2025-09-22 09:25:46 | INFO     | [transcribe] Status changed: ACTIVE (1 workers) -> ACTIVE (0 workers)
     2025-09-22 09:33:48 | WARNING  | Idle timeout reached, initiating shutdown
