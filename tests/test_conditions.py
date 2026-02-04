@@ -6,12 +6,13 @@ import pytest
 from pydantic import ValidationError
 
 from tigerflow.conditions import (
+    CallableFileCondition,
+    CallablePipelineCondition,
     CompanionFileCondition,
     FilenameMatchCondition,
     MaxSizeCondition,
     MinAgeCondition,
     MinSizeCondition,
-    ScriptCondition,
     StagingConditions,
 )
 
@@ -141,79 +142,101 @@ class TestCompanionFileCondition:
             CompanionFileCondition(kind="companion_file", ext=".err")
 
 
-class TestScriptCondition:
-    def test_passes_on_exit_code_zero(self, tmp_path: Path):
-        condition = ScriptCondition(kind="script", command="true")
+class TestCallableFileCondition:
+    def test_passes_when_callable_returns_true(self, tmp_path: Path):
+        file = tmp_path / "data.txt"
+        file.touch()
+        condition = CallableFileCondition(kind="callable", function="os.path:exists")
+        assert condition.check(file) is True
+
+    def test_fails_when_callable_returns_false(self, tmp_path: Path):
+        file = tmp_path / "nonexistent.txt"
+        condition = CallableFileCondition(kind="callable", function="os.path:exists")
+        assert condition.check(file) is False
+
+    def test_rejects_invalid_reference(self):
+        with pytest.raises(ValidationError):
+            CallableFileCondition(kind="callable", function="not_a_module")
+
+    def test_rejects_non_importable_function(self):
+        with pytest.raises(ValidationError):
+            CallableFileCondition(kind="callable", function="nonexistent_module_xyz:func")
+
+
+class TestCallablePipelineCondition:
+    def test_passes_when_callable_returns_true(self, tmp_path: Path):
+        condition = CallablePipelineCondition(kind="callable", function="os.path:isdir")
         assert condition.check(tmp_path) is True
 
-    def test_fails_on_nonzero_exit_code(self, tmp_path: Path):
-        condition = ScriptCondition(kind="script", command="false")
+    def test_fails_when_callable_returns_false(self, tmp_path: Path):
+        condition = CallablePipelineCondition(kind="callable", function="os.path:isfile")
         assert condition.check(tmp_path) is False
 
-    def test_receives_input_dir_as_argument(self, tmp_path: Path):
-        # Script checks that the argument is a real directory
-        condition = ScriptCondition(kind="script", command="test -d")
-        assert condition.check(tmp_path) is True
+    def test_rejects_invalid_reference(self):
+        with pytest.raises(ValidationError):
+            CallablePipelineCondition(kind="callable", function="bad")
 
-    def test_fails_on_bad_command(self, tmp_path: Path):
-        condition = ScriptCondition(kind="script", command="nonexistent_command_xyz")
-        assert condition.check(tmp_path) is False
+    def test_rejects_non_importable_function(self):
+        with pytest.raises(ValidationError):
+            CallablePipelineCondition(kind="callable", function="nonexistent_module_xyz:func")
 
 
 class TestStagingConditions:
     def test_defaults_to_empty(self):
         conditions = StagingConditions()
-        assert conditions.task == []
+        assert conditions.file == []
         assert conditions.pipeline == []
 
-    def test_check_task_passes_with_no_conditions(self, tmp_path: Path):
+    def test_check_file_passes_with_no_conditions(self, tmp_path: Path):
         file = tmp_path / "data.txt"
         file.touch()
         conditions = StagingConditions()
-        assert conditions.check_task(file) is True
+        assert conditions.check_file(file) is True
 
     def test_check_pipeline_passes_with_no_conditions(self, tmp_path: Path):
         conditions = StagingConditions()
         assert conditions.check_pipeline(tmp_path) is True
 
-    def test_check_task_all_must_pass(self, tmp_path: Path):
+    def test_check_file_all_must_pass(self, tmp_path: Path):
         file = tmp_path / "data.txt"
         file.write_bytes(b"x" * 50)
         conditions = StagingConditions(
-            task=[
+            file=[
                 MinSizeCondition(kind="min_size", bytes=10),
                 MaxSizeCondition(kind="max_size", bytes=100),
             ]
         )
-        assert conditions.check_task(file) is True
+        assert conditions.check_file(file) is True
 
-    def test_check_task_fails_if_any_fails(self, tmp_path: Path):
+    def test_check_file_fails_if_any_fails(self, tmp_path: Path):
         file = tmp_path / "data.txt"
         file.write_bytes(b"x" * 200)
         conditions = StagingConditions(
-            task=[
+            file=[
                 MinSizeCondition(kind="min_size", bytes=10),
                 MaxSizeCondition(kind="max_size", bytes=100),
             ]
         )
-        assert conditions.check_task(file) is False
+        assert conditions.check_file(file) is False
 
-    def test_check_pipeline_fails_if_script_fails(self, tmp_path: Path):
+    def test_check_pipeline_fails_if_callable_fails(self, tmp_path: Path):
+        file = tmp_path / "not_a_dir.txt"
+        file.touch()
         conditions = StagingConditions(
-            pipeline=[ScriptCondition(kind="script", command="false")]
+            pipeline=[CallablePipelineCondition(kind="callable", function="os.path:isdir")]
         )
-        assert conditions.check_pipeline(tmp_path) is False
+        assert conditions.check_pipeline(file) is False
 
     def test_from_yaml_dict(self):
         data = {
-            "task": [
+            "file": [
                 {"kind": "min_size", "bytes": 1024},
                 {"kind": "filename_match", "pattern": r"^recording"},
             ],
             "pipeline": [
-                {"kind": "script", "command": "true"},
+                {"kind": "callable", "function": "os.path:isdir"},
             ],
         }
         conditions = StagingConditions.model_validate(data)
-        assert len(conditions.task) == 2
+        assert len(conditions.file) == 2
         assert len(conditions.pipeline) == 1

@@ -1,18 +1,28 @@
 import re
-import shlex
-import subprocess
 import time
+from abc import abstractmethod
 from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from tigerflow.utils import validate_file_ext
+from tigerflow.logconfig import logger
+from tigerflow.utils import import_callable, validate_callable_reference, validate_file_ext
+
+
+def _validate_callable_function(function: str) -> str:
+    validate_callable_reference(function)
+    try:
+        import_callable(function)
+    except (ModuleNotFoundError, AttributeError, TypeError) as e:
+        raise ValueError(str(e))
+    return function
 
 
 class BaseFileCondition(BaseModel):
+    @abstractmethod
     def check(self, file: Path) -> bool:
-        raise NotImplementedError
+        pass
 
 
 class MinSizeCondition(BaseFileCondition):
@@ -70,46 +80,65 @@ class CompanionFileCondition(BaseFileCondition):
         return companion.is_file()
 
 
-TaskConditionConfig = Annotated[
+class CallableFileCondition(BaseFileCondition):
+    kind: Literal["callable"]
+    function: str
+
+    @field_validator("function")
+    @classmethod
+    def validate_function(cls, function: str) -> str:
+        return _validate_callable_function(function)
+
+    def check(self, file: Path) -> bool:
+        fn = import_callable(self.function)
+        try:
+            return fn(file)
+        except Exception as e:
+            logger.warning("Callable '{}' raised for {}: {}", self.function, file, e)
+            return False
+
+
+FileConditionConfig = Annotated[
     MinSizeCondition
     | MaxSizeCondition
     | MinAgeCondition
     | FilenameMatchCondition
-    | CompanionFileCondition,
+    | CompanionFileCondition
+    | CallableFileCondition,
     Field(discriminator="kind"),
 ]
 
 
-class BasePipelineCondition(BaseModel):
+class CallablePipelineCondition(BaseModel):
+    kind: Literal["callable"]
+    function: str
+
+    @field_validator("function")
+    @classmethod
+    def validate_function(cls, function: str) -> str:
+        return _validate_callable_function(function)
+
     def check(self, input_dir: Path) -> bool:
-        raise NotImplementedError
-
-
-class ScriptCondition(BasePipelineCondition):
-    kind: Literal["script"]
-    command: str
-
-    def check(self, input_dir: Path) -> bool:
-        cmd = f"{self.command} {shlex.quote(str(input_dir))}"
-        result = subprocess.run(
-            ["bash", "-c", cmd],
-            capture_output=True,
-        )
-        return result.returncode == 0
+        fn = import_callable(self.function)
+        try:
+            return fn(input_dir)
+        except Exception as e:
+            logger.warning("Callable '{}' raised for {}: {}", self.function, input_dir, e)
+            return False
 
 
 PipelineConditionConfig = Annotated[
-    ScriptCondition,
+    CallablePipelineCondition,
     Field(discriminator="kind"),
 ]
 
 
 class StagingConditions(BaseModel):
-    task: list[TaskConditionConfig] = []
+    file: list[FileConditionConfig] = []
     pipeline: list[PipelineConditionConfig] = []
 
-    def check_task(self, file: Path) -> bool:
-        return all(condition.check(file) for condition in self.task)
+    def check_file(self, file: Path) -> bool:
+        return all(condition.check(file) for condition in self.file)
 
     def check_pipeline(self, input_dir: Path) -> bool:
         return all(condition.check(input_dir) for condition in self.pipeline)

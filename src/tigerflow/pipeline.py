@@ -211,7 +211,7 @@ class Pipeline:
                 file.is_file()
                 and file.name.endswith(self._config.root_input_ext)
                 and file.name not in self._filenames
-                and self._config.conditions.check_task(file)
+                and self._config.conditions.check_file(file)
             ):
                 self._symlinks_dir.joinpath(file.name).symlink_to(file)
                 self._filenames.add(file.name)

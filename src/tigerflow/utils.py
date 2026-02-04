@@ -1,3 +1,4 @@
+import importlib
 import os
 import re
 import subprocess
@@ -6,6 +7,7 @@ import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import TimeoutExpired
+from typing import Callable
 from types import SimpleNamespace
 
 
@@ -27,6 +29,38 @@ def validate_file_ext(ext: str) -> str:
     if ext.lower().endswith(".err"):
         raise ValueError(f"'.err' extension is reserved: {ext}")
     return ext
+
+
+def validate_callable_reference(ref: str) -> str:
+    """
+    Validate that a string is a valid callable reference in 'module:function' format.
+    """
+    parts = ref.split(":")
+    if len(parts) != 2:
+        raise ValueError(f"Callable reference must contain exactly one ':': {ref}")
+
+    module_path, func_name = parts
+
+    for part in module_path.split("."):
+        if not part.isidentifier():
+            raise ValueError(f"Invalid Python identifier '{part}' in: {ref}")
+
+    if not func_name.isidentifier():
+        raise ValueError(f"Invalid Python identifier '{func_name}' in: {ref}")
+
+    return ref
+
+
+def import_callable(ref: str) -> Callable:
+    """
+    Import a callable from a 'module:function' reference string.
+    """
+    module_path, func_name = ref.split(":")
+    module = importlib.import_module(module_path)
+    obj = getattr(module, func_name)
+    if not callable(obj):
+        raise TypeError(f"'{ref}' does not resolve to a callable")
+    return obj
 
 
 def is_valid_task_cli(file: Path, *, timeout: int = 60) -> bool:
