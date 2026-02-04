@@ -203,7 +203,7 @@ class Pipeline:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
     def _stage_new_files(self):
-        if not self._config.conditions.check_pipeline(self._input_dir):
+        if not self._config.conditions.check_directory(self._input_dir):
             return
         n_files = 0
         for file in self._input_dir.iterdir():

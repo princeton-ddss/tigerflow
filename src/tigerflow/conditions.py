@@ -109,7 +109,7 @@ FileConditionConfig = Annotated[
 ]
 
 
-class CallablePipelineCondition(BaseModel):
+class CallableDirectoryCondition(BaseModel):
     kind: Literal["callable"]
     function: str
 
@@ -127,18 +127,18 @@ class CallablePipelineCondition(BaseModel):
             return False
 
 
-PipelineConditionConfig = Annotated[
-    CallablePipelineCondition,
+DirectoryConditionConfig = Annotated[
+    CallableDirectoryCondition,
     Field(discriminator="kind"),
 ]
 
 
 class StagingConditions(BaseModel):
     file: list[FileConditionConfig] = []
-    pipeline: list[PipelineConditionConfig] = []
+    directory: list[DirectoryConditionConfig] = []
 
     def check_file(self, file: Path) -> bool:
         return all(condition.check(file) for condition in self.file)
 
-    def check_pipeline(self, input_dir: Path) -> bool:
-        return all(condition.check(input_dir) for condition in self.pipeline)
+    def check_directory(self, input_dir: Path) -> bool:
+        return all(condition.check(input_dir) for condition in self.directory)
