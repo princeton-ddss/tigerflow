@@ -203,12 +203,15 @@ class Pipeline:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
     def _stage_new_files(self):
+        if not self._config.conditions.check_pipeline(self._input_dir):
+            return
         n_files = 0
         for file in self._input_dir.iterdir():
             if (
                 file.is_file()
                 and file.name.endswith(self._config.root_input_ext)
                 and file.name not in self._filenames
+                and self._config.conditions.check_task(file)
             ):
                 self._symlinks_dir.joinpath(file.name).symlink_to(file)
                 self._filenames.add(file.name)
