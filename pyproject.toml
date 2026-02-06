@@ -33,8 +33,11 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    {include-group = "lint"},
     {include-group = "docs"},
     {include-group = "test"},
+]
+lint = [
     "pre-commit>=4.0.0",
 ]
 docs = [
