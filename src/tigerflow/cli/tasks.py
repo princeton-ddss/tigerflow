@@ -188,9 +188,11 @@ def task_info(
     if task_name in builtin:
         module_name = builtin[task_name]
         source = "built-in"
+        module_version = _get_package_version(module_name)
     elif task_name in installed:
         module_name = installed[task_name]
         source = "installed"
+        module_version = _get_package_version(module_name)
     else:
         print(f"Task '{task_name}' not found.")
         print("Run 'tigerflow tasks list' to see available tasks.")
@@ -199,6 +201,7 @@ def task_info(
     print(f"Task: {task_name}")
     print(f"Source: {source}")
     print(f"Module: {module_name}")
+    print(f"Version: {module_version}")
 
     # Try to get the task class and its Params
     try:
