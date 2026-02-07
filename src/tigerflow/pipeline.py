@@ -22,6 +22,7 @@ from tigerflow.models import (
     TaskStatus,
     TaskStatusKind,
 )
+from tigerflow.staging import PipelineState
 from tigerflow.tasks.utils import get_slurm_task_status
 from tigerflow.utils import is_valid_task_cli, submit_to_slurm
 
@@ -202,19 +203,41 @@ class Pipeline:
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
+    def _build_pipeline_state(self) -> PipelineState:
+        """Build current pipeline state for staging middleware."""
+        n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
+        n_staged = sum(1 for f in self._symlinks_dir.iterdir() if f.is_file())
+        n_waiting = sum(
+            1
+            for f in self._input_dir.iterdir()
+            if f.is_file()
+            and f.name.endswith(self._config.root_input_ext)
+            and f.name not in self._filenames
+        )
+        return PipelineState(
+            waiting=n_waiting,
+            staged=n_staged - n_finished,
+            completed=n_finished,
+            failed=sum(len(e) for e in self._task_error_filenames.values()),
+            input_dir=self._input_dir,
+            output_dir=self._output_dir,
+        )
+
     def _stage_new_files(self):
-        n_files = 0
-        for file in self._input_dir.iterdir():
-            if (
-                file.is_file()
-                and file.name.endswith(self._config.root_input_ext)
-                and file.name not in self._filenames
-            ):
-                self._symlinks_dir.joinpath(file.name).symlink_to(file)
-                self._filenames.add(file.name)
-                n_files += 1
-        if n_files > 0:
-            logger.info("Staged {} new files for processing", n_files)
+        state = self._build_pipeline_state()
+        candidates = [
+            f
+            for f in self._input_dir.iterdir()
+            if f.is_file()
+            and f.name.endswith(self._config.root_input_ext)
+            and f.name not in self._filenames
+        ]
+        to_stage = self._config.staging.process(candidates, state)
+        for file in to_stage:
+            self._symlinks_dir.joinpath(file.name).symlink_to(file)
+            self._filenames.add(file.name)
+        if to_stage:
+            logger.info("Staged {} new files for processing", len(to_stage))
 
     def _check_task_status(self):
         for task in self._config.tasks:

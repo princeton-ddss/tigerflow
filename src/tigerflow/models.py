@@ -7,6 +7,7 @@ import networkx as nx
 from pydantic import BaseModel, Field, field_validator
 
 from tigerflow.settings import settings
+from tigerflow.staging import StagingPipeline
 from tigerflow.utils import validate_file_ext
 
 
@@ -243,6 +244,7 @@ TaskConfig = Annotated[
 
 
 class PipelineConfig(BaseModel):
+    staging: StagingPipeline = StagingPipeline()
     tasks: list[TaskConfig] = Field(min_length=1)
 
     @field_validator("tasks")
