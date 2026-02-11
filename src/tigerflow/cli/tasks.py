@@ -6,6 +6,7 @@ from importlib.metadata import entry_points
 from typing import Annotated
 
 import typer
+from rich import print
 
 app = typer.Typer()
 

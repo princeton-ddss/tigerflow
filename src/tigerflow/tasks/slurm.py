@@ -34,9 +34,8 @@ class SlurmTask(Task):
     """
 
     @logger.catch(reraise=True)
-    def __init__(self, config: SlurmTaskConfig, params: dict | None = None):
+    def __init__(self, config: SlurmTaskConfig):
         self.config = config
-        self._params = params or {}
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
@@ -51,7 +50,7 @@ class SlurmTask(Task):
         # Reference functions and params to use in plugin
         setup_func = type(self).setup
         teardown_func = type(self).teardown
-        params = self._params
+        params = self.config.params
 
         class TaskWorkerPlugin(WorkerPlugin):
             def setup(self, worker: Worker):
@@ -238,7 +237,7 @@ class SlurmTask(Task):
                     help="Task name",
                 ),
             ] = cls.get_name(),
-            _run_directly: Annotated[
+            run_directly: Annotated[
                 bool,
                 typer.Option(
                     "--run-directly",
@@ -249,7 +248,7 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
-            _params: dict | None = None,
+            _params: dict = {},
         ):
             """
             Run the task as a CLI application
@@ -271,13 +270,14 @@ class SlurmTask(Task):
                 setup_commands=setup_commands,
                 max_workers=max_workers,
                 worker_resources=worker_resources,
+                params=_params,
             )
 
-            if _run_directly:
-                task = cls(config, params=_params)
+            if run_directly:
+                task = cls(config)
                 task.start(input_dir, output_dir)
             else:
-                runner = SlurmTaskRunner(config, params=_params)
+                runner = SlurmTaskRunner(config)
                 runner.start(input_dir, output_dir)
 
         typer.run(build_cli(cls, main))
@@ -339,9 +339,8 @@ class SlurmTaskRunner:
     """
 
     @logger.catch(reraise=True)
-    def __init__(self, config: SlurmTaskConfig, params: dict | None = None):
+    def __init__(self, config: SlurmTaskConfig):
         self.config = config
-        self._params = params or {}
         self._job_id: int | None = None
         self._status: TaskStatus = TaskStatus(kind=TaskStatusKind.INACTIVE)
         self._processed_filenames: set[str] = set()

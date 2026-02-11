@@ -58,6 +58,10 @@ class LocalTask(Task):
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)
 
+        # Inject custom params into context
+        for key, value in self.config.params.items():
+            setattr(self._context, key, value)
+
         # Run common setup
         logger.info("Setting up task")
         self.setup(self._context)
@@ -137,7 +141,7 @@ class LocalTask(Task):
                     help="Task name",
                 ),
             ] = cls.get_name(),
-            _params: dict | None = None,
+            _params: dict = {},
         ):
             """
             Run the task as a CLI application
@@ -148,15 +152,10 @@ class LocalTask(Task):
                 module=cls.get_module_path(),
                 input_ext=input_ext,
                 output_ext=output_ext,
+                params=_params,
             )
 
             task = cls(config)
-
-            # Inject custom params into context before start
-            if _params:
-                for key, value in _params.items():
-                    setattr(task._context, key, value)
-
             task.start(input_dir, output_dir)
 
         typer.run(build_cli(cls, main))

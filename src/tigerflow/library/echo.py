@@ -36,7 +36,7 @@ class Echo(LocalTask):
         ] = ""
         uppercase: Annotated[
             bool,
-            typer.Option(help="Convert content to uppercase"),
+            typer.Option("--uppercase", help="Convert content to uppercase"),
         ] = False
 
     @staticmethod
