@@ -179,6 +179,16 @@ def build_cli(cls, base_main):
         )
         custom_params.append(param)
 
+    # Check for name collisions between base and custom params
+    base_names = {p.name for p in base_params}
+    custom_names = {p.name for p in custom_params}
+    collisions = base_names & custom_names
+    if collisions:
+        raise ValueError(
+            f"Parameter name collision in {cls.__name__}.Params: {collisions}. "
+            f"These names are reserved: {base_names}"
+        )
+
     # Combine base params with custom params
     new_params = base_params + custom_params
     new_sig = base_sig.replace(parameters=new_params)
