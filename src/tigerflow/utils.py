@@ -56,9 +56,17 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     except TimeoutExpired:
         raise TimeoutError(f"CLI validation timed out after {timeout}s: {module}")
 
-    return result.returncode == 0 and all(
+    is_valid = result.returncode == 0 and all(
         opt in result.stdout for opt in required_options
     )
+
+    if not is_valid:
+        print(f"DEBUG: CLI validation failed for {module}")
+        print(f"DEBUG: returncode={result.returncode}")
+        print(f"DEBUG: stdout={result.stdout[:500] if result.stdout else 'empty'}")
+        print(f"DEBUG: stderr={result.stderr[:500] if result.stderr else 'empty'}")
+
+    return is_valid
 
 
 def submit_to_slurm(script: str) -> int:
