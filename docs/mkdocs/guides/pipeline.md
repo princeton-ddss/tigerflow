@@ -92,7 +92,7 @@ tasks:
 where:
 
 - `kind` specifies the task type (one of: `local`, `local_async`, or `slurm`).
-- `module` specifies the Python script defining task logic. Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.
+- `module` specifies the Python module defining task logic. Can be the path to a user-defined task (e.g., `/path/to/transcribe.py`) or the import path of a library task (e.g., `tigerflow.library.echo`). Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.
 - `depends_on` specifies the name of the parent task whose output is used as input for the current task.
 - `keep_output` specifies whether to retain output files from the current task. If unspecified, it defaults to `true`.
 - `params` specifies custom parameters to pass to the task (see [Custom Parameters](task.md#custom-parameters)). For example:
