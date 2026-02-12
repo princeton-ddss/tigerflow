@@ -12,7 +12,7 @@ import typer
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalAsyncTaskConfig
 from tigerflow.settings import settings
-from tigerflow.utils import SetupContext, atomic_write, build_cli
+from tigerflow.utils import SetupContext, atomic_write
 
 from ._base import Task
 
@@ -200,7 +200,7 @@ class LocalAsyncTask(Task):
             task = cls(config)
             task.start(input_dir, output_dir)
 
-        typer.run(build_cli(cls, main))
+        typer.run(cls.build_cli(main))
 
     @staticmethod
     async def setup(context: SetupContext):

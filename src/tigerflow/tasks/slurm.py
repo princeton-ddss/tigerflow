@@ -21,7 +21,7 @@ from tigerflow.models import (
     TaskStatusKind,
 )
 from tigerflow.settings import settings
-from tigerflow.utils import SetupContext, atomic_write, build_cli, submit_to_slurm
+from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
 
 from ._base import Task
 from .utils import get_slurm_task_status
@@ -280,7 +280,7 @@ class SlurmTask(Task):
                 runner = SlurmTaskRunner(config)
                 runner.start(input_dir, output_dir)
 
-        typer.run(build_cli(cls, main))
+        typer.run(cls.build_cli(main))
 
     @staticmethod
     def setup(context: SetupContext):
