@@ -17,8 +17,8 @@ class CountUniqueWords(LocalTask):
         word_counts = Counter(words)
         time.sleep(3)  # Simulate heavy computation
 
-        with open(output_file, "w") as fo:
-            json.dump(dict(word_counts), fo, indent=2)
+        with open(output_file, "w") as f:
+            json.dump(dict(word_counts), f, indent=2)
 
 
 CountUniqueWords.cli()
