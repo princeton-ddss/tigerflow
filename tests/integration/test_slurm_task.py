@@ -3,8 +3,10 @@
 These tests require a Slurm cluster to run. They are designed to be run
 manually on a login node with access to sbatch and squeue commands.
 
-Run with: pytest tests/integration/test_slurm_task.py -v
-Skip if Slurm is unavailable by setting: SKIP_SLURM_TESTS=1
+Run with:
+    SLURM_TEST_DIR=/scratch/user/tests pytest tests/integration/test_slurm_task.py -v
+
+Set SLURM_TEST_DIR to a shared filesystem path accessible by compute nodes.
 """
 
 import os
@@ -18,12 +20,23 @@ from pathlib import Path
 import pytest
 
 TESTS_DIR = Path(__file__).parent.parent
+SLURM_TEST_DIR = os.environ.get("SLURM_TEST_DIR")
 
-# Skip all tests in this module if Slurm is not available
-pytestmark = pytest.mark.skipif(
-    os.environ.get("SKIP_SLURM_TESTS", "0") == "1" or shutil.which("sbatch") is None,
-    reason="Slurm not available or SKIP_SLURM_TESTS=1",
+# Skip conditions
+skip_if_disabled = pytest.mark.skipif(
+    os.environ.get("SKIP_SLURM_TESTS", "0") == "1",
+    reason="SKIP_SLURM_TESTS=1",
 )
+skip_if_no_sbatch = pytest.mark.skipif(
+    shutil.which("sbatch") is None,
+    reason="sbatch not found",
+)
+skip_if_no_test_dir = pytest.mark.skipif(
+    SLURM_TEST_DIR is None,
+    reason="SLURM_TEST_DIR not set",
+)
+
+pytestmark = [skip_if_disabled, skip_if_no_sbatch, skip_if_no_test_dir]
 
 
 def run_slurm_task_until_complete(
@@ -89,13 +102,26 @@ def run_slurm_task_until_complete(
 
 
 @pytest.fixture
-def task_dirs(tmp_path: Path):
-    """Create input and output directories."""
-    input_dir = tmp_path / "input"
-    output_dir = tmp_path / "output"
-    input_dir.mkdir()
-    output_dir.mkdir()
-    return input_dir, output_dir
+def task_dirs():
+    """Create input and output directories on shared filesystem."""
+    base = Path(SLURM_TEST_DIR)
+    base.mkdir(parents=True, exist_ok=True)
+
+    input_dir = base / "input"
+    output_dir = base / "output"
+
+    # Clean up any previous test artifacts
+    for d in (input_dir, output_dir):
+        if d.exists():
+            shutil.rmtree(d)
+        d.mkdir()
+
+    yield input_dir, output_dir
+
+    # Cleanup after test
+    for d in (input_dir, output_dir):
+        if d.exists():
+            shutil.rmtree(d)
 
 
 @pytest.fixture
