@@ -4,6 +4,12 @@ import pytest
 
 
 @pytest.fixture
+def tasks_dir() -> Path:
+    """Path to sample task modules used in tests."""
+    return Path(__file__).parent / "tasks"
+
+
+@pytest.fixture
 def tmp_module(tmp_path: Path) -> Path:
     """Create a temporary Python module file for testing."""
     module = tmp_path / "task_module.py"

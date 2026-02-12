@@ -6,10 +6,6 @@ import sys
 import time
 from pathlib import Path
 
-import pytest
-
-TESTS_DIR = Path(__file__).parent.parent
-
 
 def run_task_until_complete(
     input_dir: Path,
@@ -22,11 +18,7 @@ def run_task_until_complete(
     extra_args: list[str] | None = None,
     timeout: float = 5,
 ):
-    """Run task via subprocess until expected files are produced.
-
-    Use `module` for library tasks (e.g., "tigerflow.library.echo")
-    or `script` for file-based tasks (e.g., Path("tests/tasks/failing.py")).
-    """
+    """Run task via subprocess until expected files are produced."""
     if module:
         cmd = [sys.executable, "-m", module]
     elif script:
@@ -62,34 +54,12 @@ def run_task_until_complete(
     proc.wait(timeout=2)
 
 
-@pytest.fixture
-def task_dirs(tmp_path: Path):
-    """Create input and output directories."""
-    input_dir = tmp_path / "input"
-    output_dir = tmp_path / "output"
-    input_dir.mkdir()
-    output_dir.mkdir()
-    return input_dir, output_dir
-
-
-@pytest.fixture
-def input_files(task_dirs):
-    """Create sample input files."""
-    input_dir, _ = task_dirs
-    files = []
-    for i, content in enumerate(["hello world", "foo bar", "test content"]):
-        f = input_dir / f"file{i}.txt"
-        f.write_text(content)
-        files.append(f)
-    return files
-
-
 class TestLocalTaskWithLibrary:
     """Test LocalTask using a library task (tigerflow.library.echo)."""
 
-    def test_processes_files(self, task_dirs, input_files):
+    def test_processes_files(self, tmp_dirs, input_files):
         """Test that task processes input files to output."""
-        input_dir, output_dir = task_dirs
+        input_dir, output_dir = tmp_dirs
 
         run_task_until_complete(
             module="tigerflow.library.echo",
@@ -105,9 +75,9 @@ class TestLocalTaskWithLibrary:
             assert output_file.exists(), f"Missing output: {output_file}"
             assert output_file.read_text() == input_file.read_text()
 
-    def test_params_passed_to_task(self, task_dirs, input_files):
+    def test_params_passed_to_task(self, tmp_dirs, input_files):
         """Test that CLI params are passed to task context."""
-        input_dir, output_dir = task_dirs
+        input_dir, output_dir = tmp_dirs
 
         run_task_until_complete(
             module="tigerflow.library.echo",
@@ -127,17 +97,17 @@ class TestLocalTaskWithLibrary:
 
 
 class TestLocalTaskWithModule:
-    """Test LocalTask using a module-based task (tests/tasks/failing.py)."""
+    """Test LocalTask using a module-based task."""
 
-    def test_error_files_created_on_failure(self, task_dirs):
+    def test_error_files_created_on_failure(self, tmp_dirs, tasks_dir):
         """Test that .err files are created when task fails."""
-        input_dir, output_dir = task_dirs
+        input_dir, output_dir = tmp_dirs
 
         input_file = input_dir / "fail.txt"
         input_file.write_text("will fail")
 
         run_task_until_complete(
-            script=TESTS_DIR / "tasks" / "failing.py",
+            script=tasks_dir / "failing.py",
             input_dir=input_dir,
             output_dir=output_dir,
             input_ext=".txt",

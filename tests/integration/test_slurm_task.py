@@ -19,7 +19,6 @@ from pathlib import Path
 
 import pytest
 
-TESTS_DIR = Path(__file__).parent.parent
 SLURM_TEST_DIR = os.environ.get("SLURM_TEST_DIR")
 
 # Skip conditions
@@ -139,12 +138,12 @@ def input_files(task_dirs):
 class TestSlurmTaskIntegration:
     """Integration tests that run actual Slurm jobs."""
 
-    def test_processes_files(self, task_dirs, input_files):
+    def test_processes_files(self, task_dirs, input_files, tasks_dir):
         """Test that SlurmTask processes input files to output via Slurm."""
         input_dir, output_dir = task_dirs
 
         run_slurm_task_until_complete(
-            script=TESTS_DIR / "tasks" / "slurm_echo.py",
+            script=tasks_dir / "slurm_echo.py",
             input_dir=input_dir,
             output_dir=output_dir,
             input_ext=".txt",
@@ -157,12 +156,12 @@ class TestSlurmTaskIntegration:
             assert output_file.exists(), f"Missing output: {output_file}"
             assert output_file.read_text() == input_file.read_text()
 
-    def test_params_passed_to_task(self, task_dirs, input_files):
+    def test_params_passed_to_task(self, task_dirs, input_files, tasks_dir):
         """Test that CLI params are passed to Slurm task context."""
         input_dir, output_dir = task_dirs
 
         run_slurm_task_until_complete(
-            script=TESTS_DIR / "tasks" / "slurm_echo.py",
+            script=tasks_dir / "slurm_echo.py",
             input_dir=input_dir,
             output_dir=output_dir,
             input_ext=".txt",
@@ -177,7 +176,7 @@ class TestSlurmTaskIntegration:
             expected = f">>{input_file.read_text().upper()}<<"
             assert output_file.read_text() == expected
 
-    def test_error_files_created_on_failure(self, task_dirs):
+    def test_error_files_created_on_failure(self, task_dirs, tasks_dir):
         """Test that .err files are created when Slurm task fails."""
         input_dir, output_dir = task_dirs
 
@@ -185,7 +184,7 @@ class TestSlurmTaskIntegration:
         input_file.write_text("will fail")
 
         run_slurm_task_until_complete(
-            script=TESTS_DIR / "tasks" / "slurm_failing.py",
+            script=tasks_dir / "slurm_failing.py",
             input_dir=input_dir,
             output_dir=output_dir,
             input_ext=".txt",
