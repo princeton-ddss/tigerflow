@@ -63,7 +63,10 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     if not is_valid:
         print(f"DEBUG: CLI validation failed for {module}")
         print(f"DEBUG: returncode={result.returncode}")
-        print(f"DEBUG: stdout={result.stdout[:500] if result.stdout else 'empty'}")
+        print(f"DEBUG: stdout length={len(result.stdout) if result.stdout else 0}")
+        print(f"DEBUG: '--input-dir' in stdout: {'--input-dir' in result.stdout}")
+        print(f"DEBUG: '--input-ext' in stdout: {'--input-ext' in result.stdout}")
+        print(f"DEBUG: Full stdout:\n{result.stdout}")
         print(f"DEBUG: stderr={result.stderr[:500] if result.stderr else 'empty'}")
 
     return is_valid
