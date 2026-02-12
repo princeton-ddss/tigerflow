@@ -95,6 +95,13 @@ where:
 - `module` specifies the Python script defining task logic. Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.
 - `depends_on` specifies the name of the parent task whose output is used as input for the current task.
 - `keep_output` specifies whether to retain output files from the current task. If unspecified, it defaults to `true`.
+- `params` specifies custom parameters to pass to the task (see [Custom Parameters](task.md#custom-parameters)). For example:
+  ```yaml
+  params:
+    model_name: "whisper-large"
+    temperature: 0.5
+    verbose: true
+  ```
 - `setup_commands` specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.
 - `max_workers` is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.
 - `worker_resources` is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.
