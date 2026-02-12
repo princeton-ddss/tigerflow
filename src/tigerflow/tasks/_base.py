@@ -15,6 +15,70 @@ class Task(ABC):
         pass
 
     @classmethod
+    def build_cli(cls, base_main):
+        """
+        Wrap a base CLI main function to include custom Params as CLI options.
+
+        Inspects cls.Params for additional parameters and creates a new function
+        with a combined signature that Typer can use. Also filters out internal
+        parameters (starting with _) that Typer cannot handle.
+        """
+        # Get the base function's signature, excluding internal params (like _params)
+        base_sig = inspect.signature(base_main)
+        base_params = [
+            p for p in base_sig.parameters.values() if not p.name.startswith("_")
+        ]
+
+        params_spec = cls._get_params_from_class()
+        if not params_spec:
+            # No custom params, but still need to filter out internal params
+            new_sig = base_sig.replace(parameters=base_params)
+
+            def wrapper(*args, **kwargs):
+                return base_main(*args, _params={}, **kwargs)
+
+            wrapper.__signature__ = new_sig
+            wrapper.__doc__ = base_main.__doc__
+            return wrapper
+
+        # Build new parameters from Params class
+        custom_params = []
+        for name, (type_hint, default) in params_spec.items():
+            param = inspect.Parameter(
+                name,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=default,
+                annotation=type_hint,
+            )
+            custom_params.append(param)
+
+        # Check for name collisions between base and custom params
+        base_names = {p.name for p in base_params}
+        custom_names = {p.name for p in custom_params}
+        collisions = base_names & custom_names
+        if collisions:
+            raise ValueError(
+                f"Parameter name collision in {cls.__name__}.Params: {collisions}. "
+                f"These names are reserved: {base_names}"
+            )
+
+        # Combine base params with custom params
+        new_params = base_params + custom_params
+        new_sig = base_sig.replace(parameters=new_params)
+
+        # Create wrapper that separates custom params
+        custom_keys = set(params_spec.keys())
+
+        def wrapper(*args, **kwargs):
+            custom_values = {k: kwargs.pop(k) for k in list(kwargs) if k in custom_keys}
+            return base_main(*args, _params=custom_values, **kwargs)
+
+        wrapper.__signature__ = new_sig
+        wrapper.__doc__ = base_main.__doc__
+
+        return wrapper
+
+    @classmethod
     def get_name(cls) -> str:
         return cls.__name__
 
@@ -95,67 +159,3 @@ class Task(ABC):
             params[name] = (type_hint, default)
 
         return params
-
-    @classmethod
-    def build_cli(cls, base_main):
-        """
-        Wrap a base CLI main function to include custom Params as CLI options.
-
-        Inspects cls.Params for additional parameters and creates a new function
-        with a combined signature that Typer can use. Also filters out internal
-        parameters (starting with _) that Typer cannot handle.
-        """
-        # Get the base function's signature, excluding internal params (like _params)
-        base_sig = inspect.signature(base_main)
-        base_params = [
-            p for p in base_sig.parameters.values() if not p.name.startswith("_")
-        ]
-
-        params_spec = cls._get_params_from_class()
-        if not params_spec:
-            # No custom params, but still need to filter out internal params
-            new_sig = base_sig.replace(parameters=base_params)
-
-            def wrapper(*args, **kwargs):
-                return base_main(*args, _params={}, **kwargs)
-
-            wrapper.__signature__ = new_sig
-            wrapper.__doc__ = base_main.__doc__
-            return wrapper
-
-        # Build new parameters from Params class
-        custom_params = []
-        for name, (type_hint, default) in params_spec.items():
-            param = inspect.Parameter(
-                name,
-                inspect.Parameter.KEYWORD_ONLY,
-                default=default,
-                annotation=type_hint,
-            )
-            custom_params.append(param)
-
-        # Check for name collisions between base and custom params
-        base_names = {p.name for p in base_params}
-        custom_names = {p.name for p in custom_params}
-        collisions = base_names & custom_names
-        if collisions:
-            raise ValueError(
-                f"Parameter name collision in {cls.__name__}.Params: {collisions}. "
-                f"These names are reserved: {base_names}"
-            )
-
-        # Combine base params with custom params
-        new_params = base_params + custom_params
-        new_sig = base_sig.replace(parameters=new_params)
-
-        # Create wrapper that separates custom params
-        custom_keys = set(params_spec.keys())
-
-        def wrapper(*args, **kwargs):
-            custom_values = {k: kwargs.pop(k) for k in list(kwargs) if k in custom_keys}
-            return base_main(*args, _params=custom_values, **kwargs)
-
-        wrapper.__signature__ = new_sig
-        wrapper.__doc__ = base_main.__doc__
-
-        return wrapper
