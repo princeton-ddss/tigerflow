@@ -128,6 +128,172 @@ For example, `path/to/data/4.txt` produces `path/to/results/4.txt`.
 
     If a task encounters an error, TigerFlow generates an error output file, e.g., `4.err` instead of `4.txt`. This file contains specific error messages to assist with debugging.
 
+## Custom Parameters
+
+Tasks can define custom CLI parameters using an inner `Params` class. These parameters are automatically added to the CLI and made available via `context` in the `run` method.
+
+```py title="greet.py"
+from pathlib import Path
+from typing import Annotated
+
+import typer
+
+from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
+
+
+class Greet(LocalTask):
+    class Params:
+        greeting: Annotated[
+            str,
+            typer.Option(help="Greeting to prepend"),
+        ] = "Hello"
+        uppercase: Annotated[
+            bool,
+            typer.Option("--uppercase", help="Convert to uppercase"),
+        ] = False
+
+    @staticmethod
+    def run(context: SetupContext, input_file: Path, output_file: Path):
+        with open(input_file) as f:
+            content = f.read()
+
+        if context.uppercase:
+            content = content.upper()
+
+        result = f"{context.greeting}, {content}"
+
+        with open(output_file, "w") as f:
+            f.write(result)
+
+
+Greet.cli()
+```
+
+The `Params` class supports:
+
+- **Type annotations**: Use standard Python types (`str`, `int`, `bool`, etc.)
+- **Default values**: Parameters with defaults become optional CLI arguments
+- **Typer options**: Use `Annotated[type, typer.Option(...)]` to add help text and customize CLI behavior
+
+Parameters are accessible via `context` using their attribute names. For example, `context.greeting` and `context.uppercase` in the example above.
+
+=== "Command"
+
+    ```bash
+    python greet.py --help
+    ```
+
+=== "Output"
+
+    ```console
+    Usage: greet.py [OPTIONS]
+
+    Run the task as a CLI application
+
+    ╭─ Options ────────────────────────────────────────────────────────────────────╮
+    │ *  --input-dir         PATH  Input directory to read data [required]         │
+    │ *  --input-ext         TEXT  Input file extension [required]                 │
+    │ *  --output-dir        PATH  Output directory to store results [required]    │
+    │ *  --output-ext        TEXT  Output file extension [required]                │
+    │    --greeting          TEXT  Greeting to prepend [default: Hello]            │
+    │    --uppercase               Convert to uppercase                            │
+    │    --task-name         TEXT  Task name [default: Greet]                      │
+    │    --help                    Show this message and exit.                     │
+    ╰──────────────────────────────────────────────────────────────────────────────╯
+    ```
+
+We can then run the task with custom parameters:
+
+```bash
+python greet.py \
+  --input-dir path/to/data/ \
+  --input-ext .txt \
+  --output-dir path/to/results/ \
+  --output-ext .txt \
+  --greeting "Hi there" \
+  --uppercase
+```
+
+!!! tip "Parameter Names"
+
+    Parameter names with underscores (e.g., `my_param`) are converted to hyphenated CLI flags (e.g., `--my-param`). In `context`, use the original underscore form: `context.my_param`.
+
+!!! warning "Reserved Parameter Names"
+
+    Custom parameter names must not conflict with base CLI parameters. Reserved names include `input_dir`, `output_dir`, `input_ext`, `output_ext`, and task-specific options like `max_workers`, `cpus`, `memory`, `time`, `gpus`, and `concurrency_limit`.
+
+## Library Tasks
+
+Library tasks are reusable, pre-packaged tasks that can be run directly or referenced in pipeline configurations. TigerFlow supports two types of library tasks:
+
+- **Built-in tasks**: Shipped with TigerFlow in `tigerflow.library`
+- **Installed tasks**: Third-party tasks installed via Python packages
+
+### Discovering Tasks
+
+Use the `tigerflow tasks` CLI commands to discover available tasks:
+
+=== "List Tasks"
+
+    ```bash
+    tigerflow tasks list
+    ```
+
+    ```console
+    Built-in tasks:
+      echo - Echo task - copies input to output with optional transformations.
+    ```
+
+=== "Task Info"
+
+    ```bash
+    tigerflow tasks info echo
+    ```
+
+    ```console
+    Task: echo
+    Source: built-in
+    Module: tigerflow.library.echo
+
+    Description:
+    Echo task - copies input to output with optional transformations.
+
+    Parameters for Echo:
+      --prefix:
+      --suffix:
+      --uppercase: False
+    ```
+
+### Running Library Tasks
+
+Library tasks can be run directly as Python modules:
+
+```bash
+python -m tigerflow.library.echo \
+  --input-dir ./input \
+  --output-dir ./output \
+  --input-ext .txt \
+  --output-ext .txt \
+  --prefix ">>> "
+```
+
+### Creating Installable Tasks
+
+To distribute your tasks as an installable Python package, register them using entry points. In your `pyproject.toml`:
+
+```toml
+[project.entry-points."tigerflow.tasks"]
+my-task = "mypackage.tasks.mytask:MyTask"
+```
+
+The entry point value can be either:
+
+- A module path: `mypackage.tasks.mytask`
+- A module path with class name: `mypackage.tasks.mytask:MyTask`
+
+Once installed, the task appears in `tigerflow tasks list` under "Installed tasks" and can be referenced by name in pipeline configurations.
+
 ## Examples
 
 Say we want to implement a workflow that involves the following tasks:
