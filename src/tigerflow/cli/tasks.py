@@ -11,57 +11,6 @@ from rich import print
 app = typer.Typer()
 
 
-def _get_builtin_tasks() -> list[tuple[str, str]]:
-    """Get list of built-in tasks from tigerflow.library."""
-    tasks = []
-    try:
-        import tigerflow.library as library
-
-        for module_info in pkgutil.iter_modules(library.__path__):
-            if not module_info.name.startswith("_"):
-                module_name = f"tigerflow.library.{module_info.name}"
-                tasks.append((module_info.name, module_name))
-    except ImportError:
-        pass
-    return tasks
-
-
-def _get_installed_tasks() -> list[tuple[str, str]]:
-    """Get list of tasks installed via entry points."""
-    tasks = []
-    try:
-        eps = entry_points(group="tigerflow.tasks")
-        for ep in eps:
-            tasks.append((ep.name, ep.value))
-    except Exception:
-        pass
-    return tasks
-
-
-def _parse_module_path(module_path: str) -> tuple[str, str | None]:
-    """Parse module path that may include class name (e.g., 'module.path:ClassName')."""
-    if ":" in module_path:
-        module_name, class_name = module_path.split(":", 1)
-        return module_name, class_name
-    return module_path, None
-
-
-def _get_task_description(module_path: str) -> str | None:
-    """Try to get a task's description from its docstring."""
-    try:
-        module_name, _ = _parse_module_path(module_path)
-        module = importlib.import_module(module_name)
-        if module.__doc__:
-            # Get first non-empty line of docstring
-            for line in module.__doc__.strip().split("\n"):
-                line = line.strip()
-                if line:
-                    return line
-    except Exception:
-        pass
-    return None
-
-
 @app.command(name="list")
 def list_tasks(
     verbose: Annotated[
@@ -163,3 +112,57 @@ def task_info(
             break
     except Exception as e:
         print(f"\nCould not load task details: {e}")
+
+
+# Private helpers
+
+
+def _get_builtin_tasks() -> list[tuple[str, str]]:
+    """Get list of built-in tasks from tigerflow.library."""
+    tasks = []
+    try:
+        import tigerflow.library as library
+
+        for module_info in pkgutil.iter_modules(library.__path__):
+            if not module_info.name.startswith("_"):
+                module_name = f"tigerflow.library.{module_info.name}"
+                tasks.append((module_info.name, module_name))
+    except ImportError:
+        pass
+    return tasks
+
+
+def _get_installed_tasks() -> list[tuple[str, str]]:
+    """Get list of tasks installed via entry points."""
+    tasks = []
+    try:
+        eps = entry_points(group="tigerflow.tasks")
+        for ep in eps:
+            tasks.append((ep.name, ep.value))
+    except Exception:
+        pass
+    return tasks
+
+
+def _parse_module_path(module_path: str) -> tuple[str, str | None]:
+    """Parse module path that may include class name (e.g., 'module.path:ClassName')."""
+    if ":" in module_path:
+        module_name, class_name = module_path.split(":", 1)
+        return module_name, class_name
+    return module_path, None
+
+
+def _get_task_description(module_path: str) -> str | None:
+    """Try to get a task's description from its docstring."""
+    try:
+        module_name, _ = _parse_module_path(module_path)
+        module = importlib.import_module(module_name)
+        if module.__doc__:
+            # Get first non-empty line of docstring
+            for line in module.__doc__.strip().split("\n"):
+                line = line.strip()
+                if line:
+                    return line
+    except Exception:
+        pass
+    return None
