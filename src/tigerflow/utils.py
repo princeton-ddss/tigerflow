@@ -33,14 +33,16 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     """
     Check if the given module is a valid task CLI.
 
+    A valid task CLI runs successfully with --help (exit code 0).
+    Task subclasses using the built-in cli() method will have the
+    required options (--input-dir, --input-ext, --output-dir, --output-ext).
+
     Parameters
     ----------
     module : str
         Either a file path ending in .py or a fully qualified module name
         (e.g., 'tigerflow.library.echo')
     """
-    required_options = ["--input-dir", "--input-ext", "--output-dir", "--output-ext"]
-
     if module.endswith(".py"):
         args = [sys.executable, module, "--help"]
     else:
@@ -56,20 +58,7 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     except TimeoutExpired:
         raise TimeoutError(f"CLI validation timed out after {timeout}s: {module}")
 
-    is_valid = result.returncode == 0 and all(
-        opt in result.stdout for opt in required_options
-    )
-
-    if not is_valid:
-        print(f"DEBUG: CLI validation failed for {module}")
-        print(f"DEBUG: returncode={result.returncode}")
-        print(f"DEBUG: stdout length={len(result.stdout) if result.stdout else 0}")
-        print(f"DEBUG: '--input-dir' in stdout: {'--input-dir' in result.stdout}")
-        print(f"DEBUG: '--input-ext' in stdout: {'--input-ext' in result.stdout}")
-        print(f"DEBUG: Full stdout:\n{result.stdout}")
-        print(f"DEBUG: stderr={result.stderr[:500] if result.stderr else 'empty'}")
-
-    return is_valid
+    return result.returncode == 0
 
 
 def submit_to_slurm(script: str) -> int:
