@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import networkx as nx
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, field_validator
 
 from tigerflow.settings import settings
 from tigerflow.utils import validate_file_ext
@@ -38,11 +38,15 @@ class SlurmResourceConfig(BaseModel):
         return [option.strip() for option in sbatch_options]
 
 
+def _coerce_path_to_str(v: str | Path) -> str:
+    """Convert Path to str for module field."""
+    return str(v) if isinstance(v, Path) else v
+
+
 class BaseTaskConfig(BaseModel):
     name: str
     depends_on: str | None = None
-    module: Path | None = None
-    library: str | None = None
+    module: Annotated[str, BeforeValidator(_coerce_path_to_str)]
     params: dict[str, Any] = {}
     input_ext: str
     output_ext: str = ".out"
@@ -51,32 +55,33 @@ class BaseTaskConfig(BaseModel):
     _input_dir: Path | None = None
     _output_dir: Path | None = None
 
-    @model_validator(mode="after")
-    def validate_module_or_library(self):
-        if self.module is None and self.library is None:
-            raise ValueError("Either 'module' or 'library' must be specified")
-        if self.module is not None and self.library is not None:
-            raise ValueError("Cannot specify both 'module' and 'library'")
-        return self
-
     @field_validator("module")
     @classmethod
-    def validate_module(cls, module: Path | None) -> Path | None:
-        if module is None:
-            return None
-        if not module.exists():
-            raise ValueError(f"Module does not exist: {module}")
-        if not module.is_file():
-            raise ValueError(f"Module is not a file: {module}")
-        return module.resolve()  # Use absolute path for clarity
+    def validate_module(cls, module: str) -> str:
+        from importlib.util import find_spec
+
+        if module.endswith(".py"):
+            path = Path(module)
+            if not path.exists():
+                raise ValueError(f"Module does not exist: {module}")
+            if not path.is_file():
+                raise ValueError(f"Module is not a file: {module}")
+            return str(path.resolve())  # Use absolute path for clarity
+        else:
+            try:
+                if find_spec(module) is None:
+                    raise ValueError(f"Module not found: {module}")
+            except ModuleNotFoundError:
+                raise ValueError(f"Module not found: {module}")
+            return module
 
     @property
     def python_command(self) -> str:
         """Return the python command to run this task's module."""
-        if self.module:
+        if self.module.endswith(".py"):
             return f"python {self.module}"
         else:
-            return f"python -m {self.library}"
+            return f"python -m {self.module}"
 
     @property
     def params_as_cli_args(self) -> list[str]:

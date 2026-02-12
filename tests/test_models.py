@@ -85,14 +85,10 @@ class TestBaseTaskConfig:
             BaseTaskConfig(name="test", module=nonexistent, input_ext=".txt")
 
     def test_module_must_be_file(self, tmp_path: Path):
-        directory = tmp_path / "some_dir"
+        directory = tmp_path / "some_dir.py"
         directory.mkdir()
         with pytest.raises(ValidationError, match="Module is not a file"):
             BaseTaskConfig(name="test", module=directory, input_ext=".txt")
-
-    def test_module_resolved_to_absolute(self, tmp_module: Path):
-        config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
-        assert config.module.is_absolute()
 
     def test_valid_input_ext(self, tmp_module: Path):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".json")
@@ -146,32 +142,26 @@ class TestBaseTaskConfig:
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         assert config.keep_output is True
 
-    def test_library_field(self):
+    def test_library_module_validated(self):
         config = BaseTaskConfig(
             name="test",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             input_ext=".txt",
         )
-        assert config.library == "tigerflow.library.echo"
-        assert config.module is None
+        assert config.module == "tigerflow.library.echo"
 
-    def test_module_or_library_required(self):
-        with pytest.raises(ValidationError, match="Either 'module' or 'library'"):
-            BaseTaskConfig(name="test", input_ext=".txt")
-
-    def test_module_and_library_mutually_exclusive(self, tmp_module: Path):
-        with pytest.raises(ValidationError, match="Cannot specify both"):
+    def test_library_module_not_found(self):
+        with pytest.raises(ValidationError, match="Module not found"):
             BaseTaskConfig(
                 name="test",
-                module=tmp_module,
-                library="tigerflow.library.echo",
+                module="nonexistent.module.path",
                 input_ext=".txt",
             )
 
     def test_params_field(self):
         config = BaseTaskConfig(
             name="test",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             params={"prefix": "Hello: ", "uppercase": True},
             input_ext=".txt",
         )
@@ -180,19 +170,19 @@ class TestBaseTaskConfig:
     def test_params_default_empty(self):
         config = BaseTaskConfig(
             name="test",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             input_ext=".txt",
         )
         assert config.params == {}
 
-    def test_python_command_with_module(self, tmp_module: Path):
+    def test_python_command_with_file_module(self, tmp_module: Path):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
-        assert config.python_command == f"python {tmp_module}"
+        assert config.python_command == f"python {config.module}"
 
-    def test_python_command_with_library(self):
+    def test_python_command_with_library_module(self):
         config = BaseTaskConfig(
             name="test",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             input_ext=".txt",
         )
         assert config.python_command == "python -m tigerflow.library.echo"
@@ -200,7 +190,7 @@ class TestBaseTaskConfig:
     def test_params_as_cli_args_simple(self):
         config = BaseTaskConfig(
             name="test",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             params={"prefix": "Hello"},
             input_ext=".txt",
         )
@@ -210,7 +200,7 @@ class TestBaseTaskConfig:
     def test_params_as_cli_args_boolean_true(self):
         config = BaseTaskConfig(
             name="test",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             params={"uppercase": True},
             input_ext=".txt",
         )
@@ -220,7 +210,7 @@ class TestBaseTaskConfig:
     def test_params_as_cli_args_boolean_false(self):
         config = BaseTaskConfig(
             name="test",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             params={"uppercase": False},
             input_ext=".txt",
         )
@@ -230,7 +220,7 @@ class TestBaseTaskConfig:
     def test_params_as_cli_args_underscores_to_hyphens(self):
         config = BaseTaskConfig(
             name="test",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             params={"max_length": 512},
             input_ext=".txt",
         )
@@ -280,12 +270,12 @@ class TestLocalTaskConfig:
 
         assert "source venv/bin/activate;export VAR=1" in script
 
-    def test_to_script_with_library(self, tmp_dirs: tuple[Path, Path]):
+    def test_to_script_with_library_module(self, tmp_dirs: tuple[Path, Path]):
         input_dir, output_dir = tmp_dirs
         config = LocalTaskConfig(
             name="my_task",
             kind="local",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             input_ext=".txt",
             output_ext=".txt",
         )
@@ -301,7 +291,7 @@ class TestLocalTaskConfig:
         config = LocalTaskConfig(
             name="my_task",
             kind="local",
-            library="tigerflow.library.echo",
+            module="tigerflow.library.echo",
             params={"prefix": "Hello", "uppercase": True},
             input_ext=".txt",
             output_ext=".txt",

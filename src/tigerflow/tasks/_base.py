@@ -117,7 +117,7 @@ class Task(ABC):
             new_sig = base_sig.replace(parameters=base_params)
 
             def wrapper(*args, **kwargs):
-                return base_main(*args, _params=None, **kwargs)
+                return base_main(*args, _params={}, **kwargs)
 
             wrapper.__signature__ = new_sig
             wrapper.__doc__ = base_main.__doc__

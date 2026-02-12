@@ -23,7 +23,7 @@ from tigerflow.models import (
 )
 from tigerflow.settings import settings
 from tigerflow.tasks.utils import get_slurm_task_status
-from tigerflow.utils import is_valid_library_cli, is_valid_module_cli, submit_to_slurm
+from tigerflow.utils import is_valid_task_cli, submit_to_slurm
 
 
 class Pipeline:
@@ -63,14 +63,10 @@ class Pipeline:
         )
 
         for task in self._config.tasks:
-            if task.module is not None:
-                if not is_valid_module_cli(
-                    task.module, timeout=settings.task_validation_timeout
-                ):
-                    raise ValueError(f"Invalid CLI: {task.module}")
-            elif task.library is not None:
-                if not is_valid_library_cli(task.library):
-                    raise ValueError(f"Invalid library CLI: {task.library}")
+            if not is_valid_task_cli(
+                task.module, timeout=settings.task_validation_timeout
+            ):
+                raise ValueError(f"Invalid task CLI: {task.module}")
 
         # Map task I/O directories from the dependency graph
         for task in self._config.tasks:

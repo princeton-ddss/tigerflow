@@ -29,43 +29,36 @@ def validate_file_ext(ext: str) -> str:
     return ext
 
 
-def is_valid_module_cli(file: Path, *, timeout: int = 60) -> bool:
+def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
+    """
+    Check if the given module is a valid task CLI.
+
+    Parameters
+    ----------
+    module : str
+        Either a file path ending in .py or a fully qualified module name
+        (e.g., 'tigerflow.library.echo')
+    """
     required_options = ["--input-dir", "--input-ext", "--output-dir", "--output-ext"]
+
+    if module.endswith(".py"):
+        args = [sys.executable, module, "--help"]
+    else:
+        args = [sys.executable, "-m", module, "--help"]
+
     try:
         result = subprocess.run(
-            [sys.executable, str(file), "--help"],
+            args,
             capture_output=True,
             text=True,
             timeout=timeout,
         )
     except TimeoutExpired:
-        raise TimeoutError(f"CLI validation timed out after {timeout}s: {file}")
+        raise TimeoutError(f"CLI validation timed out after {timeout}s: {module}")
 
     return result.returncode == 0 and all(
         opt in result.stdout for opt in required_options
     )
-
-
-def is_valid_library_cli(module_name: str, *, timeout: int = 60) -> bool:
-    """
-    Check if the given module name is a valid Typer CLI application.
-
-    Parameters
-    ----------
-    module_name : str
-        Fully qualified module name (e.g., 'tigerflow.library.echo')
-    """
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", module_name, "--help"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        # Check for Typer CLI signature: "Usage: ... [OPTIONS]"
-        return "[OPTIONS]" in result.stdout and result.returncode == 0
-    except TimeoutExpired:
-        return False
 
 
 def submit_to_slurm(script: str) -> int:
