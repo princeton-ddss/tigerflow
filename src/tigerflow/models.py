@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import networkx as nx
-from pydantic import BaseModel, BeforeValidator, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from tigerflow.settings import settings
 from tigerflow.utils import validate_file_ext
@@ -38,15 +38,10 @@ class SlurmResourceConfig(BaseModel):
         return [option.strip() for option in sbatch_options]
 
 
-def _coerce_path_to_str(v: str | Path) -> str:
-    """Convert Path to str for module field."""
-    return str(v) if isinstance(v, Path) else v
-
-
 class BaseTaskConfig(BaseModel):
     name: str
     depends_on: str | None = None
-    module: Annotated[str, BeforeValidator(_coerce_path_to_str)]
+    module: str
     params: dict[str, Any] = {}
     input_ext: str
     output_ext: str = ".out"
@@ -54,6 +49,12 @@ class BaseTaskConfig(BaseModel):
     setup_commands: list[str] = []
     _input_dir: Path | None = None
     _output_dir: Path | None = None
+
+    @field_validator("module", mode="before")
+    @classmethod
+    def _coerce_path_to_str(cls, v: str | Path) -> str:
+        """Convert Path to str for module field."""
+        return str(v) if isinstance(v, Path) else v
 
     @field_validator("module")
     @classmethod
