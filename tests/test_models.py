@@ -68,6 +68,15 @@ class TestSlurmResourceConfig:
         assert config.gpus == 2
         assert len(config.sbatch_options) == 2
 
+    def test_sbatch_options_whitespace_stripped(self):
+        config = SlurmResourceConfig(
+            cpus=4,
+            memory="8G",
+            time="1:00:00",
+            sbatch_options=["  --partition=gpu  ", " --account=myaccount "],
+        )
+        assert config.sbatch_options == ["--partition=gpu", "--account=myaccount"]
+
 
 class TestBaseTaskConfig:
     def test_module_must_exist(self, tmp_path: Path):
@@ -429,6 +438,62 @@ class TestSlurmTaskConfig:
 
         assert "--sbatch-option '--partition=gpu'" in script
         assert "--sbatch-option '--mail-user=tigerflow@princeton.edu'" in script
+
+    def test_to_script_with_account_option(
+        self, tmp_module: Path, tmp_dirs: tuple[Path, Path]
+    ):
+        input_dir, output_dir = tmp_dirs
+        config = SlurmTaskConfig(
+            name="task",
+            kind="slurm",
+            module=tmp_module,
+            input_ext=".txt",
+            max_workers=2,
+            worker_resources=SlurmResourceConfig(
+                cpus=4,
+                memory="8G",
+                time="1:00:00",
+                sbatch_options=["--account=myaccount", "--partition=gpu"],
+            ),
+        )
+        config.input_dir = input_dir
+        config.output_dir = output_dir
+
+        script = config.to_script()
+
+        assert "#SBATCH --account=myaccount" in script
+
+    def test_to_script_with_short_account_option(
+        self, tmp_module: Path, tmp_dirs: tuple[Path, Path]
+    ):
+        input_dir, output_dir = tmp_dirs
+        config = SlurmTaskConfig(
+            name="task",
+            kind="slurm",
+            module=tmp_module,
+            input_ext=".txt",
+            max_workers=2,
+            worker_resources=SlurmResourceConfig(
+                cpus=4,
+                memory="8G",
+                time="1:00:00",
+                sbatch_options=["-A myaccount"],
+            ),
+        )
+        config.input_dir = input_dir
+        config.output_dir = output_dir
+
+        script = config.to_script()
+
+        assert "#SBATCH -A myaccount" in script
+
+    def test_to_script_without_account_option(self, slurm_config: SlurmTaskConfig):
+        script = slurm_config.to_script()
+
+        for line in script.splitlines():
+            if line.strip().startswith("#SBATCH"):
+                option = line.split("#SBATCH")[1].strip()
+                assert not option.startswith(("--account", "-A"))
 
 
 class TestPipelineConfig:

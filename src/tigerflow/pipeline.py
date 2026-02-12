@@ -316,12 +316,15 @@ class Pipeline:
             self._finished_dir.joinpath(filename).touch()
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
+            n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
+            n_failed = sum(len(errs) for errs in self._task_error_filenames.values())
+            if (n_finished + n_failed) >= len(self._filenames):
+                logger.info("No more files to process, starting idle time count")
 
     def _check_inactivity(self):
         n_finished = sum(1 for file in self._finished_dir.iterdir() if file.is_file())
-        n_failed = sum(len(errors) for errors in self._task_error_filenames.values())
-        n_total = len(self._filenames)
-        if (n_finished + n_failed) < n_total:  # Still in progress
+        n_failed = sum(len(errs) for errs in self._task_error_filenames.values())
+        if (n_finished + n_failed) < len(self._filenames):  # Still in progress
             self._last_active = datetime.now()
 
         inactivity = datetime.now() - self._last_active

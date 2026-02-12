@@ -1,3 +1,4 @@
+import asyncio
 import signal
 import subprocess
 import sys
@@ -53,7 +54,7 @@ class SlurmTask(Task):
         params = self.config.params
 
         class TaskWorkerPlugin(WorkerPlugin):
-            def setup(self, worker: Worker):
+            async def setup(self, worker: Worker):
                 logger.info("Setting up task")
                 worker.context = SetupContext()
 
@@ -61,13 +62,15 @@ class SlurmTask(Task):
                 for key, value in params.items():
                     setattr(worker.context, key, value)
 
-                setup_func(worker.context)
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, setup_func, worker.context)
                 worker.context.freeze()  # Make it read-only
                 logger.info("Task setup complete")
 
-            def teardown(self, worker: Worker):
+            async def teardown(self, worker: Worker):
                 logger.info("Shutting down task")
-                teardown_func(worker.context)
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, teardown_func, worker.context)
                 logger.info("Task shutdown complete")
 
         def task(input_file: Path, output_file: Path):
@@ -93,6 +96,7 @@ class SlurmTask(Task):
             memory=self.config.worker_resources.memory,
             walltime=self.config.worker_resources.time,
             processes=1,
+            nanny=False,
             death_timeout=settings.slurm_task_worker_startup_timeout,
             job_extra_directives=self.config.worker_resources.sbatch_options
             + [
