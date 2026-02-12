@@ -43,8 +43,8 @@ class HelloWorld(LocalTask):
 
     @staticmethod
     def run(context, input_file, output_file):
-        with open(input_file, "r") as fi:
-            content = fi.read()
+        with open(input_file, "r") as f:
+            content = f.read()
 
         new_content = context.greeting + ", " + content.upper()
 
