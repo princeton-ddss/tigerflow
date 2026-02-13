@@ -741,9 +741,15 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <p>where:</p>
 <ul>
 <li><code>kind</code> specifies the task type (one of: <code>local</code>, <code>local_async</code>, or <code>slurm</code>).</li>
-<li><code>module</code> specifies the Python script defining task logic. Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.</li>
+<li><code>module</code> specifies the Python module defining task logic. Can be the path to a user-defined task (e.g., <code>/path/to/transcribe.py</code>) or the import path of a library task (e.g., <code>tigerflow.library.echo</code>). Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.</li>
 <li><code>depends_on</code> specifies the name of the parent task whose output is used as input for the current task.</li>
 <li><code>keep_output</code> specifies whether to retain output files from the current task. If unspecified, it defaults to <code>true</code>.</li>
+<li><code>params</code> specifies custom parameters to pass to the task (see <a href="../task/#custom-parameters">Custom Parameters</a>). For example:
+  <div class="highlight"><pre><span></span><code><span class="nt">params</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">model_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;whisper-large&quot;</span>
+<span class="w">  </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+<span class="w">  </span><span class="nt">verbose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></li>
 <li><code>setup_commands</code> specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.</li>
 <li><code>max_workers</code> is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.</li>
 <li><code>worker_resources</code> is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.</li>

@@ -465,6 +465,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#custom-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#library-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library Tasks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Library Tasks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#discovering-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discovering Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-library-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Library Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-installable-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating Installable Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -624,6 +685,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#custom-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#library-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library Tasks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Library Tasks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#discovering-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discovering Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-library-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Library Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-installable-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating Installable Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -751,13 +873,13 @@ where each input file is transformed into a single output file independently of 
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">input_file</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fi</span><span class="p">:</span>
-            <span class="n">content</span> <span class="o">=</span> <span class="n">fi</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 
         <span class="n">new_content</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">greeting</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span> <span class="o">+</span> <span class="n">content</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
 
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fo</span><span class="p">:</span>
-            <span class="n">fo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">new_content</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">new_content</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
@@ -832,6 +954,148 @@ For example, <code>path/to/data/4.txt</code> produces <code>path/to/results/4.tx
 <p class="admonition-title">Error Files</p>
 <p>If a task encounters an error, TigerFlow generates an error output file, e.g., <code>4.err</code> instead of <code>4.txt</code>. This file contains specific error messages to assist with debugging.</p>
 </div>
+<h2 id="custom-parameters">Custom Parameters<a class="headerlink" href="#custom-parameters" title="Permanent link">&para;</a></h2>
+<p>Tasks can define custom CLI parameters using an inner <code>Params</code> class. These parameters are automatically added to the CLI and made available via <code>context</code> in the <code>run</code> method.</p>
+<div class="highlight"><span class="filename">greet.py</span><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalTask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Greet</span><span class="p">(</span><span class="n">LocalTask</span><span class="p">):</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Params</span><span class="p">:</span>
+        <span class="n">greeting</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span><span class="p">,</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="n">help</span><span class="o">=</span><span class="s2">&quot;Greeting to prepend&quot;</span><span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Hello&quot;</span>
+        <span class="n">uppercase</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">bool</span><span class="p">,</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="s2">&quot;--uppercase&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Convert to uppercase&quot;</span><span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">,</span> <span class="n">input_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">output_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">uppercase</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">greeting</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">content</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+
+<span class="n">Greet</span><span class="o">.</span><span class="n">cli</span><span class="p">()</span>
+</code></pre></div>
+<p>The <code>Params</code> class supports:</p>
+<ul>
+<li><strong>Type annotations</strong>: Use standard Python types (<code>str</code>, <code>int</code>, <code>bool</code>, etc.)</li>
+<li><strong>Default values</strong>: Parameters with defaults become optional CLI arguments</li>
+<li><strong>Typer options</strong>: Use <code>Annotated[type, typer.Option(...)]</code> to add help text and customize CLI behavior</li>
+</ul>
+<p>Parameters are accessible via <code>context</code> using their attribute names. For example, <code>context.greeting</code> and <code>context.uppercase</code> in the example above.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>greet.py<span class="w"> </span>--help
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="go">Usage: greet.py [OPTIONS]</span>
+
+<span class="go">Run the task as a CLI application</span>
+
+<span class="go">╭─ Options ────────────────────────────────────────────────────────────────────╮</span>
+<span class="go">│ *  --input-dir         PATH  Input directory to read data [required]         │</span>
+<span class="go">│ *  --input-ext         TEXT  Input file extension [required]                 │</span>
+<span class="go">│ *  --output-dir        PATH  Output directory to store results [required]    │</span>
+<span class="go">│ *  --output-ext        TEXT  Output file extension [required]                │</span>
+<span class="go">│    --greeting          TEXT  Greeting to prepend [default: Hello]            │</span>
+<span class="go">│    --uppercase               Convert to uppercase                            │</span>
+<span class="go">│    --task-name         TEXT  Task name [default: Greet]                      │</span>
+<span class="go">│    --help                    Show this message and exit.                     │</span>
+<span class="go">╰──────────────────────────────────────────────────────────────────────────────╯</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>We can then run the task with custom parameters:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>greet.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input-dir<span class="w"> </span>path/to/data/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input-ext<span class="w"> </span>.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-dir<span class="w"> </span>path/to/results/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-ext<span class="w"> </span>.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--greeting<span class="w"> </span><span class="s2">&quot;Hi there&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--uppercase
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Parameter Names</p>
+<p>Parameter names with underscores (e.g., <code>my_param</code>) are converted to hyphenated CLI flags (e.g., <code>--my-param</code>). In <code>context</code>, use the original underscore form: <code>context.my_param</code>.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Reserved Parameter Names</p>
+<p>Custom parameter names must not conflict with base CLI parameters. Reserved names include <code>input_dir</code>, <code>output_dir</code>, <code>input_ext</code>, <code>output_ext</code>, and task-specific options like <code>max_workers</code>, <code>cpus</code>, <code>memory</code>, <code>time</code>, <code>gpus</code>, and <code>concurrency_limit</code>.</p>
+</div>
+<h2 id="library-tasks">Library Tasks<a class="headerlink" href="#library-tasks" title="Permanent link">&para;</a></h2>
+<p>Library tasks are reusable, pre-packaged tasks that can be run directly or referenced in pipeline configurations. TigerFlow supports two types of library tasks:</p>
+<ul>
+<li><strong>Built-in tasks</strong>: Shipped with TigerFlow in <code>tigerflow.library</code></li>
+<li><strong>Installed tasks</strong>: Third-party tasks installed via Python packages</li>
+</ul>
+<h3 id="discovering-tasks">Discovering Tasks<a class="headerlink" href="#discovering-tasks" title="Permanent link">&para;</a></h3>
+<p>Use the <code>tigerflow tasks</code> CLI commands to discover available tasks:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">List Tasks</label><label for="__tabbed_4_2">Task Info</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>tasks<span class="w"> </span>list
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="go">Built-in tasks:</span>
+<span class="go">  echo - Echo task - copies input to output with optional transformations.</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>tasks<span class="w"> </span>info<span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="go">Task: echo</span>
+<span class="go">Source: built-in</span>
+<span class="go">Module: tigerflow.library.echo</span>
+
+<span class="go">Description:</span>
+<span class="go">Echo task - copies input to output with optional transformations.</span>
+
+<span class="go">Parameters for Echo:</span>
+<span class="go">  --prefix:</span>
+<span class="go">  --suffix:</span>
+<span class="go">  --uppercase: False</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="running-library-tasks">Running Library Tasks<a class="headerlink" href="#running-library-tasks" title="Permanent link">&para;</a></h3>
+<p>Library tasks can be run directly as Python modules:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>tigerflow.library.echo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input-dir<span class="w"> </span>./input<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-dir<span class="w"> </span>./output<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input-ext<span class="w"> </span>.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-ext<span class="w"> </span>.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prefix<span class="w"> </span><span class="s2">&quot;&gt;&gt;&gt; &quot;</span>
+</code></pre></div>
+<h3 id="creating-installable-tasks">Creating Installable Tasks<a class="headerlink" href="#creating-installable-tasks" title="Permanent link">&para;</a></h3>
+<p>To distribute your tasks as an installable Python package, register them using entry points. In your <code>pyproject.toml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[project.entry-points.</span><span class="s2">&quot;tigerflow.tasks&quot;</span><span class="k">]</span>
+<span class="n">my-task</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.tasks.mytask:MyTask&quot;</span>
+</code></pre></div>
+<p>The entry point value can be either:</p>
+<ul>
+<li>A module path: <code>mypackage.tasks.mytask</code></li>
+<li>A module path with class name: <code>mypackage.tasks.mytask:MyTask</code></li>
+</ul>
+<p>Once installed, the task appears in <code>tigerflow tasks list</code> under "Installed tasks" and can be referenced by name in pipeline configurations.</p>
 <h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
 <p>Say we want to implement a workflow that involves the following tasks:</p>
 <ol>
@@ -878,7 +1142,7 @@ and we want to process files in parallel.</p>
 <li>This pre-loaded model is then accessed from <code>context</code> to transcribe each file</li>
 </ul>
 <p>Calling <code>Transcribe.cli()</code> turns this module into a runnable CLI application:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Command</label><label for="__tabbed_5_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>transcribe.py<span class="w"> </span>--help
@@ -910,7 +1174,7 @@ and we want to process files in parallel.</p>
 </div>
 </div>
 <p>We can then run the task as follows:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Command</label><label for="__tabbed_4_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Command</label><label for="__tabbed_6_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>transcribe.py<span class="w"> </span><span class="se">\</span>
@@ -1035,7 +1299,7 @@ up to 2000 requests per minute, we can:</p>
 keeping it safely within the limit.</p>
 </details>
 <p>Calling <code>Embed.cli()</code> turns this module into a runnable CLI application:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Command</label><label for="__tabbed_5_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Command</label><label for="__tabbed_7_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>embed.py<span class="w"> </span>--help
@@ -1062,7 +1326,7 @@ keeping it safely within the limit.</p>
 </div>
 </div>
 <p>We can then run the task as follows:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Command</label><label for="__tabbed_6_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Command</label><label for="__tabbed_8_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>embed.py<span class="w"> </span><span class="se">\</span>
@@ -1155,7 +1419,7 @@ only supports writes from a single process.</p>
 <li>The database connection is closed at the end to ensure a graceful shutdown</li>
 </ul>
 <p>Calling <code>Ingest.cli()</code> turns this module into a runnable CLI application:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Command</label><label for="__tabbed_7_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">Command</label><label for="__tabbed_9_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>ingest.py<span class="w"> </span>--help
@@ -1179,7 +1443,7 @@ only supports writes from a single process.</p>
 </div>
 </div>
 <p>We can then run the task as follows:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Command</label><label for="__tabbed_8_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Command</label><label for="__tabbed_10_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>ingest.py<span class="w"> </span><span class="se">\</span>
