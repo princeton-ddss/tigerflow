@@ -76,9 +76,16 @@ def background_pipeline(minimal_config, tmp_dirs):
 
     subprocess.run(
         [
-            UV_PATH, "run", "tigerflow", "run",
-            str(minimal_config), str(input_dir), str(output_dir),
-            "--background", "--idle-timeout", "5",
+            UV_PATH,
+            "run",
+            "tigerflow",
+            "run",
+            str(minimal_config),
+            str(input_dir),
+            str(output_dir),
+            "--background",
+            "--idle-timeout",
+            "5",
         ],
         capture_output=True,
         text=True,
@@ -104,9 +111,15 @@ class TestForegroundRun:
 
         proc = subprocess.Popen(
             [
-                UV_PATH, "run", "tigerflow", "run",
-                str(minimal_config), str(input_dir), str(output_dir),
-                "--idle-timeout", "1",
+                UV_PATH,
+                "run",
+                "tigerflow",
+                "run",
+                str(minimal_config),
+                str(input_dir),
+                str(output_dir),
+                "--idle-timeout",
+                "1",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -128,9 +141,15 @@ class TestForegroundRun:
 
         proc = subprocess.Popen(
             [
-                UV_PATH, "run", "tigerflow", "run",
-                str(minimal_config), str(input_dir), str(output_dir),
-                "--idle-timeout", "5",
+                UV_PATH,
+                "run",
+                "tigerflow",
+                "run",
+                str(minimal_config),
+                str(input_dir),
+                str(output_dir),
+                "--idle-timeout",
+                "5",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -143,8 +162,13 @@ class TestForegroundRun:
             # Try to start second pipeline
             result = subprocess.run(
                 [
-                    UV_PATH, "run", "tigerflow", "run",
-                    str(minimal_config), str(input_dir), str(output_dir),
+                    UV_PATH,
+                    "run",
+                    "tigerflow",
+                    "run",
+                    str(minimal_config),
+                    str(input_dir),
+                    str(output_dir),
                 ],
                 capture_output=True,
                 text=True,
@@ -164,9 +188,15 @@ class TestForegroundRun:
 
         proc = subprocess.Popen(
             [
-                UV_PATH, "run", "tigerflow", "run",
-                str(minimal_config), str(input_dir), str(output_dir),
-                "--idle-timeout", "60",
+                UV_PATH,
+                "run",
+                "tigerflow",
+                "run",
+                str(minimal_config),
+                str(input_dir),
+                str(output_dir),
+                "--idle-timeout",
+                "60",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -189,9 +219,15 @@ class TestForegroundRun:
 
         proc = subprocess.Popen(
             [
-                UV_PATH, "run", "tigerflow", "run",
-                str(minimal_config), str(input_dir), str(output_dir),
-                "--idle-timeout", "5",
+                UV_PATH,
+                "run",
+                "tigerflow",
+                "run",
+                str(minimal_config),
+                str(input_dir),
+                str(output_dir),
+                "--idle-timeout",
+                "5",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -220,9 +256,16 @@ class TestBackgroundRun:
 
         result = subprocess.run(
             [
-                UV_PATH, "run", "tigerflow", "run",
-                str(minimal_config), str(input_dir), str(output_dir),
-                "--background", "--idle-timeout", "1",
+                UV_PATH,
+                "run",
+                "tigerflow",
+                "run",
+                str(minimal_config),
+                str(input_dir),
+                str(output_dir),
+                "--background",
+                "--idle-timeout",
+                "1",
             ],
             capture_output=True,
             text=True,
