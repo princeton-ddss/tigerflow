@@ -191,6 +191,82 @@ This behavior is useful for streaming-like workflows where data may arrive spora
 
     To see all available options for the `run` subcommand, run `tigerflow run --help`.
 
+### Background Mode
+
+For long-running pipelines, especially on remote servers where you may disconnect from the terminal,
+we can run the pipeline in the background using the `--background` flag:
+
+=== "Command"
+
+    ```bash
+    tigerflow run config.yaml path/to/data/ path/to/results/ --background
+    ```
+
+=== "Output"
+
+    ```
+    Started (pid 12345)
+    ```
+
+The pipeline starts as a detached process, returning control to the terminal immediately.
+All output is written to `.tigerflow/run.log` in the output directory.
+
+!!! note
+
+    Only one pipeline can run against a given output directory at a time. Attempting to start
+    a second pipeline targeting the same output directory will fail with an error indicating
+    that a pipeline is already running.
+
+## Managing Running Pipelines
+
+### Checking Status
+
+We can check whether a pipeline is running and view its progress using the `status` command:
+
+=== "Command"
+
+    ```bash
+    tigerflow status path/to/results/
+    ```
+
+=== "Output (running)"
+
+    ```
+    Pipeline running (pid 12345)
+
+    Files: 45/91 finished, 2 failed
+
+    ┏━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
+    ┃ Task       ┃ Processed ┃ Ongoing ┃ Failed ┃
+    ┡━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━┩
+    │ transcribe │        52 │       3 │      0 │
+    │ embed      │        47 │       2 │      2 │
+    │ ingest     │        45 │       0 │      0 │
+    └────────────┴───────────┴─────────┴────────┘
+    ```
+
+=== "Output (not running)"
+
+    ```
+    Pipeline not running
+
+    Files: 91/91 finished, 8 failed
+    ...
+    ```
+
+For scripting, use `--json` to output machine-readable JSON.
+
+### Stopping a Pipeline
+
+To gracefully stop a running pipeline:
+
+```bash
+tigerflow stop path/to/results/
+```
+
+The pipeline will finish processing any in-progress files before shutting down.
+Use `--force` for immediate termination without waiting for cleanup.
+
 Since the pipeline has been configured to retain output files only for the transcription task,
 the output directory (i.e., `path/to/results/`) will look as follows:
 
