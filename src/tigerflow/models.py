@@ -101,7 +101,6 @@ class BaseTaskConfig(BaseModel):
                 args.append(f"--{cli_key} {repr(value)}")
         return args
 
-
     @field_validator("input_ext")
     @classmethod
     def validate_input_ext(cls, input_ext: str) -> str:
