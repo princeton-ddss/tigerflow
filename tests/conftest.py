@@ -1,5 +1,12 @@
-import pytest
 from pathlib import Path
+
+import pytest
+
+
+@pytest.fixture
+def tasks_dir() -> Path:
+    """Path to sample task modules used in tests."""
+    return Path(__file__).parent / "tasks"
 
 
 @pytest.fixture

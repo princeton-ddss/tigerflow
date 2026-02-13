@@ -1,7 +1,7 @@
 import textwrap
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import networkx as nx
 from pydantic import BaseModel, Field, field_validator
@@ -41,7 +41,8 @@ class SlurmResourceConfig(BaseModel):
 class BaseTaskConfig(BaseModel):
     name: str
     depends_on: str | None = None
-    module: Path
+    module: str
+    params: dict[str, Any] = {}
     input_ext: str
     output_ext: str = ".out"
     keep_output: bool = True
@@ -49,14 +50,56 @@ class BaseTaskConfig(BaseModel):
     _input_dir: Path | None = None
     _output_dir: Path | None = None
 
+    @field_validator("module", mode="before")
+    @classmethod
+    def _coerce_path_to_str(cls, v: str | Path) -> str:
+        """Convert Path to str for module field."""
+        return str(v) if isinstance(v, Path) else v
+
     @field_validator("module")
     @classmethod
-    def validate_module(cls, module: Path) -> Path:
-        if not module.exists():
-            raise ValueError(f"Module does not exist: {module}")
-        if not module.is_file():
-            raise ValueError(f"Module is not a file: {module}")
-        return module.resolve()  # Use absolute path for clarity
+    def validate_module(cls, module: str) -> str:
+        from importlib.util import find_spec
+
+        if module.endswith(".py"):
+            path = Path(module)
+            if not path.exists():
+                raise ValueError(f"Module does not exist: {module}")
+            if not path.is_file():
+                raise ValueError(f"Module is not a file: {module}")
+            return str(path.resolve())  # Use absolute path for clarity
+        else:
+            try:
+                if find_spec(module) is None:
+                    raise ValueError(f"Module not found: {module}")
+            except ModuleNotFoundError:
+                raise ValueError(f"Module not found: {module}")
+            return module
+
+    @property
+    def python_command(self) -> str:
+        """Return the python command to run this task's module."""
+        if self.module.endswith(".py"):
+            return f"python {self.module}"
+        else:
+            return f"python -m {self.module}"
+
+    @property
+    def params_as_cli_args(self) -> list[str]:
+        """Convert params dict to CLI argument strings."""
+        args = []
+        for key, value in self.params.items():
+            # Convert underscores to hyphens for CLI convention
+            cli_key = key.replace("_", "-")
+            if isinstance(value, bool):
+                if value:
+                    args.append(f"--{cli_key}")
+            elif isinstance(value, list):
+                for item in value:
+                    args.append(f"--{cli_key} {repr(item)}")
+            else:
+                args.append(f"--{cli_key} {repr(value)}")
+        return args
 
     @field_validator("input_ext")
     @classmethod
@@ -109,14 +152,14 @@ class LocalTaskConfig(BaseTaskConfig):
         task_command = " ".join(
             [
                 "exec",
-                "python",
-                f"{self.module}",
+                self.python_command,
                 f"--task-name {self.name}",
                 f"--input-dir {self.input_dir}",
                 f"--input-ext {self.input_ext}",
                 f"--output-dir {self.output_dir}",
                 f"--output-ext {self.output_ext}",
             ]
+            + self.params_as_cli_args
         )
 
         script = textwrap.dedent(f"""\
@@ -139,8 +182,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
         task_command = " ".join(
             [
                 "exec",
-                "python",
-                f"{self.module}",
+                self.python_command,
                 f"--task-name {self.name}",
                 f"--input-dir {self.input_dir}",
                 f"--input-ext {self.input_ext}",
@@ -148,6 +190,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
                 f"--output-ext {self.output_ext}",
                 f"--concurrency-limit {self.concurrency_limit}",
             ]
+            + self.params_as_cli_args
         )
 
         script = textwrap.dedent(f"""\
@@ -189,8 +232,7 @@ class SlurmTaskConfig(BaseTaskConfig):
         setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
-                "python",
-                f"{self.module}",
+                self.python_command,
                 f"--task-name {self.name}",
                 f"--input-dir {self.input_dir}",
                 f"--input-ext {self.input_ext}",
@@ -210,6 +252,7 @@ class SlurmTaskConfig(BaseTaskConfig):
                 for option in self.worker_resources.sbatch_options
             ]
             + [f"--setup-command {repr(command)}" for command in self.setup_commands]
+            + self.params_as_cli_args
         )
 
         script = textwrap.dedent(f"""\

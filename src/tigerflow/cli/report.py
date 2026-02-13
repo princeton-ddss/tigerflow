@@ -1,10 +1,10 @@
 from pathlib import Path
+from typing import Annotated
 
 import click
 import typer
 from rich import print
 from rich.table import Table
-from typing_extensions import Annotated
 
 from tigerflow.pipeline import Pipeline
 

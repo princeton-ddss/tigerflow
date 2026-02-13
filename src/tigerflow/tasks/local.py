@@ -5,9 +5,9 @@ import traceback
 from abc import abstractmethod
 from pathlib import Path
 from types import FrameType
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalTaskConfig
@@ -57,6 +57,10 @@ class LocalTask(Task):
 
         # Clean up incomplete temporary files left behind by a prior process instance
         self._remove_temporary_files(output_dir)
+
+        # Inject custom params into context
+        for key, value in self.config.params.items():
+            setattr(self._context, key, value)
 
         # Run common setup
         logger.info("Setting up task")
@@ -137,6 +141,7 @@ class LocalTask(Task):
                     help="Task name",
                 ),
             ] = cls.get_name(),
+            _params: dict = {},
         ):
             """
             Run the task as a CLI application
@@ -147,12 +152,13 @@ class LocalTask(Task):
                 module=cls.get_module_path(),
                 input_ext=input_ext,
                 output_ext=output_ext,
+                params=_params,
             )
 
             task = cls(config)
             task.start(input_dir, output_dir)
 
-        typer.run(main)
+        typer.run(cls.build_cli(main))
 
     @staticmethod
     def setup(context: SetupContext):

@@ -11,7 +11,6 @@ from types import FrameType
 import yaml
 
 from tigerflow.logconfig import logger
-from tigerflow.settings import settings
 from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
@@ -22,6 +21,7 @@ from tigerflow.models import (
     TaskStatus,
     TaskStatusKind,
 )
+from tigerflow.settings import settings
 from tigerflow.tasks.utils import get_slurm_task_status
 from tigerflow.utils import is_valid_task_cli, submit_to_slurm
 
@@ -63,8 +63,10 @@ class Pipeline:
         )
 
         for task in self._config.tasks:
-            if not is_valid_task_cli(task.module, timeout=settings.task_validation_timeout):
-                raise ValueError(f"Invalid CLI: {task.module}")
+            if not is_valid_task_cli(
+                task.module, timeout=settings.task_validation_timeout
+            ):
+                raise ValueError(f"Invalid task CLI: {task.module}")
 
         # Map task I/O directories from the dependency graph
         for task in self._config.tasks:
