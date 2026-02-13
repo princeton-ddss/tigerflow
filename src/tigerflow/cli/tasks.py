@@ -5,13 +5,13 @@ import json
 import pkgutil
 from importlib.metadata import entry_points, packages_distributions, version
 from typing import Annotated
+
 import typer
 from rich import print
 
-
 app = typer.Typer()
 
-    
+
 @app.command(name="list")
 def list_tasks(
     verbose: Annotated[
@@ -57,7 +57,7 @@ def _list_tasks_json(builtin: list[tuple[str, str]], installed: list[tuple[str, 
             for name, module_path in sorted(installed)
         ],
     }
-    print(json.dumps(data, indent=2))
+    typer.echo(json.dumps(data, indent=2))
 
 
 def _list_tasks_rich(
