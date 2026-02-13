@@ -1,3 +1,4 @@
+import asyncio
 import signal
 import subprocess
 import sys
@@ -21,7 +22,7 @@ from tigerflow.models import (
     TaskStatusKind,
 )
 from tigerflow.settings import settings
-from tigerflow.utils import SetupContext, atomic_write, build_cli, submit_to_slurm
+from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
 
 from ._base import Task
 from .utils import get_slurm_task_status
@@ -51,10 +52,10 @@ class SlurmTask(Task):
         # Reference functions and params to use in plugin
         setup_func = type(self).setup
         teardown_func = type(self).teardown
-        params = self._params
+        params = self.config.params
 
         class TaskWorkerPlugin(WorkerPlugin):
-            def setup(self, worker: Worker):
+            async def setup(self, worker: Worker):
                 logger.info("Setting up task")
                 worker.context = SetupContext()
 
@@ -62,13 +63,15 @@ class SlurmTask(Task):
                 for key, value in params.items():
                     setattr(worker.context, key, value)
 
-                setup_func(worker.context)
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, setup_func, worker.context)
                 worker.context.freeze()  # Make it read-only
                 logger.info("Task setup complete")
 
-            def teardown(self, worker: Worker):
+            async def teardown(self, worker: Worker):
                 logger.info("Shutting down task")
-                teardown_func(worker.context)
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, teardown_func, worker.context)
                 logger.info("Task shutdown complete")
 
         def task(input_file: Path, output_file: Path):
@@ -94,6 +97,7 @@ class SlurmTask(Task):
             memory=self.config.worker_resources.memory,
             walltime=self.config.worker_resources.time,
             processes=1,
+            nanny=False,
             death_timeout=settings.slurm_task_worker_startup_timeout,
             job_extra_directives=self.config.worker_resources.sbatch_options
             + [
@@ -238,7 +242,7 @@ class SlurmTask(Task):
                     help="Task name",
                 ),
             ] = cls.get_name(),
-            _run_directly: Annotated[
+            run_directly: Annotated[
                 bool,
                 typer.Option(
                     "--run-directly",
@@ -249,7 +253,7 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
-            _params: dict | None = None,
+            _params: dict = {},
         ):
             """
             Run the task as a CLI application
@@ -271,16 +275,17 @@ class SlurmTask(Task):
                 setup_commands=setup_commands,
                 max_workers=max_workers,
                 worker_resources=worker_resources,
+                params=_params,
             )
 
-            if _run_directly:
-                task = cls(config, params=_params)
+            if run_directly:
+                task = cls(config)
                 task.start(input_dir, output_dir)
             else:
                 runner = SlurmTaskRunner(config, params=_params)
                 runner.start(input_dir, output_dir)
 
-        typer.run(build_cli(cls, main))
+        typer.run(cls.build_cli(main))
 
     @staticmethod
     def setup(context: SetupContext):

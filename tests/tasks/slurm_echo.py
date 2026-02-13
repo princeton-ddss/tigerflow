@@ -1,29 +1,16 @@
-"""
-Echo task - copies input to output with optional transformations.
-
-A simple example task that demonstrates the Params pattern.
-
-Usage:
-    python -m tigerflow.library.echo \
-        --input-dir ./input \
-        --output-dir ./output \
-        --input-ext .txt \
-        --output-ext .txt \
-        --prefix "Hello: " \
-        --suffix " :End"
-"""
+"""Slurm echo task - copies input to output with optional transformations."""
 
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
-from tigerflow.tasks import LocalTask
+from tigerflow.tasks import SlurmTask
 from tigerflow.utils import SetupContext
 
 
-class Echo(LocalTask):
-    """Copy input files to output with optional prefix/suffix."""
+class SlurmEcho(SlurmTask):
+    """Slurm copy of input files to output with optional prefix/suffix."""
 
     class Params:
         prefix: Annotated[
@@ -54,4 +41,4 @@ class Echo(LocalTask):
 
 
 if __name__ == "__main__":
-    Echo.cli()
+    SlurmEcho.cli()

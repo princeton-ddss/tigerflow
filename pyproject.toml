@@ -1,6 +1,6 @@
 [project]
 name = "tigerflow"
-version = "0.1.0a2"
+version = "0.1.0a3"
 description = "Data pipeline framework for Slurm-managed HPC clusters"
 readme = "README.md"
 authors = [
@@ -33,8 +33,12 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    {include-group = "lint"},
     {include-group = "docs"},
     {include-group = "test"},
+    "pre-commit>=4.0.0",
+]
+lint = [
     "pre-commit>=4.0.0",
 ]
 docs = [

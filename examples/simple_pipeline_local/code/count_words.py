@@ -9,8 +9,8 @@ from tigerflow.tasks import LocalTask
 class CountUniqueWords(LocalTask):
     @staticmethod
     def run(context, input_file, output_file):
-        with open(input_file) as fi:
-            content = fi.read()
+        with open(input_file) as f:
+            content = f.read()
 
         # Extract and count words made of letters
         words = re.findall(r"\b[a-zA-Z]+\b", content.lower())
