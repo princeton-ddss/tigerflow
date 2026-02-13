@@ -37,7 +37,7 @@ class Task(ABC):
             def wrapper(*args, **kwargs):
                 return base_main(*args, _params={}, **kwargs)
 
-            wrapper.__signature__ = new_sig
+            setattr(wrapper, "__signature__", new_sig)
             wrapper.__doc__ = base_main.__doc__
             return wrapper
 
@@ -73,7 +73,7 @@ class Task(ABC):
             custom_values = {k: kwargs.pop(k) for k in list(kwargs) if k in custom_keys}
             return base_main(*args, _params=custom_values, **kwargs)
 
-        wrapper.__signature__ = new_sig
+        setattr(wrapper, "__signature__", new_sig)
         wrapper.__doc__ = base_main.__doc__
 
         return wrapper
@@ -83,16 +83,16 @@ class Task(ABC):
         return cls.__name__
 
     @classmethod
-    def get_module_path(cls) -> Path:
+    def get_module_path(cls) -> str:
         """
         Return the absolute path to the module file
         where the class is defined.
         """
         module = sys.modules.get(cls.__module__)
-        if module is None or not hasattr(module, "__file__"):
+        if module is None or not hasattr(module, "__file__") or module.__file__ is None:
             raise FileNotFoundError(f"Module not found for {cls}")
 
-        return Path(module.__file__).resolve()
+        return str(Path(module.__file__).resolve())
 
     @staticmethod
     def _remove_temporary_files(dirpath: Path):

@@ -56,21 +56,24 @@ class SlurmTask(Task):
         class TaskWorkerPlugin(WorkerPlugin):
             async def setup(self, worker: Worker):
                 logger.info("Setting up task")
-                worker.context = SetupContext()
+                context = SetupContext()
+                setattr(worker, "context", context)
 
                 # Inject params into context
                 for key, value in params.items():
-                    setattr(worker.context, key, value)
+                    setattr(context, key, value)
 
                 loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, setup_func, worker.context)
-                worker.context.freeze()  # Make it read-only
+                await loop.run_in_executor(None, setup_func, context)
+                context.freeze()  # Make it read-only
                 logger.info("Task setup complete")
 
             async def teardown(self, worker: Worker):
                 logger.info("Shutting down task")
                 loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, teardown_func, worker.context)
+                await loop.run_in_executor(
+                    None, teardown_func, getattr(worker, "context")
+                )
                 logger.info("Task shutdown complete")
 
         def task(input_file: Path, output_file: Path):
@@ -78,7 +81,7 @@ class SlurmTask(Task):
             try:
                 logger.info("Starting processing: {}", input_file.name)
                 with atomic_write(output_file) as temp_file:
-                    self.run(worker.context, input_file, temp_file)
+                    self.run(getattr(worker, "context"), input_file, temp_file)
                 logger.info("Successfully processed: {}", input_file.name)
             except Exception:
                 error_fname = (
@@ -392,6 +395,7 @@ class SlurmTaskRunner:
                 sys.exit(128 + self._received_signal)
 
     def _check_status(self):
+        assert self._job_id is not None, "_check_status should be called after start"
         status = get_slurm_task_status(self._job_id, self.config.worker_job_name)
 
         if self._status != status:
@@ -407,7 +411,11 @@ class SlurmTaskRunner:
             )
 
     def _handle_timeout(self):
-        if not self._status.is_alive and "TIMEOUT" in self._status.detail:
+        if (
+            not self._status.is_alive
+            and self._status.detail
+            and "TIMEOUT" in self._status.detail
+        ):
             script = self.config.to_script()
             self._job_id = submit_to_slurm(script)
             logger.info("Re-submitted with Slurm job ID {}", self._job_id)

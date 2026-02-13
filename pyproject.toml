@@ -39,6 +39,7 @@ dev = [
 ]
 lint = [
     "pre-commit>=4.0.0",
+    "ty>=0.0.17",
 ]
 docs = [
     "mike>=2.1.3",
