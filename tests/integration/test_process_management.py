@@ -276,10 +276,7 @@ class TestBackgroundRun:
         assert "Started" in result.stdout
         assert "pid" in result.stdout
 
-        time.sleep(0.5)
-        assert pid_file.exists(), "PID file should be created"
-
-        pid = int(pid_file.read_text().strip())
+        pid = wait_for_pid_file(pid_file)
         assert pid > 0
 
         kill_pipeline(pid_file)
