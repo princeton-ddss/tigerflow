@@ -103,6 +103,9 @@ def run_slurm_task_until_complete(
 @pytest.fixture
 def task_dirs():
     """Create input and output directories on shared filesystem."""
+    assert SLURM_TEST_DIR is not None, (
+        "SLURM_TEST_DIR should be set (test should be skipped otherwise)"
+    )
     base = Path(SLURM_TEST_DIR)
     base.mkdir(parents=True, exist_ok=True)
 
