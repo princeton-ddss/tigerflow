@@ -57,7 +57,6 @@ class SlurmTask(Task):
             async def setup(self, worker: Worker):
                 logger.info("Setting up task")
                 context = SetupContext()
-                setattr(worker, "context", context)
 
                 # Inject params into context
                 for key, value in params.items():
@@ -66,22 +65,24 @@ class SlurmTask(Task):
                 loop = asyncio.get_running_loop()
                 await loop.run_in_executor(None, setup_func, context)
                 context.freeze()  # Make it read-only
+
+                setattr(worker, "context", context)
                 logger.info("Task setup complete")
 
             async def teardown(self, worker: Worker):
                 logger.info("Shutting down task")
+                context = getattr(worker, "context")
                 loop = asyncio.get_running_loop()
-                await loop.run_in_executor(
-                    None, teardown_func, getattr(worker, "context")
-                )
+                await loop.run_in_executor(None, teardown_func, context)
                 logger.info("Task shutdown complete")
 
         def task(input_file: Path, output_file: Path):
             worker = get_worker()
+            context = getattr(worker, "context")
             try:
                 logger.info("Starting processing: {}", input_file.name)
                 with atomic_write(output_file) as temp_file:
-                    self.run(getattr(worker, "context"), input_file, temp_file)
+                    self.run(context, input_file, temp_file)
                 logger.info("Successfully processed: {}", input_file.name)
             except Exception:
                 error_fname = (
