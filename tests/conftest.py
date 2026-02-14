@@ -10,11 +10,11 @@ def tasks_dir() -> Path:
 
 
 @pytest.fixture
-def tmp_module(tmp_path: Path) -> Path:
+def tmp_module(tmp_path: Path) -> str:
     """Create a temporary Python module file for testing."""
     module = tmp_path / "task_module.py"
     module.write_text("# test module\n")
-    return module
+    return str(module)
 
 
 @pytest.fixture

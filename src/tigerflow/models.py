@@ -50,12 +50,6 @@ class BaseTaskConfig(BaseModel):
     _input_dir: Path | None = None
     _output_dir: Path | None = None
 
-    @field_validator("module", mode="before")
-    @classmethod
-    def _coerce_path_to_str(cls, v: str | Path) -> str:
-        """Convert Path to str for module field."""
-        return str(v) if isinstance(v, Path) else v
-
     @field_validator("module")
     @classmethod
     def validate_module(cls, module: str) -> str:

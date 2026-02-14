@@ -257,7 +257,11 @@ class Pipeline:
         for task in self._config.tasks:
             if isinstance(task, SlurmTaskConfig):
                 task_status = self._task_status[task.name]
-                if not task_status.is_alive and "TIMEOUT" in task_status.detail:
+                if (
+                    not task_status.is_alive
+                    and task_status.detail
+                    and "TIMEOUT" in task_status.detail
+                ):
                     script = task.to_script()
                     job_id = submit_to_slurm(script)
                     self._slurm_task_ids[task.name] = job_id
