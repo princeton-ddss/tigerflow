@@ -74,7 +74,7 @@ def background_pipeline(minimal_config, tmp_dirs):
     input_dir, output_dir = tmp_dirs
     pid_file = output_dir / ".tigerflow" / "run.pid"
 
-    subprocess.run(
+    subprocess.run(  # type: ignore[call-overload]
         [
             UV_PATH,
             "run",
@@ -109,7 +109,7 @@ class TestForegroundRun:
         input_dir, output_dir = tmp_dirs
         pid_file = output_dir / ".tigerflow" / "run.pid"
 
-        proc = subprocess.Popen(
+        proc = subprocess.Popen(  # type: ignore[call-overload]
             [
                 UV_PATH,
                 "run",
@@ -139,7 +139,7 @@ class TestForegroundRun:
         input_dir, output_dir = tmp_dirs
         pid_file = output_dir / ".tigerflow" / "run.pid"
 
-        proc = subprocess.Popen(
+        proc = subprocess.Popen(  # type: ignore[call-overload]
             [
                 UV_PATH,
                 "run",
@@ -160,7 +160,7 @@ class TestForegroundRun:
             wait_for_pid_file(pid_file)
 
             # Try to start second pipeline
-            result = subprocess.run(
+            result = subprocess.run(  # type: ignore[call-overload]
                 [
                     UV_PATH,
                     "run",
@@ -186,7 +186,7 @@ class TestForegroundRun:
         input_dir, output_dir = tmp_dirs
         pid_file = output_dir / ".tigerflow" / "run.pid"
 
-        proc = subprocess.Popen(
+        proc = subprocess.Popen(  # type: ignore[call-overload]
             [
                 UV_PATH,
                 "run",
@@ -217,7 +217,7 @@ class TestForegroundRun:
         input_dir, output_dir = tmp_dirs
         pid_file = output_dir / ".tigerflow" / "run.pid"
 
-        proc = subprocess.Popen(
+        proc = subprocess.Popen(  # type: ignore[call-overload]
             [
                 UV_PATH,
                 "run",
@@ -254,7 +254,7 @@ class TestBackgroundRun:
         input_dir, output_dir = tmp_dirs
         pid_file = output_dir / ".tigerflow" / "run.pid"
 
-        result = subprocess.run(
+        result = subprocess.run(  # type: ignore[call-overload]
             [
                 UV_PATH,
                 "run",
@@ -291,7 +291,7 @@ class TestBackgroundRun:
         """Test that status command shows pipeline as running."""
         output_dir = background_pipeline
 
-        result = subprocess.run(
+        result = subprocess.run(  # type: ignore[call-overload]
             [UV_PATH, "run", "tigerflow", "status", str(output_dir)],
             capture_output=True,
             text=True,
@@ -309,7 +309,7 @@ class TestBackgroundRun:
         assert pid_file.exists(), "PID file should exist"
         pid = int(pid_file.read_text().strip())
 
-        result = subprocess.run(
+        result = subprocess.run(  # type: ignore[call-overload]
             [UV_PATH, "run", "tigerflow", "stop", str(output_dir)],
             capture_output=True,
             text=True,
@@ -331,7 +331,7 @@ class TestBackgroundRun:
 
         output_dir = background_pipeline
 
-        result = subprocess.run(
+        result = subprocess.run(  # type: ignore[call-overload]
             [UV_PATH, "run", "tigerflow", "status", str(output_dir), "--json"],
             capture_output=True,
             text=True,
