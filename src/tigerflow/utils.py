@@ -61,6 +61,28 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     return result.returncode == 0
 
 
+def is_valid_library_cli(module_name: str, *, timeout: int = 60) -> bool:
+    """
+    Check if the given module name is a valid Typer CLI application.
+
+    Parameters
+    ----------
+    module_name : str
+        Fully qualified module name (e.g., 'tigerflow.library.echo')
+    """
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", module_name, "--help"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        # Check for Typer CLI signature: "Usage: ... [OPTIONS]"
+        return "[OPTIONS]" in result.stdout and result.returncode == 0
+    except TimeoutExpired:
+        return False
+
+
 def submit_to_slurm(script: str) -> int:
     result = subprocess.run(
         ["sbatch"],
@@ -105,6 +127,54 @@ class SetupContext(SimpleNamespace):
 
     def freeze(self):
         self._frozen = True
+
+
+def read_pid_file(pid_file: Path) -> int | None:
+    """
+    Read PID from a file.
+
+    Returns None if file doesn't exist or contains invalid content.
+    """
+    if not pid_file.exists():
+        return None
+    try:
+        return int(pid_file.read_text().strip())
+    except (ValueError, OSError):
+        return None
+
+
+def is_process_running(pid: int) -> bool:
+    """
+    Check if a process with the given PID is running.
+
+    Uses os.kill(pid, 0) which checks process existence without sending a signal.
+    """
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # Process exists but we don't have permission
+
+
+def check_and_cleanup_stale_pid(pid_file: Path) -> bool:
+    """
+    Check if a PID file exists with a running process.
+
+    Returns True if a process is already running (caller should error out).
+    Returns False if no process is running (stale file cleaned up if present).
+    """
+    pid = read_pid_file(pid_file)
+    if pid is None:
+        return False
+
+    if is_process_running(pid):
+        return True
+
+    # Stale PID file - process is dead, clean it up
+    pid_file.unlink(missing_ok=True)
+    return False
 
 
 @contextmanager

@@ -1,3 +1,4 @@
+import os
 import shutil
 import signal
 import subprocess
@@ -36,10 +37,13 @@ class Pipeline:
         output_dir: Path,
         idle_timeout: int = 10,  # In minutes
         delete_input: bool = False,
+        pid_file: Path | None = None,
     ):
         for path in (config_file, input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
+
+        self._pid_file = pid_file
 
         self._input_dir = input_dir.resolve()
         self._output_dir = output_dir.resolve()
@@ -159,6 +163,11 @@ class Pipeline:
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             signal.signal(sig, self._signal_handler)
 
+        # Write PID file after signal handlers are set up, so that if SIGTERM
+        # arrives after the PID file exists, the cleanup in the finally block runs.
+        if self._pid_file is not None:
+            self._pid_file.write_text(str(os.getpid()))
+
         try:
             logger.info("Starting pipeline execution")
             self._start_tasks()
@@ -186,6 +195,8 @@ class Pipeline:
                 self._check_task_status()
                 time.sleep(1)
             logger.info("Pipeline shutdown complete")
+            if self._pid_file is not None:
+                self._pid_file.unlink(missing_ok=True)
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
 
