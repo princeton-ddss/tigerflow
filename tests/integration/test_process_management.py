@@ -339,6 +339,8 @@ class TestBackgroundRun:
         )
 
         data = json.loads(result.stdout)
-        assert "running" in data
         assert data["running"] is True
         assert "pid" in data
+        assert "finished" in data
+        assert "staged" in data
+        assert "failed" in data

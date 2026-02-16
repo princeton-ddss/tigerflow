@@ -3,10 +3,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich import print
-from rich.table import Table
 
-from tigerflow.pipeline import Pipeline
 from tigerflow.utils import is_process_running, read_pid_file
 
 
@@ -46,16 +43,26 @@ def status(
     pid = read_pid_file(pid_file)
     running = pid is not None and is_process_running(pid)
 
-    try:
-        progress = Pipeline.report_progress(output_dir)
-    except Exception as e:
-        _output_error(f"Failed to read progress: {e}", output_json)
-        raise typer.Exit(1)
+    # Count progress directly from filesystem
+    symlinks_dir = internal_dir / ".symlinks"
+    finished_dir = internal_dir / ".finished"
+
+    staged = sum(1 for f in symlinks_dir.iterdir() if f.is_file())
+    finished = sum(1 for f in finished_dir.iterdir() if f.is_file())
+
+    # Count failed files across all task directories
+    failed = 0
+    for task_dir in internal_dir.iterdir():
+        if task_dir.is_dir() and not task_dir.name.startswith("."):
+            failed += sum(1 for f in task_dir.iterdir() if f.name.endswith(".err"))
+
+    # Failed files remain in symlinks, so subtract them from staged count
+    staged = staged - failed
 
     if output_json:
-        _output_json(pid, running, progress)
+        _output_json(pid, running, finished, staged, failed)
     else:
-        _output_rich(pid, running, progress)
+        _output_rich(pid, running, finished, staged, failed)
 
     # Return appropriate exit code: 0 = running, 1 = not running
     if not running:
@@ -67,63 +74,32 @@ def _output_error(message: str, output_json: bool):
     if output_json:
         print(json.dumps({"error": message}))
     else:
-        print(f"[red]Error: {message}[/red]")
+        typer.echo(f"Error: {message}", err=True)
 
 
-def _output_json(pid: int | None, running: bool, progress):
+def _output_json(
+    pid: int | None, running: bool, finished: int, staged: int, failed: int
+):
     """Output status in JSON format."""
     data = {
         "pid": pid,
         "running": running,
-        "staged": len(progress.staged),
-        "finished": len(progress.finished),
-        "failed": len(progress.failed),
-        "tasks": [
-            {
-                "name": task.name,
-                "processed": len(task.processed),
-                "ongoing": len(task.ongoing),
-                "failed": len(task.failed),
-            }
-            for task in progress.tasks
-        ],
+        "finished": finished,
+        "staged": staged,
+        "failed": failed,
     }
     print(json.dumps(data, indent=2))
 
 
-def _output_rich(pid: int | None, running: bool, progress):
-    """Output status with rich formatting."""
-    # Status header
+def _output_rich(
+    pid: int | None, running: bool, finished: int, staged: int, failed: int
+):
+    """Output status with formatting."""
     if running:
-        print(f"[bold green]Pipeline running[/bold green] (pid {pid})")
+        typer.echo(f"Pipeline running (pid {pid})")
     elif pid is not None:
-        print(f"[bold yellow]Pipeline stopped[/bold yellow] (stale pid {pid})")
+        typer.echo(f"Pipeline stopped (stale pid {pid})")
     else:
-        print("[bold yellow]Pipeline not running[/bold yellow]")
+        typer.echo("Pipeline stopped")
 
-    print()
-
-    # Progress summary
-    total = len(progress.staged) + len(progress.finished)
-    print(
-        f"Files: {len(progress.finished)}/{total} finished, {len(progress.failed)} failed"
-    )
-
-    # Task table
-    if progress.tasks:
-        print()
-        table = Table()
-        table.add_column("Task")
-        table.add_column("Processed", justify="right", style="green")
-        table.add_column("Ongoing", justify="right", style="yellow")
-        table.add_column("Failed", justify="right", style="red")
-
-        for task in progress.tasks:
-            table.add_row(
-                task.name,
-                str(len(task.processed)),
-                str(len(task.ongoing)),
-                str(len(task.failed)),
-            )
-
-        print(table)
+    typer.echo(f"{finished} finished, {staged} staged, {failed} failed")
