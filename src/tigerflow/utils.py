@@ -61,28 +61,6 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     return result.returncode == 0
 
 
-def is_valid_library_cli(module_name: str, *, timeout: int = 60) -> bool:
-    """
-    Check if the given module name is a valid Typer CLI application.
-
-    Parameters
-    ----------
-    module_name : str
-        Fully qualified module name (e.g., 'tigerflow.library.echo')
-    """
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", module_name, "--help"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        # Check for Typer CLI signature: "Usage: ... [OPTIONS]"
-        return "[OPTIONS]" in result.stdout and result.returncode == 0
-    except TimeoutExpired:
-        return False
-
-
 def submit_to_slurm(script: str) -> int:
     result = subprocess.run(
         ["sbatch"],
