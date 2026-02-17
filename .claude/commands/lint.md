@@ -1,10 +1,18 @@
 Run linting and formatting via pre-commit.
 
-## Command
-`pre-commit run --all-files`
-
 ## User's request
 $ARGUMENTS
 
 ## Instructions
-Run pre-commit on all files. If the user specifies a file or path, run on that specific file instead: `pre-commit run --files <path>`.
+
+1. **Check if pre-commit is installed in the repo**:
+   ```bash
+   git config --get core.hooksPath || ls .git/hooks/pre-commit 2>/dev/null
+   ```
+   If not installed, run `uv run pre-commit install` first.
+
+2. **Run linting**:
+   - All files: `uv run pre-commit run --all-files`
+   - Specific file: `uv run pre-commit run --files <path>`
+
+If the user doesn't specify a path, run on all files.
