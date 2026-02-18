@@ -17,7 +17,9 @@ from tigerflow.tasks import LocalAsyncTask
 from tigerflow.utils import SetupContext
 
 
-def _do_cpu_work(content: bytes, delay: float, fail_rate: float, filename: str) -> bytes:
+def _do_cpu_work(
+    content: bytes, delay: float, fail_rate: float, filename: str
+) -> bytes:
     """CPU-bound work - runs in executor to not block event loop."""
     end_time = time.time() + delay
     result = content
