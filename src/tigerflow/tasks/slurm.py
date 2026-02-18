@@ -25,7 +25,7 @@ from tigerflow.settings import settings
 from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
 
 from ._base import Task
-from .utils import get_slurm_task_status
+from .utils import get_slurm_task_status, log_metrics
 
 
 class SlurmTask(Task):
@@ -75,21 +75,23 @@ class SlurmTask(Task):
                 logger.info("Task shutdown complete")
 
         def task(input_file: Path, output_file: Path):
-            worker = get_worker()
-            try:
-                logger.info("Starting processing: {}", input_file.name)
-                with atomic_write(output_file) as temp_file:
-                    self.run(worker.context, input_file, temp_file)
-                logger.info("Successfully processed: {}", input_file.name)
-            except Exception:
-                error_fname = (
-                    output_file.name.removesuffix(self.config.output_ext) + ".err"
-                )
-                error_file = self.config.output_dir / error_fname
-                with atomic_write(error_file) as temp_file:
-                    with open(temp_file, "w") as f:
-                        f.write(traceback.format_exc())
-                logger.error("Failed processing: {}", input_file.name)
+            with log_metrics(input_file.name) as metrics:
+                worker = get_worker()
+                try:
+                    logger.info("Starting processing: {}", input_file.name)
+                    with atomic_write(output_file) as temp_file:
+                        self.run(worker.context, input_file, temp_file)
+                    logger.info("Successfully processed: {}", input_file.name)
+                except Exception:
+                    metrics["status"] = "error"
+                    error_fname = (
+                        output_file.name.removesuffix(self.config.output_ext) + ".err"
+                    )
+                    error_file = self.config.output_dir / error_fname
+                    with atomic_write(error_file) as temp_file:
+                        with open(temp_file, "w") as f:
+                            f.write(traceback.format_exc())
+                    logger.error("Failed processing: {}", input_file.name)
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
