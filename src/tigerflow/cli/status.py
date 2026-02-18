@@ -4,6 +4,8 @@ from typing import Annotated
 
 import typer
 
+from tigerflow.models import PipelineOutput
+from tigerflow.pipeline import Pipeline
 from tigerflow.utils import is_process_running, read_pid_file
 
 
@@ -15,7 +17,7 @@ def status(
             show_default=False,
         ),
     ],
-    output_json: Annotated[
+    as_json: Annotated[
         bool,
         typer.Option(
             "--json",
@@ -26,40 +28,23 @@ def status(
     """
     Check the status of a pipeline.
     """
-    output_dir = output_dir.resolve()
-    internal_dir = output_dir / ".tigerflow"
-    pid_file = internal_dir / "run.pid"
+    output = PipelineOutput(output_dir)
 
-    if not output_dir.exists():
-        _output_error("Output directory does not exist", output_json)
+    try:
+        output.validate()
+    except FileNotFoundError as e:
+        _output_error(str(e), as_json)
         raise typer.Exit(1)
 
-    if not internal_dir.exists():
-        _output_error(
-            "Not a valid pipeline directory (missing .tigerflow)", output_json
-        )
-        raise typer.Exit(1)
-
-    pid = read_pid_file(pid_file)
+    pid = read_pid_file(output.pid_file)
     running = pid is not None and is_process_running(pid)
 
-    # Count progress directly from filesystem
-    symlinks_dir = internal_dir / ".symlinks"
-    finished_dir = internal_dir / ".finished"
+    progress = Pipeline.report_progress(output.root)
+    finished = len(progress.finished)
+    failed = len(progress.failed)
+    staged = len(progress.staged) - failed  # Failed files remain in symlinks
 
-    staged = sum(1 for f in symlinks_dir.iterdir() if f.is_file())
-    finished = sum(1 for f in finished_dir.iterdir() if f.is_file())
-
-    # Count failed files across all task directories
-    failed = 0
-    for task_dir in internal_dir.iterdir():
-        if task_dir.is_dir() and not task_dir.name.startswith("."):
-            failed += sum(1 for f in task_dir.iterdir() if f.name.endswith(".err"))
-
-    # Failed files remain in symlinks, so subtract them from staged count
-    staged = staged - failed
-
-    if output_json:
+    if as_json:
         _output_json(pid, running, finished, staged, failed)
     else:
         _output_rich(pid, running, finished, staged, failed)
@@ -69,9 +54,9 @@ def status(
         raise typer.Exit(1)
 
 
-def _output_error(message: str, output_json: bool):
+def _output_error(message: str, as_json: bool):
     """Output an error message in the appropriate format."""
-    if output_json:
+    if as_json:
         print(json.dumps({"error": message}))
     else:
         typer.echo(f"Error: {message}", err=True)

@@ -373,3 +373,31 @@ class PipelineProgress(BaseModel):
         if not self.tasks:
             return set()
         return set.union(*(task.failed for task in self.tasks))
+
+
+class PipelineOutput:
+    """Manage the output directory structure and validation."""
+
+    def __init__(self, path: Path):
+        self.root = path.resolve()
+        self.internal = self.root / ".tigerflow"
+        self.pid_file = self.internal / "run.pid"
+        self.log_file = self.internal / "run.log"
+        self.symlinks = self.internal / ".symlinks"
+        self.finished = self.internal / ".finished"
+
+    def validate(self) -> None:
+        """Validate that the pipeline directory structure exists.
+
+        Raises FileNotFoundError if directories don't exist.
+        """
+        if not self.root.exists():
+            raise FileNotFoundError(f"Output directory does not exist: {self.root}")
+        if not self.internal.exists():
+            raise FileNotFoundError(
+                f"Not a valid pipeline directory (missing .tigerflow): {self.root}"
+            )
+
+    def create(self) -> None:
+        """Create the pipeline directory structure."""
+        self.internal.mkdir(parents=True, exist_ok=True)

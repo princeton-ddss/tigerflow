@@ -16,6 +16,7 @@ from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
     PipelineConfig,
+    PipelineOutput,
     PipelineProgress,
     SlurmTaskConfig,
     TaskProgress,
@@ -349,19 +350,15 @@ class Pipeline:
         """
         Report progress across pipeline tasks.
         """
-        internal_dir = output_dir / ".tigerflow"
-        for path in (output_dir, internal_dir):
-            if not path.exists():
-                raise FileNotFoundError(path)
+        output = PipelineOutput(output_dir)
+        output.validate()
 
-        symlinks_dir = internal_dir / ".symlinks"
-        finished_dir = internal_dir / ".finished"
+        result = PipelineProgress()
+        result.staged = {f for f in output.symlinks.iterdir() if f.is_file()}
+        result.finished = {f for f in output.finished.iterdir() if f.is_file()}
 
-        pipeline = PipelineProgress()
-        pipeline.staged = {f for f in symlinks_dir.iterdir() if f.is_file()}
-        pipeline.finished = {f for f in finished_dir.iterdir() if f.is_file()}
-        for folder in internal_dir.iterdir():  # TODO: Iterate tasks topologically
-            if folder.is_dir() and not folder.name.startswith("."):  # Task directory
+        for folder in output.internal.iterdir():
+            if folder.is_dir() and not folder.name.startswith("."):
                 task = TaskProgress(name=folder.name)
                 for file in folder.iterdir():
                     if file.is_file():
@@ -371,9 +368,9 @@ class Pipeline:
                             task.failed.add(file)
                         else:
                             task.processed.add(file)
-                pipeline.tasks.append(task)
+                result.tasks.append(task)
 
-        return pipeline
+        return result
 
     @staticmethod
     def _get_subprocess_status(process: subprocess.Popen) -> TaskStatus:

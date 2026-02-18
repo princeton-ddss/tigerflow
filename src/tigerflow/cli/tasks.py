@@ -18,7 +18,7 @@ def list_tasks(
         bool,
         typer.Option("--verbose", "-v", help="Show full module paths"),
     ] = False,
-    output_json: Annotated[
+    as_json: Annotated[
         bool,
         typer.Option("--json", help="Output in JSON format"),
     ] = False,
@@ -29,7 +29,7 @@ def list_tasks(
     builtin = _get_builtin_tasks()
     installed = _get_installed_tasks()
 
-    if output_json:
+    if as_json:
         _list_tasks_json(builtin, installed)
     else:
         _list_tasks_rich(builtin, installed, verbose)

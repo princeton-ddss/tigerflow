@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from tigerflow.utils import (
-    check_and_cleanup_stale_pid,
+    has_running_pid,
     is_process_running,
     is_valid_task_cli,
     read_pid_file,
@@ -96,18 +96,16 @@ class TestPidUtilityFunctions:
     def test_is_process_running_nonexistent(self):
         assert is_process_running(999999999) is False
 
-    def test_check_and_cleanup_stale_pid_no_file(self, tmp_path: Path):
+    def test_has_running_pid_no_file(self, tmp_path: Path):
         pid_file = tmp_path / "run.pid"
-        assert check_and_cleanup_stale_pid(pid_file) is False
+        assert has_running_pid(pid_file) is False
 
-    def test_check_and_cleanup_stale_pid_running_process(self, tmp_path: Path):
+    def test_has_running_pid_running_process(self, tmp_path: Path):
         pid_file = tmp_path / "run.pid"
         pid_file.write_text(str(os.getpid()))
-        assert check_and_cleanup_stale_pid(pid_file) is True
-        assert pid_file.exists()  # File should not be removed
+        assert has_running_pid(pid_file) is True
 
-    def test_check_and_cleanup_stale_pid_dead_process(self, tmp_path: Path):
+    def test_has_running_pid_dead_process(self, tmp_path: Path):
         pid_file = tmp_path / "run.pid"
         pid_file.write_text("999999999")  # Non-existent process
-        assert check_and_cleanup_stale_pid(pid_file) is False
-        assert not pid_file.exists()  # Stale file should be removed
+        assert has_running_pid(pid_file) is False

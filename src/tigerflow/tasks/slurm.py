@@ -35,9 +35,8 @@ class SlurmTask(Task):
     """
 
     @logger.catch(reraise=True)
-    def __init__(self, config: SlurmTaskConfig, params: dict | None = None):
+    def __init__(self, config: SlurmTaskConfig):
         self.config = config
-        self._params = params or {}
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
@@ -286,7 +285,7 @@ class SlurmTask(Task):
                 task = cls(config)
                 task.start(input_dir, output_dir)
             else:
-                runner = SlurmTaskRunner(config, params=_params)
+                runner = SlurmTaskRunner(config)
                 runner.start(input_dir, output_dir)
 
         typer.run(cls.build_cli(main))
@@ -348,9 +347,8 @@ class SlurmTaskRunner:
     """
 
     @logger.catch(reraise=True)
-    def __init__(self, config: SlurmTaskConfig, params: dict | None = None):
+    def __init__(self, config: SlurmTaskConfig):
         self.config = config
-        self._params = params or {}
         self._job_id: int | None = None
         self._status: TaskStatus = TaskStatus(kind=TaskStatusKind.INACTIVE)
         self._processed_filenames: set[str] = set()

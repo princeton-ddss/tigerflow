@@ -136,23 +136,16 @@ def is_process_running(pid: int) -> bool:
         return True  # Process exists but we don't have permission
 
 
-def check_and_cleanup_stale_pid(pid_file: Path) -> bool:
+def has_running_pid(pid_file: Path) -> bool:
     """
     Check if a PID file exists with a running process.
 
-    Returns True if a process is already running (caller should error out).
-    Returns False if no process is running (stale file cleaned up if present).
+    Returns True if a process is already running, False otherwise.
     """
     pid = read_pid_file(pid_file)
     if pid is None:
         return False
-
-    if is_process_running(pid):
-        return True
-
-    # Stale PID file - process is dead, clean it up
-    pid_file.unlink(missing_ok=True)
-    return False
+    return is_process_running(pid)
 
 
 @contextmanager

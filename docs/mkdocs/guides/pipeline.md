@@ -221,7 +221,7 @@ All output is written to `.tigerflow/run.log` in the output directory.
 
 ### Checking Status
 
-We can check whether a pipeline is running and view its progress using the `status` command:
+We can check whether a pipeline is running using the `status` command:
 
 === "Command"
 
@@ -233,28 +233,19 @@ We can check whether a pipeline is running and view its progress using the `stat
 
     ```
     Pipeline running (pid 12345)
-
-    Files: 45/91 finished, 2 failed
-
-    ┏━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
-    ┃ Task       ┃ Processed ┃ Ongoing ┃ Failed ┃
-    ┡━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━┩
-    │ transcribe │        52 │       3 │      0 │
-    │ embed      │        47 │       2 │      2 │
-    │ ingest     │        45 │       0 │      0 │
-    └────────────┴───────────┴─────────┴────────┘
+    45 finished, 44 staged, 2 failed
     ```
 
 === "Output (not running)"
 
     ```
-    Pipeline not running
-
-    Files: 91/91 finished, 8 failed
-    ...
+    Pipeline stopped
+    91 finished, 0 staged, 8 failed
     ```
 
-For scripting, use `--json` to output machine-readable JSON.
+!!! tip
+
+    For scripting, use `--json` to output machine-readable JSON.
 
 ### Stopping a Pipeline
 

@@ -198,12 +198,6 @@ class LocalAsyncTask(Task):
             )
 
             task = cls(config)
-
-            # Inject custom params into context before start
-            if _params:
-                for key, value in _params.items():
-                    setattr(task._context, key, value)
-
             task.start(input_dir, output_dir)
 
         typer.run(cls.build_cli(main))
