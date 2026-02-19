@@ -6,7 +6,6 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Annotated
 
-import aiofiles
 import typer
 
 from tigerflow.logconfig import logger
@@ -34,6 +33,8 @@ class LocalAsyncTask(Task):
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
+        import aiofiles
+
         for path in (input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)

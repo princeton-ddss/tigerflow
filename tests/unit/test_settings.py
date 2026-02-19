@@ -8,7 +8,6 @@ from tigerflow.settings import TigerflowSettings
 
 
 def test_default_values(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.delenv("TIGERFLOW_TASK_VALIDATION_TIMEOUT", raising=False)
     monkeypatch.delenv("TIGERFLOW_PIPELINE_POLL_INTERVAL", raising=False)
     monkeypatch.delenv("TIGERFLOW_TASK_POLL_INTERVAL", raising=False)
     monkeypatch.delenv("TIGERFLOW_SLURM_TASK_CLIENT_HOURS", raising=False)
@@ -18,7 +17,6 @@ def test_default_values(monkeypatch: pytest.MonkeyPatch):
 
     settings = TigerflowSettings()
 
-    assert settings.task_validation_timeout == 60
     assert settings.pipeline_poll_interval == 10
     assert settings.task_poll_interval == 3
     assert settings.slurm_task_client_hours == 24
@@ -28,7 +26,6 @@ def test_default_values(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_load_from_env_vars(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("TIGERFLOW_TASK_VALIDATION_TIMEOUT", "120")
     monkeypatch.setenv("TIGERFLOW_PIPELINE_POLL_INTERVAL", "20")
     monkeypatch.setenv("TIGERFLOW_TASK_POLL_INTERVAL", "5")
     monkeypatch.setenv("TIGERFLOW_SLURM_TASK_CLIENT_HOURS", "48")
@@ -38,7 +35,6 @@ def test_load_from_env_vars(monkeypatch: pytest.MonkeyPatch):
 
     settings = TigerflowSettings()
 
-    assert settings.task_validation_timeout == 120
     assert settings.pipeline_poll_interval == 20
     assert settings.task_poll_interval == 5
     assert settings.slurm_task_client_hours == 48
@@ -48,7 +44,6 @@ def test_load_from_env_vars(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_load_from_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.delenv("TIGERFLOW_TASK_VALIDATION_TIMEOUT", raising=False)
     monkeypatch.delenv("TIGERFLOW_PIPELINE_POLL_INTERVAL", raising=False)
     monkeypatch.delenv("TIGERFLOW_TASK_POLL_INTERVAL", raising=False)
     monkeypatch.delenv("TIGERFLOW_SLURM_TASK_CLIENT_HOURS", raising=False)
@@ -59,7 +54,6 @@ def test_load_from_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     env_file = tmp_path / ".env"
     env_file.write_text(
         textwrap.dedent("""
-            TIGERFLOW_TASK_VALIDATION_TIMEOUT=90
             TIGERFLOW_PIPELINE_POLL_INTERVAL=15
             TIGERFLOW_TASK_POLL_INTERVAL=4
             TIGERFLOW_SLURM_TASK_CLIENT_HOURS=36
@@ -78,7 +72,6 @@ def test_load_from_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     settings = tigerflow.settings.TigerflowSettings()
 
-    assert settings.task_validation_timeout == 90
     assert settings.pipeline_poll_interval == 15
     assert settings.task_poll_interval == 4
     assert settings.slurm_task_client_hours == 36
@@ -90,10 +83,10 @@ def test_load_from_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 def test_env_var_takes_precedence_over_env_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setenv("TIGERFLOW_TASK_VALIDATION_TIMEOUT", "180")
+    monkeypatch.setenv("TIGERFLOW_PIPELINE_POLL_INTERVAL", "30")
 
     env_file = tmp_path / ".env"
-    env_file.write_text("TIGERFLOW_TASK_VALIDATION_TIMEOUT=90")
+    env_file.write_text("TIGERFLOW_PIPELINE_POLL_INTERVAL=15")
     monkeypatch.setenv("TIGERFLOW_ENV_FILE", str(env_file))
 
     import importlib
@@ -104,13 +97,7 @@ def test_env_var_takes_precedence_over_env_file(
 
     settings = tigerflow.settings.TigerflowSettings()
 
-    assert settings.task_validation_timeout == 180
-
-
-def test_task_validation_timeout_must_be_positive(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("TIGERFLOW_TASK_VALIDATION_TIMEOUT", "0")
-    with pytest.raises(ValidationError, match="greater than 0"):
-        TigerflowSettings()
+    assert settings.pipeline_poll_interval == 30
 
 
 def test_pipeline_poll_interval_must_be_positive(monkeypatch: pytest.MonkeyPatch):

@@ -11,8 +11,6 @@ from types import FrameType
 from typing import Annotated
 
 import typer
-from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
-from dask_jobqueue import SLURMCluster
 
 from tigerflow.logconfig import logger
 from tigerflow.models import (
@@ -40,6 +38,9 @@ class SlurmTask(Task):
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
+        from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
+        from dask_jobqueue import SLURMCluster
+
         for path in (input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)

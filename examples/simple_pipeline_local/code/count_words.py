@@ -2,13 +2,15 @@ import json
 import re
 import time
 from collections import Counter
+from pathlib import Path
 
 from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
 
 
 class CountUniqueWords(LocalTask):
     @staticmethod
-    def run(context, input_file, output_file):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         with open(input_file) as f:
             content = f.read()
 
