@@ -465,6 +465,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#lazy-imports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lazy Imports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#custom-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -685,6 +696,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#lazy-imports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lazy Imports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#custom-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -862,17 +884,20 @@ where each input file is transformed into a single output file independently of 
 </table>
 <p>Then, simply call the inherited <code>cli()</code> method to turn the module into a runnable CLI application.</p>
 <p>For instance, here's a simple "Hello, World!" local task:</p>
-<div class="highlight"><span class="filename">hello.py</span><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalTask</span>
+<div class="highlight"><span class="filename">hello.py</span><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalTask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">HelloWorld</span><span class="p">(</span><span class="n">LocalTask</span><span class="p">):</span>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
         <span class="n">context</span><span class="o">.</span><span class="n">greeting</span> <span class="o">=</span> <span class="s2">&quot;Hello&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Setup executed successfully!&quot;</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">input_file</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">,</span> <span class="n">input_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">output_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 
@@ -882,7 +907,7 @@ where each input file is transformed into a single output file independently of 
             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">new_content</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Teardown executed successfully!&quot;</span><span class="p">)</span>
 
 
@@ -954,6 +979,35 @@ For example, <code>path/to/data/4.txt</code> produces <code>path/to/results/4.tx
 <p class="admonition-title">Error Files</p>
 <p>If a task encounters an error, TigerFlow generates an error output file, e.g., <code>4.err</code> instead of <code>4.txt</code>. This file contains specific error messages to assist with debugging.</p>
 </div>
+<h2 id="lazy-imports">Lazy Imports<a class="headerlink" href="#lazy-imports" title="Permanent link">&para;</a></h2>
+<p>When working with heavy dependencies like <code>whisper</code>, <code>duckdb</code>, or <code>aiohttp</code>, it is best to import
+them inside your <code>setup</code>, <code>run</code>, or <code>teardown</code> methods rather than at the top of the task module.
+This "lazy loading" pattern defers imports until code actually executes:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># import whisper  ❌ Runs every time the CLI is invoked</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlurmTask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Transcribe</span><span class="p">(</span><span class="n">SlurmTask</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">whisper</span>  <span class="c1"># ✅ Imported only when setup runs</span>
+
+        <span class="n">context</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">whisper</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s2">&quot;/home/sp8538/.cache/whisper/medium.pt&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Why does this matter?</p>
+<ul>
+<li>
+<p><strong>For <code>SlurmTask</code></strong>, lazy imports are essential. Task modules are serialized and shipped to
+  cluster workers, so module-level imports would require dependencies on the head node where
+  they are not needed — and may fail entirely if packages are only installed on workers.</p>
+</li>
+<li>
+<p><strong>For <code>LocalTask</code> and <code>LocalAsyncTask</code></strong>, lazy imports are a good practice that reduces
+  startup time and memory footprint, especially when validating task modules.</p>
+</li>
+</ul>
 <h2 id="custom-parameters">Custom Parameters<a class="headerlink" href="#custom-parameters" title="Permanent link">&para;</a></h2>
 <p>Tasks can define custom CLI parameters using an inner <code>Params</code> class. These parameters are automatically added to the CLI and made available via <code>context</code> in the <code>run</code> method.</p>
 <div class="highlight"><span class="filename">greet.py</span><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -1114,19 +1168,22 @@ constraints and storage limitations, but the task logic remains otherwise identi
 <h3 id="transcribing-video-files-slurmtask">Transcribing Video Files (<code>SlurmTask</code>)<a class="headerlink" href="#transcribing-video-files-slurmtask" title="Permanent link">&para;</a></h3>
 <p>We implement the transcription step as a Slurm task because it involves compute-intensive work
 and we want to process files in parallel.</p>
-<div class="highlight"><span class="filename">transcribe.py</span><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">whisper</span>
+<div class="highlight"><span class="filename">transcribe.py</span><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlurmTask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Transcribe</span><span class="p">(</span><span class="n">SlurmTask</span><span class="p">):</span>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">whisper</span>
+
         <span class="n">context</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">whisper</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s2">&quot;/home/sp8538/.cache/whisper/medium.pt&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model loaded successfully&quot;</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">input_file</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">,</span> <span class="n">input_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">output_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">transcribe</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">input_file</span><span class="p">))</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transcription ran successfully for </span><span class="si">{</span><span class="n">input_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -1224,17 +1281,19 @@ often result in longer queue times.</p>
 <p>We implement the embedding step as a local <em>asynchronous</em> task because it involves
 I/O-bound work (i.e., making external API requests) that can be performed concurrently.</p>
 <div class="highlight"><span class="filename">embed.py</span><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">aiofiles</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">aiohttp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalAsyncTask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Embed</span><span class="p">(</span><span class="n">LocalAsyncTask</span><span class="p">):</span>
     <span class="nd">@staticmethod</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+        <span class="kn">import</span><span class="w"> </span><span class="nn">aiohttp</span>
+
         <span class="n">context</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://api.voyageai.com/v1/embeddings&quot;</span>
         <span class="n">context</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;VOYAGE_API_KEY&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -1244,7 +1303,9 @@ I/O-bound work (i.e., making external API requests) that can be performed concur
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Session created successfully!&quot;</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">input_file</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">,</span> <span class="n">input_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">output_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">aiofiles</span>
+
         <span class="k">async</span> <span class="k">with</span> <span class="n">aiofiles</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">text</span> <span class="o">=</span> <span class="k">await</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 
@@ -1265,7 +1326,7 @@ I/O-bound work (i.e., making external API requests) that can be performed concur
             <span class="k">await</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
         <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Session closed successfully!&quot;</span><span class="p">)</span>
 
@@ -1368,15 +1429,17 @@ Session closed successfully!
 database (<a href="https://duckdb.org/docs/stable/connect/concurrency.html">DuckDB</a>)
 only supports writes from a single process.</p>
 <div class="highlight"><span class="filename">ingest.py</span><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalTask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Ingest</span><span class="p">(</span><span class="n">LocalTask</span><span class="p">):</span>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
+
         <span class="n">db_path</span> <span class="o">=</span> <span class="s2">&quot;/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db&quot;</span>
 
         <span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>  <span class="c1"># Creates file if not existing</span>
@@ -1393,7 +1456,7 @@ only supports writes from a single process.</p>
         <span class="n">context</span><span class="o">.</span><span class="n">conn</span> <span class="o">=</span> <span class="n">conn</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">input_file</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">,</span> <span class="n">input_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">output_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">content</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 
@@ -1405,7 +1468,7 @@ only supports writes from a single process.</p>
         <span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
         <span class="n">context</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DB connection closed&quot;</span><span class="p">)</span>
 
