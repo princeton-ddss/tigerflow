@@ -16,10 +16,7 @@ from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
     PipelineConfig,
-    PipelineOutput,
-    PipelineProgress,
     SlurmTaskConfig,
-    TaskProgress,
     TaskStatus,
     TaskStatusKind,
 )
@@ -344,33 +341,6 @@ class Pipeline:
             logger.warning("Idle timeout reached, initiating shutdown")
             self._received_signal = signal.SIGTERM
             self._shutdown_event.set()
-
-    @staticmethod
-    def report_progress(output_dir: Path) -> PipelineProgress:
-        """
-        Report progress across pipeline tasks.
-        """
-        output = PipelineOutput(output_dir)
-        output.validate()
-
-        result = PipelineProgress()
-        result.staged = {f for f in output.symlinks.iterdir() if f.is_file()}
-        result.finished = {f for f in output.finished.iterdir() if f.is_file()}
-
-        for folder in output.internal.iterdir():
-            if folder.is_dir() and not folder.name.startswith("."):
-                task = TaskProgress(name=folder.name)
-                for file in folder.iterdir():
-                    if file.is_file():
-                        if file.suffix == "":
-                            task.ongoing.add(file)
-                        elif file.name.endswith(".err"):
-                            task.failed.add(file)
-                        else:
-                            task.processed.add(file)
-                result.tasks.append(task)
-
-        return result
 
     @staticmethod
     def _get_subprocess_status(process: subprocess.Popen) -> TaskStatus:

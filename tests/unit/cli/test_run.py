@@ -12,7 +12,14 @@ class TestRunCommandPidLocking:
     def test_run_blocked_when_already_running(self, tmp_path: Path):
         # Setup directories and a PID file with current process ID
         config_file = tmp_path / "config.yaml"
-        config_file.write_text("tasks: []")
+        config_file.write_text("""
+tasks:
+  - name: echo
+    kind: local
+    module: tigerflow.library.echo
+    input_ext: .txt
+    output_ext: .txt
+""")
         input_dir = tmp_path / "input"
         output_dir = tmp_path / "output"
         input_dir.mkdir()

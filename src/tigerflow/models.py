@@ -401,3 +401,26 @@ class PipelineOutput:
     def create(self) -> None:
         """Create the pipeline directory structure."""
         self.internal.mkdir(parents=True, exist_ok=True)
+
+    def report_progress(self) -> PipelineProgress:
+        """Report progress across pipeline tasks."""
+        self.validate()
+
+        result = PipelineProgress()
+        result.staged = {f for f in self.symlinks.iterdir() if f.is_file()}
+        result.finished = {f for f in self.finished.iterdir() if f.is_file()}
+
+        for folder in self.internal.iterdir():
+            if folder.is_dir() and not folder.name.startswith("."):
+                task = TaskProgress(name=folder.name)
+                for file in folder.iterdir():
+                    if file.is_file():
+                        if file.suffix == "":
+                            task.ongoing.add(file)
+                        elif file.name.endswith(".err"):
+                            task.failed.add(file)
+                        else:
+                            task.processed.add(file)
+                result.tasks.append(task)
+
+        return result

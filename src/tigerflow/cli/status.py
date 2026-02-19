@@ -5,7 +5,6 @@ from typing import Annotated
 import typer
 
 from tigerflow.models import PipelineOutput
-from tigerflow.pipeline import Pipeline
 from tigerflow.utils import is_process_running, read_pid_file
 
 
@@ -39,7 +38,7 @@ def status(
     pid = read_pid_file(output.pid_file)
     running = pid is not None and is_process_running(pid)
 
-    progress = Pipeline.report_progress(output.root)
+    progress = output.report_progress()
     finished = len(progress.finished)
     failed = len(progress.failed)
     staged = len(progress.staged) - failed  # Failed files remain in symlinks

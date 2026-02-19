@@ -65,7 +65,7 @@ def run(
         typer.echo(f"Error: Pipeline is already running (pid {pid})", err=True)
         raise typer.Exit(1)
 
-    output.pid_file.unlink(missing_ok=True)  # clean up stale file if present
+    output.pid_file.unlink(missing_ok=True)  # Clean up stale file if present
 
     if background:
         _run_in_background(
