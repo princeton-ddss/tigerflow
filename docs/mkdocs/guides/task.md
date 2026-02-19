@@ -72,26 +72,6 @@ where:
 
     In the `run` method, `context` is read-only and will raise an error if modified.
 
-!!! tip "Lazy Imports"
-
-    Place task-specific imports inside `setup`, `run`, or `teardown` methods rather than at the
-    top of the module. This "lazy loading" pattern defers importing heavy dependencies (e.g.,
-    `whisper`, `duckdb`, `aiohttp`) until the method actually executes, resulting in faster
-    module load times and a reduced memory footprint.
-
-    ```py
-    class MyTask(LocalTask):
-        @staticmethod
-        def setup(context: SetupContext):
-            import some_heavy_library  # ✅ Loaded only when setup runs
-
-            context.model = some_heavy_library.load("model")
-    ```
-
-    This is especially important for `SlurmTask`, where task modules are serialized and shipped
-    to cluster workers — lazy imports ensure dependencies are resolved on the worker nodes where
-    they are actually needed.
-
 With `HelloWorld.cli()`, this module becomes a runnable CLI application and we can check its details by running:
 
 === "Command"
@@ -150,6 +130,36 @@ For example, `path/to/data/4.txt` produces `path/to/results/4.txt`.
 !!! info "Error Files"
 
     If a task encounters an error, TigerFlow generates an error output file, e.g., `4.err` instead of `4.txt`. This file contains specific error messages to assist with debugging.
+
+## Lazy Imports
+
+When working with heavy dependencies like `whisper`, `duckdb`, or `aiohttp`, it is best to import
+them inside your `setup`, `run`, or `teardown` methods rather than at the top of the task module.
+This "lazy loading" pattern defers imports until code actually executes:
+
+```py
+# import whisper  ❌ Runs every time the CLI is invoked
+
+from tigerflow.tasks import SlurmTask
+from tigerflow.utils import SetupContext
+
+
+class Transcribe(SlurmTask):
+    @staticmethod
+    def setup(context: SetupContext):
+        import whisper  # ✅ Imported only when setup runs
+
+        context.model = whisper.load_model("/home/sp8538/.cache/whisper/medium.pt")
+```
+
+Why does this matter?
+
+- **For `SlurmTask`**, lazy imports are essential. Task modules are serialized and shipped to
+  cluster workers, so module-level imports would require dependencies on the head node where
+  they are not needed — and may fail entirely if packages are only installed on workers.
+
+- **For `LocalTask` and `LocalAsyncTask`**, lazy imports are a good practice that reduces
+  startup time and memory footprint, especially when validating task modules.
 
 ## Custom Parameters
 
