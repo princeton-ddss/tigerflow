@@ -1,8 +1,9 @@
 """CLI commands for managing and discovering tasks."""
 
 import importlib
+import json
 import pkgutil
-from importlib.metadata import entry_points
+from importlib.metadata import entry_points, packages_distributions, version
 from typing import Annotated
 
 import typer
@@ -17,6 +18,10 @@ def list_tasks(
         bool,
         typer.Option("--verbose", "-v", help="Show full module paths"),
     ] = False,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Output in JSON format"),
+    ] = False,
 ):
     """
     List available tasks (built-in and installed).
@@ -24,6 +29,43 @@ def list_tasks(
     builtin = _get_builtin_tasks()
     installed = _get_installed_tasks()
 
+    if as_json:
+        _list_tasks_json(builtin, installed)
+    else:
+        _list_tasks_rich(builtin, installed, verbose)
+
+
+def _list_tasks_json(builtin: list[tuple[str, str]], installed: list[tuple[str, str]]):
+    """Output task list in JSON format."""
+    data = {
+        "builtin": [
+            {
+                "name": name,
+                "module": module_name,
+                "version": _get_package_version(module_name),
+                "description": _get_task_description(module_name),
+            }
+            for name, module_name in sorted(builtin)
+        ],
+        "installed": [
+            {
+                "name": name,
+                "module": module_path,
+                "version": _get_package_version(module_path.split(":")[0]),
+                "description": _get_task_description(module_path),
+            }
+            for name, module_path in sorted(installed)
+        ],
+    }
+    typer.echo(json.dumps(data, indent=2))
+
+
+def _list_tasks_rich(
+    builtin: list[tuple[str, str]],
+    installed: list[tuple[str, str]],
+    verbose: bool,
+):
+    """Output task list with rich formatting."""
     if not builtin and not installed:
         print("No tasks found.")
         return
@@ -32,10 +74,13 @@ def list_tasks(
         print("Built-in tasks:")
         for name, module_name in sorted(builtin):
             desc = _get_task_description(module_name)
+            ver = _get_package_version(module_name)
             if verbose:
                 line = f"  {name}: {module_name}"
             else:
                 line = f"  {name}"
+            if ver:
+                line += f" ({ver})"
             if desc:
                 line += f" - {desc}"
             print(line)
@@ -45,10 +90,14 @@ def list_tasks(
             print()
         print("Installed tasks:")
         for name, module_path in sorted(installed):
+            ver = _get_package_version(module_path.split(":")[0])
             if verbose:
-                print(f"  {name}: {module_path}")
+                line = f"  {name}: {module_path}"
             else:
-                print(f"  {name}")
+                line = f"  {name}"
+            if ver:
+                line += f" ({ver})"
+            print(line)
 
 
 @app.command(name="info")
@@ -68,9 +117,11 @@ def task_info(
     if task_name in builtin:
         module_name = builtin[task_name]
         source = "built-in"
+        module_version = _get_package_version(module_name)
     elif task_name in installed:
         module_name = installed[task_name]
         source = "installed"
+        module_version = _get_package_version(module_name)
     else:
         print(f"Task '{task_name}' not found.")
         print("Run 'tigerflow tasks list' to see available tasks.")
@@ -79,6 +130,7 @@ def task_info(
     print(f"Task: {task_name}")
     print(f"Source: {source}")
     print(f"Module: {module_name}")
+    print(f"Version: {module_version}")
 
     # Try to get the task class and its Params
     try:
@@ -114,7 +166,25 @@ def task_info(
         print(f"\nCould not load task details: {e}")
 
 
-# Private helpers
+def _get_package_version(module_name: str) -> str | None:
+    """Get the version of the package that provides a module."""
+    try:
+        # Get the top-level package name
+        top_level = module_name.split(".")[0]
+        # Try direct version lookup first (works for most packages)
+        return version(top_level)
+    except Exception:
+        pass
+    try:
+        # Fall back to packages_distributions mapping
+        pkg_dist = packages_distributions()
+        top_level = module_name.split(".")[0]
+        if top_level in pkg_dist:
+            dist_name = pkg_dist[top_level][0]
+            return version(dist_name)
+    except Exception:
+        pass
+    return None
 
 
 def _get_builtin_tasks() -> list[tuple[str, str]]:

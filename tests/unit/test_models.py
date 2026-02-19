@@ -8,6 +8,7 @@ from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
     PipelineConfig,
+    PipelineOutput,
     SlurmResourceConfig,
     SlurmTaskConfig,
     TaskStatus,
@@ -728,3 +729,45 @@ class TestPipelineConfig:
                     ),
                 ]
             )
+
+
+class TestPipelineOutput:
+    def test_init_resolves_path(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        assert output.root == tmp_path.resolve()
+
+    def test_init_sets_internal_paths(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        assert output.internal == tmp_path / ".tigerflow"
+        assert output.pid_file == tmp_path / ".tigerflow" / "run.pid"
+        assert output.log_file == tmp_path / ".tigerflow" / "run.log"
+        assert output.symlinks == tmp_path / ".tigerflow" / ".symlinks"
+        assert output.finished == tmp_path / ".tigerflow" / ".finished"
+
+    def test_validate_raises_when_root_missing(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path / "nonexistent")
+        with pytest.raises(FileNotFoundError, match="Output directory does not exist"):
+            output.validate()
+
+    def test_validate_raises_when_internal_missing(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        with pytest.raises(FileNotFoundError, match="missing .tigerflow"):
+            output.validate()
+
+    def test_validate_passes_when_structure_exists(self, tmp_path: Path):
+        internal = tmp_path / ".tigerflow"
+        internal.mkdir()
+        output = PipelineOutput(tmp_path)
+        output.validate()  # Should not raise
+
+    def test_create_makes_internal_dir(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        assert not output.internal.exists()
+        output.create()
+        assert output.internal.exists()
+
+    def test_create_is_idempotent(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        output.create()
+        output.create()  # Should not raise
+        assert output.internal.exists()

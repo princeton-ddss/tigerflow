@@ -6,14 +6,14 @@ import typer
 from rich import print
 from rich.table import Table
 
-from tigerflow.pipeline import Pipeline
+from tigerflow.models import PipelineOutput
 
 app = typer.Typer()
 
 
 @app.command()
 def progress(
-    pipeline_dir: Annotated[
+    output_dir: Annotated[
         Path,
         typer.Argument(
             help="Pipeline output directory (must contain .tigerflow)",
@@ -24,7 +24,8 @@ def progress(
     """
     Report progress across pipeline tasks.
     """
-    progress = Pipeline.report_progress(pipeline_dir)
+    output = PipelineOutput(output_dir)
+    progress = output.report_progress()
 
     bar = _make_progress_bar(
         current=len(progress.failed) + len(progress.finished),
@@ -50,7 +51,7 @@ def progress(
 
 @app.command()
 def errors(
-    pipeline_dir: Annotated[
+    output_dir: Annotated[
         Path,
         typer.Argument(
             help="Pipeline output directory (must contain .tigerflow)",
@@ -69,7 +70,8 @@ def errors(
     """
     Report failed files for pipeline tasks.
     """
-    progress = Pipeline.report_progress(pipeline_dir)
+    output = PipelineOutput(output_dir)
+    progress = output.report_progress()
 
     available_tasks = {task.name for task in progress.tasks}
     if task_name != "*" and task_name not in available_tasks:

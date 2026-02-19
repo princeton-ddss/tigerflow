@@ -370,4 +370,57 @@ class PipelineProgress(BaseModel):
 
     @property
     def failed(self) -> set[Path]:
+        if not self.tasks:
+            return set()
         return set.union(*(task.failed for task in self.tasks))
+
+
+class PipelineOutput:
+    """Manage the output directory structure and validation."""
+
+    def __init__(self, path: Path):
+        self.root = path.resolve()
+        self.internal = self.root / ".tigerflow"
+        self.pid_file = self.internal / "run.pid"
+        self.log_file = self.internal / "run.log"
+        self.symlinks = self.internal / ".symlinks"
+        self.finished = self.internal / ".finished"
+
+    def validate(self) -> None:
+        """Validate that the pipeline directory structure exists.
+
+        Raises FileNotFoundError if directories don't exist.
+        """
+        if not self.root.exists():
+            raise FileNotFoundError(f"Output directory does not exist: {self.root}")
+        if not self.internal.exists():
+            raise FileNotFoundError(
+                f"Not a valid pipeline directory (missing .tigerflow): {self.root}"
+            )
+
+    def create(self) -> None:
+        """Create the pipeline directory structure."""
+        self.internal.mkdir(parents=True, exist_ok=True)
+
+    def report_progress(self) -> PipelineProgress:
+        """Report progress across pipeline tasks."""
+        self.validate()
+
+        result = PipelineProgress()
+        result.staged = {f for f in self.symlinks.iterdir() if f.is_file()}
+        result.finished = {f for f in self.finished.iterdir() if f.is_file()}
+
+        for folder in self.internal.iterdir():
+            if folder.is_dir() and not folder.name.startswith("."):
+                task = TaskProgress(name=folder.name)
+                for file in folder.iterdir():
+                    if file.is_file():
+                        if file.suffix == "":
+                            task.ongoing.add(file)
+                        elif file.name.endswith(".err"):
+                            task.failed.add(file)
+                        else:
+                            task.processed.add(file)
+                result.tasks.append(task)
+
+        return result

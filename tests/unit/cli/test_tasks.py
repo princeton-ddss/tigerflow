@@ -1,9 +1,12 @@
+import json
+
 from typer.testing import CliRunner
 
 from tigerflow.cli import app
 from tigerflow.cli.tasks import (
     _get_builtin_tasks,
     _get_installed_tasks,
+    _get_package_version,
     _get_task_description,
 )
 
@@ -43,6 +46,25 @@ class TestGetTaskDescription:
         assert desc is None
 
 
+class TestGetPackageVersion:
+    def test_returns_version_for_tigerflow(self):
+        version = _get_package_version("tigerflow.library.echo")
+        assert version is not None
+        # Version should be a valid semver-like string
+        assert "." in version
+
+    def test_returns_none_for_nonexistent_module(self):
+        version = _get_package_version("nonexistent.module.xyz")
+        assert version is None
+
+    def test_returns_version_for_stdlib(self):
+        # Standard library modules don't have versions
+        version = _get_package_version("os.path")
+        # May or may not return None depending on implementation
+        # Just ensure it doesn't raise an exception
+        assert version is None or isinstance(version, str)
+
+
 class TestTasksListCommand:
     def test_list_command_succeeds(self):
         result = runner.invoke(app, ["tasks", "list"])
@@ -57,6 +79,36 @@ class TestTasksListCommand:
         result = runner.invoke(app, ["tasks", "list", "-v"])
         assert "tigerflow.library.echo" in result.stdout
 
+    def test_list_shows_version(self):
+        result = runner.invoke(app, ["tasks", "list"])
+        # Version should appear in parentheses after task name
+        assert "(" in result.stdout and ")" in result.stdout
+
+    def test_list_json_output(self):
+        result = runner.invoke(app, ["tasks", "list", "--json"])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert "builtin" in data
+        assert "installed" in data
+        assert isinstance(data["builtin"], list)
+
+    def test_list_json_includes_task_details(self):
+        result = runner.invoke(app, ["tasks", "list", "--json"])
+        data = json.loads(result.stdout)
+        # Find echo task in builtin
+        echo_task = next((t for t in data["builtin"] if t["name"] == "echo"), None)
+        assert echo_task is not None
+        assert "module" in echo_task
+        assert "version" in echo_task
+        assert "description" in echo_task
+        assert echo_task["module"] == "tigerflow.library.echo"
+
+    def test_list_json_version_is_string_or_null(self):
+        result = runner.invoke(app, ["tasks", "list", "--json"])
+        data = json.loads(result.stdout)
+        for task in data["builtin"]:
+            assert task["version"] is None or isinstance(task["version"], str)
+
 
 class TestTasksInfoCommand:
     def test_info_command_for_echo(self):
@@ -64,6 +116,10 @@ class TestTasksInfoCommand:
         assert result.exit_code == 0
         assert "Task: echo" in result.stdout
         assert "Source: built-in" in result.stdout
+
+    def test_info_shows_version(self):
+        result = runner.invoke(app, ["tasks", "info", "echo"])
+        assert "Version:" in result.stdout
 
     def test_info_shows_parameters(self):
         result = runner.invoke(app, ["tasks", "info", "echo"])
