@@ -1,16 +1,17 @@
 import json
 from pathlib import Path
 
-import duckdb
-
 from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
 
 DB_PATH = Path(__file__).parent.parent / "results" / "test.db"
 
 
 class Ingest(LocalTask):
     @staticmethod
-    def setup(context):
+    def setup(context: SetupContext):
+        import duckdb
+
         conn = duckdb.connect(DB_PATH)  # Creates file if not existing
         print(f"Successfully connected to {DB_PATH}")
 
@@ -25,7 +26,7 @@ class Ingest(LocalTask):
         context.conn = conn
 
     @staticmethod
-    def run(context, input_file, output_file):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         with open(input_file) as f:
             content = json.load(f)
 
@@ -37,7 +38,7 @@ class Ingest(LocalTask):
         )
 
     @staticmethod
-    def teardown(context):
+    def teardown(context: SetupContext):
         context.conn.close()
         print("DB connection closed")
 

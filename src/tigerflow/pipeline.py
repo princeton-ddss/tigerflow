@@ -65,9 +65,7 @@ class Pipeline:
         )
 
         for task in self._config.tasks:
-            if not is_valid_task_cli(
-                task.module, timeout=settings.task_validation_timeout
-            ):
+            if not is_valid_task_cli(task.module):
                 raise ValueError(f"Invalid task CLI: {task.module}")
 
         # Map task I/O directories from the dependency graph

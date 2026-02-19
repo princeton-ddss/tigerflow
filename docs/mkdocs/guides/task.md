@@ -13,36 +13,39 @@ Connected, tasks transform into a data processing [**pipeline**](pipeline.md).
 
 TigerFlow supports three types of tasks:
 
-- `LocalTask`: Runs *synchronous* operations on a login/head node
-- `LocalAsyncTask`: Runs *asynchronous* operations on a login/head node
-- `SlurmTask`: Runs *parallel* operations across compute nodes via Slurm
+- `LocalTask`: Runs _synchronous_ operations on a login/head node
+- `LocalAsyncTask`: Runs _asynchronous_ operations on a login/head node
+- `SlurmTask`: Runs _parallel_ operations across compute nodes via Slurm
 
 ## Hello, Tasks!
 
 To define a task, subclass one of the above abstract types and implement the following methods:
 
-| Method     | Required  | Description                                                                             |
-|------------|:---------:|-----------------------------------------------------------------------------------------|
-| `setup`    | No        | Initializes shared context used across multiple files (e.g., loading a model)           |
-| `run`      | Yes       | Contains the processing logic applied to each file                                      |
-| `teardown` | No        | Performs cleanup operations for graceful shutdown (e.g., closing a database connection) |
+| Method     | Required | Description                                                                             |
+| ---------- | :------: | --------------------------------------------------------------------------------------- |
+| `setup`    |    No    | Initializes shared context used across multiple files (e.g., loading a model)           |
+| `run`      |   Yes    | Contains the processing logic applied to each file                                      |
+| `teardown` |    No    | Performs cleanup operations for graceful shutdown (e.g., closing a database connection) |
 
 Then, simply call the inherited `cli()` method to turn the module into a runnable CLI application.
 
 For instance, here's a simple "Hello, World!" local task:
 
 ```py title="hello.py"
+from pathlib import Path
+
 from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
 
 
 class HelloWorld(LocalTask):
     @staticmethod
-    def setup(context):
+    def setup(context: SetupContext):
         context.greeting = "Hello"
         print("Setup executed successfully!")
 
     @staticmethod
-    def run(context, input_file, output_file):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         with open(input_file, "r") as f:
             content = f.read()
 
@@ -52,7 +55,7 @@ class HelloWorld(LocalTask):
             f.write(new_content)
 
     @staticmethod
-    def teardown(context):
+    def teardown(context: SetupContext):
         print("Teardown executed successfully!")
 
 
@@ -68,6 +71,26 @@ where:
 !!! warning
 
     In the `run` method, `context` is read-only and will raise an error if modified.
+
+!!! tip "Lazy Imports"
+
+    Place task-specific imports inside `setup`, `run`, or `teardown` methods rather than at the
+    top of the module. This "lazy loading" pattern defers importing heavy dependencies (e.g.,
+    `whisper`, `duckdb`, `aiohttp`) until the method actually executes, resulting in faster
+    module load times and a reduced memory footprint.
+
+    ```py
+    class MyTask(LocalTask):
+        @staticmethod
+        def setup(context: SetupContext):
+            import some_heavy_library  # ✅ Loaded only when setup runs
+
+            context.model = some_heavy_library.load("model")
+    ```
+
+    This is especially important for `SlurmTask`, where task modules are serialized and shipped
+    to cluster workers — lazy imports ensure dependencies are resolved on the worker nodes where
+    they are actually needed.
 
 With `HelloWorld.cli()`, this module becomes a runnable CLI application and we can check its details by running:
 
@@ -317,19 +340,22 @@ We implement the transcription step as a Slurm task because it involves compute-
 and we want to process files in parallel.
 
 ```py title="transcribe.py"
-import whisper
+from pathlib import Path
 
 from tigerflow.tasks import SlurmTask
+from tigerflow.utils import SetupContext
 
 
 class Transcribe(SlurmTask):
     @staticmethod
-    def setup(context):
+    def setup(context: SetupContext):
+        import whisper
+
         context.model = whisper.load_model("/home/sp8538/.cache/whisper/medium.pt")
         print("Model loaded successfully")
 
     @staticmethod
-    def run(context, input_file, output_file):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         result = context.model.transcribe(str(input_file))
         print(f"Transcription ran successfully for {input_file}")
 
@@ -429,22 +455,24 @@ often result in longer queue times.
 
 ### Embedding Text Files (`LocalAsyncTask`)
 
-We implement the embedding step as a local *asynchronous* task because it involves
+We implement the embedding step as a local _asynchronous_ task because it involves
 I/O-bound work (i.e., making external API requests) that can be performed concurrently.
 
 ```py title="embed.py"
 import asyncio
-import os
-
-import aiofiles
-import aiohttp
+from pathlib import Path
 
 from tigerflow.tasks import LocalAsyncTask
+from tigerflow.utils import SetupContext
 
 
 class Embed(LocalAsyncTask):
     @staticmethod
-    async def setup(context):
+    async def setup(context: SetupContext):
+        import os
+
+        import aiohttp
+
         context.url = "https://api.voyageai.com/v1/embeddings"
         context.headers = {
             "Authorization": f"Bearer {os.environ['VOYAGE_API_KEY']}",
@@ -454,7 +482,9 @@ class Embed(LocalAsyncTask):
         print("Session created successfully!")
 
     @staticmethod
-    async def run(context, input_file, output_file):
+    async def run(context: SetupContext, input_file: Path, output_file: Path):
+        import aiofiles
+
         async with aiofiles.open(input_file, "r") as f:
             text = await f.read()
 
@@ -475,7 +505,7 @@ class Embed(LocalAsyncTask):
             await f.write(result)
 
     @staticmethod
-    async def teardown(context):
+    async def teardown(context: SetupContext):
         await context.session.close()
         print("Session closed successfully!")
 
@@ -580,21 +610,23 @@ We can then run the task as follows:
 
 ### Ingesting Text Embeddings (`LocalTask`)
 
-We implement the ingestion step as a local *synchronous* task because our target
+We implement the ingestion step as a local _synchronous_ task because our target
 database ([DuckDB](https://duckdb.org/docs/stable/connect/concurrency.html))
 only supports writes from a single process.
 
 ```py title="ingest.py"
 import json
-
-import duckdb
+from pathlib import Path
 
 from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
 
 
 class Ingest(LocalTask):
     @staticmethod
-    def setup(context):
+    def setup(context: SetupContext):
+        import duckdb
+
         db_path = "/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db"
 
         conn = duckdb.connect(db_path)  # Creates file if not existing
@@ -611,7 +643,7 @@ class Ingest(LocalTask):
         context.conn = conn
 
     @staticmethod
-    def run(context, input_file, output_file):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         with open(input_file, "r") as f:
             content = json.load(f)
 
@@ -623,7 +655,7 @@ class Ingest(LocalTask):
         )
 
     @staticmethod
-    def teardown(context):
+    def teardown(context: SetupContext):
         context.conn.close()
         print("DB connection closed")
 

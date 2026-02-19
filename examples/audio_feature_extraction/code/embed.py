@@ -1,15 +1,17 @@
 import asyncio
-import os
-
-import aiofiles
-import aiohttp
+from pathlib import Path
 
 from tigerflow.tasks import LocalAsyncTask
+from tigerflow.utils import SetupContext
 
 
 class Embed(LocalAsyncTask):
     @staticmethod
-    async def setup(context):
+    async def setup(context: SetupContext):
+        import os
+
+        import aiohttp
+
         context.url = "https://api.voyageai.com/v1/embeddings"
         context.headers = {
             "Authorization": f"Bearer {os.environ['VOYAGE_API_KEY']}",
@@ -19,7 +21,9 @@ class Embed(LocalAsyncTask):
         print("Session created successfully!")
 
     @staticmethod
-    async def run(context, input_file, output_file):
+    async def run(context: SetupContext, input_file: Path, output_file: Path):
+        import aiofiles
+
         async with aiofiles.open(input_file) as f:
             text = await f.read()
 
@@ -40,7 +44,7 @@ class Embed(LocalAsyncTask):
             await f.write(result)
 
     @staticmethod
-    async def teardown(context):
+    async def teardown(context: SetupContext):
         await context.session.close()
         print("Session closed successfully!")
 
