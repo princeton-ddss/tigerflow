@@ -501,6 +501,62 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Running a Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#background-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-running-pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Running Pipelines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing Running Pipelines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#checking-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stopping-a-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stopping a Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -614,6 +670,62 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Running a Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#background-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-running-pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Running Pipelines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing Running Pipelines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#checking-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stopping-a-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stopping a Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -833,6 +945,60 @@ This behavior is useful for streaming-like workflows where data may arrive spora
 <p class="admonition-title">Info</p>
 <p>To see all available options for the <code>run</code> subcommand, run <code>tigerflow run --help</code>.</p>
 </div>
+<h3 id="background-mode">Background Mode<a class="headerlink" href="#background-mode" title="Permanent link">&para;</a></h3>
+<p>For long-running pipelines, especially on remote servers where you may disconnect from the terminal,
+we can run the pipeline in the background using the <code>--background</code> flag:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Command</label><label for="__tabbed_2_2">Output</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>run<span class="w"> </span>config.yaml<span class="w"> </span>path/to/data/<span class="w"> </span>path/to/results/<span class="w"> </span>--background
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>Started (pid 12345)
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>The pipeline starts as a detached process, returning control to the terminal immediately.
+All output is written to <code>.tigerflow/run.log</code> in the output directory.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Only one pipeline can run against a given output directory at a time. Attempting to start
+a second pipeline targeting the same output directory will fail with an error indicating
+that a pipeline is already running.</p>
+</div>
+<h2 id="managing-running-pipelines">Managing Running Pipelines<a class="headerlink" href="#managing-running-pipelines" title="Permanent link">&para;</a></h2>
+<h3 id="checking-status">Checking Status<a class="headerlink" href="#checking-status" title="Permanent link">&para;</a></h3>
+<p>We can check whether a pipeline is running using the <code>status</code> command:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:3"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output (running)</label><label for="__tabbed_3_3">Output (not running)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>status<span class="w"> </span>path/to/results/
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>Pipeline running (pid 12345)
+45 finished, 44 staged, 2 failed
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>Pipeline stopped
+91 finished, 0 staged, 8 failed
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>For scripting, use <code>--json</code> to output machine-readable JSON.</p>
+</div>
+<h3 id="stopping-a-pipeline">Stopping a Pipeline<a class="headerlink" href="#stopping-a-pipeline" title="Permanent link">&para;</a></h3>
+<p>To gracefully stop a running pipeline:</p>
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>stop<span class="w"> </span>path/to/results/
+</code></pre></div>
+<p>The pipeline will finish processing any in-progress files before shutting down.
+Use <code>--force</code> for immediate termination without waiting for cleanup.</p>
 <p>Since the pipeline has been configured to retain output files only for the transcription task,
 the output directory (i.e., <code>path/to/results/</code>) will look as follows:</p>
 <div class="highlight"><pre><span></span><code>path/to/results/
@@ -849,7 +1015,7 @@ the output directory (i.e., <code>path/to/results/</code>) will look as follows:
 </div>
 <h2 id="checking-progress">Checking Progress<a class="headerlink" href="#checking-progress" title="Permanent link">&para;</a></h2>
 <p>We can check the pipeline's progress at any point by running:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Command</label><label for="__tabbed_2_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Command</label><label for="__tabbed_4_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>progress<span class="w"> </span>path/to/results/
@@ -871,7 +1037,7 @@ the output directory (i.e., <code>path/to/results/</code>) will look as follows:
 <p>where <code>path/to/results/</code> must be a valid output directory containing <code>.tigerflow/</code>.</p>
 <h2 id="checking-errors">Checking Errors<a class="headerlink" href="#checking-errors" title="Permanent link">&para;</a></h2>
 <p>If the progress reports any failed files, we can identify them by running:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Command</label><label for="__tabbed_5_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>errors<span class="w"> </span>path/to/results/
