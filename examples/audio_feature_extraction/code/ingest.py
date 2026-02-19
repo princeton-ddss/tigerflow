@@ -1,5 +1,8 @@
 import json
 from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from tigerflow.tasks import LocalTask
 from tigerflow.utils import SetupContext
@@ -8,12 +11,18 @@ DB_PATH = Path(__file__).parent.parent / "results" / "test.db"
 
 
 class Ingest(LocalTask):
+    class Params:
+        db_path: Annotated[
+            Path,
+            typer.Option(help="Path to the DuckDB database file"),
+        ] = DB_PATH
+
     @staticmethod
     def setup(context: SetupContext):
         import duckdb
 
-        conn = duckdb.connect(DB_PATH)  # Creates file if not existing
-        print(f"Successfully connected to {DB_PATH}")
+        conn = duckdb.connect(str(context.db_path))  # Creates file if not existing
+        print(f"Successfully connected to {context.db_path}")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS embeddings (

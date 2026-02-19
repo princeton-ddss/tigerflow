@@ -351,17 +351,26 @@ and we want to process files in parallel.
 
 ```py title="transcribe.py"
 from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from tigerflow.tasks import SlurmTask
 from tigerflow.utils import SetupContext
 
 
 class Transcribe(SlurmTask):
+    class Params:
+        model_file: Annotated[
+            Path,
+            typer.Option(help="Path to the Whisper model file"),
+        ]
+
     @staticmethod
     def setup(context: SetupContext):
         import whisper
 
-        context.model = whisper.load_model("/home/sp8538/.cache/whisper/medium.pt")
+        context.model = whisper.load_model(str(context.model_file))
         print("Model loaded successfully")
 
     @staticmethod
@@ -409,6 +418,7 @@ Calling `Transcribe.cli()` turns this module into a runnable CLI application:
     │    --sbatch-option         TEXT     Additional Slurm option for workers (repeatable)   │
     │    --setup-command         TEXT     Shell command to run before the task starts        │
     │                                     (repeatable)                                       │
+    │    --model-file            PATH     Path to the Whisper model file                     │
     │    --task-name             TEXT     Task name [default: Transcribe]                    │
     │    --help                           Show this message and exit.                        │
     ╰────────────────────────────────────────────────────────────────────────────────────────╯
@@ -429,6 +439,7 @@ We can then run the task as follows:
     --memory "12G" \
     --time "02:00:00" \
     --gpus 1 \
+    --model-file "/home/sp8538/.cache/whisper/medium.pt" \
     --sbatch-option "--mail-user=sp8538@princeton.edu" \
     --setup-command "module purge" \
     --setup-command "module load anaconda3/2024.6" \
@@ -471,12 +482,21 @@ I/O-bound work (i.e., making external API requests) that can be performed concur
 ```py title="embed.py"
 import asyncio
 from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from tigerflow.tasks import LocalAsyncTask
 from tigerflow.utils import SetupContext
 
 
 class Embed(LocalAsyncTask):
+    class Params:
+        model: Annotated[
+            str,
+            typer.Option(help="Embedding model name"),
+        ] = "voyage-3.5"
+
     @staticmethod
     async def setup(context: SetupContext):
         import os
@@ -503,7 +523,7 @@ class Embed(LocalAsyncTask):
             headers=context.headers,
             json={
                 "input": text.strip(),
-                "model": "voyage-3.5",
+                "model": context.model,
                 "input_type": "document",
             },
         ) as resp:
@@ -574,6 +594,7 @@ Calling `Embed.cli()` turns this module into a runnable CLI application:
     │ *  --concurrency-limit        INTEGER  Maximum number of coroutines that may run concurrently at any given     │
     │                                        time (excess coroutines are queued until capacity becomes available)    │
     │                                        [required]                                                              │
+    │    --model                    TEXT     Embedding model name [default: voyage-3.5]                              │
     │    --task-name                TEXT     Task name [default: Embed]                                              │
     │    --help                              Show this message and exit.                                             │
     ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -589,7 +610,8 @@ We can then run the task as follows:
     --input-ext .txt \
     --output-dir path/to/results/ \
     --output-ext .json \
-    --concurrency-limit 30
+    --concurrency-limit 30 \
+    --model "voyage-4-lite"
     ```
 
 === "Output"
@@ -627,20 +649,27 @@ only supports writes from a single process.
 ```py title="ingest.py"
 import json
 from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from tigerflow.tasks import LocalTask
 from tigerflow.utils import SetupContext
 
 
 class Ingest(LocalTask):
+    class Params:
+        db_path: Annotated[
+            Path,
+            typer.Option(help="Path to the DuckDB database file"),
+        ]
+
     @staticmethod
     def setup(context: SetupContext):
         import duckdb
 
-        db_path = "/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db"
-
-        conn = duckdb.connect(db_path)  # Creates file if not existing
-        print(f"Successfully connected to {db_path}")
+        conn = duckdb.connect(str(context.db_path))  # Creates file if not existing
+        print(f"Successfully connected to {context.db_path}")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS embeddings (
@@ -699,6 +728,7 @@ Calling `Ingest.cli()` turns this module into a runnable CLI application:
     │ *  --input-ext         TEXT  Input file extension [required]                 │
     │ *  --output-dir        PATH  Output directory to store results [required]    │
     │ *  --output-ext        TEXT  Output file extension [required]                │
+    │    --db-path           PATH  Path to the DuckDB database file                │
     │    --task-name         TEXT  Task name [default: Ingest]                     │
     │    --help                    Show this message and exit.                     │
     ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -713,7 +743,8 @@ We can then run the task as follows:
     --input-dir path/to/data/ \
     --input-ext .json \
     --output-dir path/to/results/ \
-    --output-ext .out
+    --output-ext .out \
+    --db-path "/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db"
     ```
 
 === "Output"
