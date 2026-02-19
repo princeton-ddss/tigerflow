@@ -281,3 +281,58 @@ def atomic_write(filepath: os.PathLike):
         raise
     else:
         temp_path.replace(filepath)
+
+
+def cleanup_logs(internal_dir: Path, max_size_mb: int) -> int:
+    """
+    Delete oldest .log files until total size is under the limit.
+
+    Parameters
+    ----------
+    internal_dir : Path
+        The .tigerflow directory containing log files
+    max_size_mb : int
+        Maximum total size of log files in MB
+
+    Returns
+    -------
+    int
+        Number of files deleted
+    """
+    max_size_bytes = max_size_mb * 1024 * 1024
+
+    # Find all .log files recursively
+    log_files = list(internal_dir.rglob("*.log"))
+    if not log_files:
+        return 0
+
+    # Get file info: (path, size, mtime)
+    file_info = []
+    for f in log_files:
+        try:
+            stat = f.stat()
+            file_info.append((f, stat.st_size, stat.st_mtime))
+        except OSError:
+            continue
+
+    # Calculate total size
+    total_size = sum(size for _, size, _ in file_info)
+    if total_size <= max_size_bytes:
+        return 0
+
+    # Sort by mtime (oldest first)
+    file_info.sort(key=lambda x: x[2])
+
+    # Delete oldest files until under limit
+    deleted = 0
+    for path, size, _ in file_info:
+        if total_size <= max_size_bytes:
+            break
+        try:
+            path.unlink()
+            total_size -= size
+            deleted += 1
+        except OSError:
+            continue
+
+    return deleted

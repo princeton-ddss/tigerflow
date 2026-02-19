@@ -29,12 +29,12 @@ def pipeline_with_metrics(pipeline_dir: Path):
     log_content = """2024-01-15 10:30:00 | INFO     | Setting up task
 2024-01-15 10:30:01 | INFO     | Starting processing: file1.txt
 2024-01-15 10:30:02 | INFO     | Successfully processed: file1.txt
-2024-01-15 10:30:02 | INFO     | {"_metrics": true, "file": "file1.txt", "started_at": "2024-01-15T10:30:01+00:00", "finished_at": "2024-01-15T10:30:02+00:00", "status": "success"}
+2024-01-15 10:30:02 | METRICS  | {"file": "file1.txt", "started_at": "2024-01-15T10:30:01+00:00", "finished_at": "2024-01-15T10:30:02+00:00", "status": "success"}
 2024-01-15 10:30:03 | INFO     | Starting processing: file2.txt
 2024-01-15 10:30:04 | ERROR    | Failed processing: file2.txt
-2024-01-15 10:30:04 | INFO     | {"_metrics": true, "file": "file2.txt", "started_at": "2024-01-15T10:30:03+00:00", "finished_at": "2024-01-15T10:30:04+00:00", "status": "error"}
+2024-01-15 10:30:04 | METRICS  | {"file": "file2.txt", "started_at": "2024-01-15T10:30:03+00:00", "finished_at": "2024-01-15T10:30:04+00:00", "status": "error"}
 """
-    (logs_dir / "test_task-1234.err").write_text(log_content)
+    (logs_dir / "20240115-103000.log").write_text(log_content)
     return pipeline_dir
 
 

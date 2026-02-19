@@ -241,7 +241,7 @@ class TestLocalTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "#!/bin/bash" in script
         assert "exec python" in script
@@ -266,7 +266,7 @@ class TestLocalTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "source venv/bin/activate;export VAR=1" in script
 
@@ -282,7 +282,7 @@ class TestLocalTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "python -m tigerflow.library.echo" in script
 
@@ -299,7 +299,7 @@ class TestLocalTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "--prefix" in script
         assert "--uppercase" in script
@@ -327,7 +327,7 @@ class TestLocalAsyncTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "#!/bin/bash" in script
         assert "--concurrency-limit 10" in script
@@ -362,14 +362,14 @@ class TestSlurmTaskConfig:
         assert slurm_config.worker_job_name == "slurm_task-worker"
 
     def test_to_script_contains_sbatch_directives(self, slurm_config: SlurmTaskConfig):
-        script = slurm_config.to_script()
+        script = slurm_config.to_script("20240115-103000")
 
         assert "#SBATCH --job-name=slurm_task-client" in script
         assert "#SBATCH --nodes=1" in script
         assert "#SBATCH --ntasks=1" in script
 
     def test_to_script_contains_task_command(self, slurm_config: SlurmTaskConfig):
-        script = slurm_config.to_script()
+        script = slurm_config.to_script("20240115-103000")
 
         assert "--max-workers 4" in script
         assert "--cpus 8" in script
@@ -397,7 +397,7 @@ class TestSlurmTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "--gpus" not in script
 
@@ -424,7 +424,7 @@ class TestSlurmTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "--sbatch-option '--partition=gpu'" in script
         assert "--sbatch-option '--mail-user=tigerflow@princeton.edu'" in script
@@ -449,7 +449,7 @@ class TestSlurmTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "#SBATCH --account=myaccount" in script
 
@@ -473,12 +473,12 @@ class TestSlurmTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-        script = config.to_script()
+        script = config.to_script("20240115-103000")
 
         assert "#SBATCH -A myaccount" in script
 
     def test_to_script_without_account_option(self, slurm_config: SlurmTaskConfig):
-        script = slurm_config.to_script()
+        script = slurm_config.to_script("20240115-103000")
 
         for line in script.splitlines():
             if line.strip().startswith("#SBATCH"):

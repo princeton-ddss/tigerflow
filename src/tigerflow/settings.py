@@ -57,5 +57,11 @@ class TigerflowSettings(BaseSettings):
         description="Timeout in seconds for each Slurm task worker to initialize",
     )
 
+    max_log_size_mb: int = Field(
+        default=100,
+        gt=0,
+        description="Maximum total size of log files in MB before cleanup",
+    )
+
 
 settings = TigerflowSettings()

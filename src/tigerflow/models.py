@@ -135,9 +135,14 @@ class BaseTaskConfig(BaseModel):
     def log_dir(self) -> Path:
         return self.output_dir / "logs"
 
-    def to_script(self) -> str:
+    def to_script(self, run_id: str) -> str:
         """
         Compose a Bash script that executes the task.
+
+        Parameters
+        ----------
+        run_id : str
+            Unique identifier for this pipeline run (e.g., "20240115-103000")
         """
         raise NotImplementedError
 
@@ -145,9 +150,8 @@ class BaseTaskConfig(BaseModel):
 class LocalTaskConfig(BaseTaskConfig):
     kind: Literal["local"]
 
-    def to_script(self) -> str:
-        stdout_file = self.log_dir / f"{self.name}-$$.out"
-        stderr_file = self.log_dir / f"{self.name}-$$.err"
+    def to_script(self, run_id: str) -> str:
+        log_file = self.log_dir / f"{run_id}.log"
         setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
@@ -165,7 +169,7 @@ class LocalTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             {setup_command}
-            {task_command} > {stdout_file} 2> {stderr_file}
+            {task_command} > {log_file} 2>&1
         """)
 
         return script
@@ -175,9 +179,8 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
     kind: Literal["local_async"]
     concurrency_limit: int
 
-    def to_script(self) -> str:
-        stdout_file = self.log_dir / f"{self.name}-$$.out"
-        stderr_file = self.log_dir / f"{self.name}-$$.err"
+    def to_script(self, run_id: str) -> str:
+        log_file = self.log_dir / f"{run_id}.log"
         setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
@@ -196,7 +199,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             {setup_command}
-            {task_command} > {stdout_file} 2> {stderr_file}
+            {task_command} > {log_file} 2>&1
         """)
 
         return script
@@ -219,7 +222,8 @@ class SlurmTaskConfig(BaseTaskConfig):
     def worker_job_name(self) -> str:
         return f"{self.name}-worker"
 
-    def to_script(self) -> str:
+    def to_script(self, run_id: str) -> str:
+        log_file = self.log_dir / f"{run_id}.log"
         sbatch_account = next(
             (
                 f"#SBATCH {option}"
@@ -258,8 +262,7 @@ class SlurmTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             #SBATCH --job-name={self.client_job_name}
-            #SBATCH --output={self.log_dir}/%x-%j.out
-            #SBATCH --error={self.log_dir}/%x-%j.err
+            #SBATCH --output={log_file}
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=1

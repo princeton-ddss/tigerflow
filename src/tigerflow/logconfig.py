@@ -4,6 +4,10 @@ from loguru import logger
 
 logger.remove()
 
+# Custom METRICS level for structured timing/performance data
+# Severity 25 (between INFO=20 and WARNING=30)
+logger.level("METRICS", no=25, color="<green>", icon="📊")
+
 logger.add(
     sys.stderr,
     format=(

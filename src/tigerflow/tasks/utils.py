@@ -32,16 +32,16 @@ def log_metrics(filename: str):
         raise
     finally:
         finished_at = datetime.now(timezone.utc)
-        logger.info(
+        logger.log(
+            "METRICS",
             json.dumps(
                 {
-                    "_metrics": True,
                     "file": filename,
                     "started_at": started_at.isoformat(),
                     "finished_at": finished_at.isoformat(),
                     "status": metrics["status"],
                 }
-            )
+            ),
         )
 
 

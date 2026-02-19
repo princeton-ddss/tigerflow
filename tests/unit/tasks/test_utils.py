@@ -10,7 +10,7 @@ from tigerflow.tasks.utils import log_metrics
 
 @pytest.fixture
 def capture_logs():
-    """Fixture to capture loguru output."""
+    """Fixture to capture loguru output including METRICS level."""
     output = StringIO()
     handler_id = logger.add(output, format="{message}", level="INFO")
     yield output
@@ -28,7 +28,6 @@ class TestLogMetrics:
         assert match, f"No JSON found in output: {log_output}"
         data = json.loads(match.group())
 
-        assert data["_metrics"] is True
         assert data["file"] == "test.txt"
         assert data["status"] == "success"
         assert "started_at" in data

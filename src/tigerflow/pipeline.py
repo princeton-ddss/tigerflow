@@ -24,7 +24,7 @@ from tigerflow.models import (
 )
 from tigerflow.settings import settings
 from tigerflow.tasks.utils import get_slurm_task_status
-from tigerflow.utils import is_valid_task_cli, submit_to_slurm
+from tigerflow.utils import cleanup_logs, is_valid_task_cli, submit_to_slurm
 
 
 class Pipeline:
@@ -38,6 +38,7 @@ class Pipeline:
         idle_timeout: int = 10,  # In minutes
         delete_input: bool = False,
         pid_file: Path | None = None,
+        run_id: str,
     ):
         for path in (config_file, input_dir, output_dir):
             if not path.exists():
@@ -50,9 +51,16 @@ class Pipeline:
         self._internal_dir = self._output_dir / ".tigerflow"
         self._symlinks_dir = self._internal_dir / ".symlinks"
         self._finished_dir = self._internal_dir / ".finished"
+        self._logs_dir = self._internal_dir / "logs"
+        self._run_id = run_id
 
-        for path in (self._symlinks_dir, self._finished_dir):
+        for path in (self._symlinks_dir, self._finished_dir, self._logs_dir):
             path.mkdir(parents=True, exist_ok=True)
+
+        # Clean up old log files if over size limit
+        deleted = cleanup_logs(self._internal_dir, settings.max_log_size_mb)
+        if deleted > 0:
+            logger.info("Cleaned up {} old log files", deleted)
 
         if idle_timeout < 1:
             raise ValueError("'idle_timeout' must be greater than zero")
@@ -203,7 +211,7 @@ class Pipeline:
     def _start_tasks(self):
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
-            script = task.to_script()
+            script = task.to_script(self._run_id)
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
@@ -258,7 +266,7 @@ class Pipeline:
             if isinstance(task, SlurmTaskConfig):
                 task_status = self._task_status[task.name]
                 if not task_status.is_alive and "TIMEOUT" in task_status.detail:
-                    script = task.to_script()
+                    script = task.to_script(self._run_id)
                     job_id = submit_to_slurm(script)
                     self._slurm_task_ids[task.name] = job_id
                     logger.info(
@@ -357,7 +365,12 @@ class Pipeline:
         pipeline.staged = {f for f in symlinks_dir.iterdir() if f.is_file()}
         pipeline.finished = {f for f in finished_dir.iterdir() if f.is_file()}
         for folder in internal_dir.iterdir():  # TODO: Iterate tasks topologically
-            if folder.is_dir() and not folder.name.startswith("."):  # Task directory
+            # Skip hidden dirs and the logs directory (pipeline logs, not task logs)
+            if (
+                folder.is_dir()
+                and not folder.name.startswith(".")
+                and folder.name != "logs"
+            ):
                 task = TaskProgress(name=folder.name)
                 for file in folder.iterdir():
                     if file.is_file():

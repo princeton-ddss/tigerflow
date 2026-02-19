@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -59,10 +60,15 @@ def run(
     # Resolve paths early (before fork to ensure consistency)
     output_dir = output_dir.resolve()
     internal_dir = output_dir / ".tigerflow"
+    logs_dir = internal_dir / "logs"
     pid_file = internal_dir / "run.pid"
-    log_file = internal_dir / "run.log"
+
+    # Generate unique run ID for this pipeline execution
+    run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_file = logs_dir / f"{run_id}.log"
 
     internal_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir.mkdir(exist_ok=True)
 
     if check_and_cleanup_stale_pid(pid_file):
         pid = int(pid_file.read_text().strip())
@@ -78,6 +84,7 @@ def run(
             delete_input=delete_input,
             pid_file=pid_file,
             log_file=log_file,
+            run_id=run_id,
         )
     else:
         pipeline = Pipeline(
@@ -87,6 +94,7 @@ def run(
             idle_timeout=idle_timeout,
             delete_input=delete_input,
             pid_file=pid_file,
+            run_id=run_id,
         )
         pipeline.run()
 
@@ -100,6 +108,7 @@ def _run_in_background(
     delete_input: bool,
     pid_file: Path,
     log_file: Path,
+    run_id: str,
 ):
     """
     Fork the process, detach from terminal, and run the pipeline in the background.
@@ -115,7 +124,7 @@ def _run_in_background(
     os.setsid()
 
     # Redirect stdout/stderr to log file
-    with open(log_file, "a") as log:
+    with open(log_file, "w") as log:
         os.dup2(log.fileno(), sys.stdout.fileno())
         os.dup2(log.fileno(), sys.stderr.fileno())
 
@@ -126,5 +135,6 @@ def _run_in_background(
             idle_timeout=idle_timeout,
             delete_input=delete_input,
             pid_file=pid_file,
+            run_id=run_id,
         )
         pipeline.run()

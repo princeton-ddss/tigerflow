@@ -284,8 +284,10 @@ class TestBackgroundRun:
     def test_background_writes_logs(self, background_pipeline):
         """Test that background pipeline writes to log file."""
         output_dir = background_pipeline
-        log_file = output_dir / ".tigerflow" / "run.log"
-        assert log_file.exists(), "Log file should be created"
+        logs_dir = output_dir / ".tigerflow" / "logs"
+        assert logs_dir.exists(), "Logs directory should be created"
+        log_files = list(logs_dir.glob("*.log"))
+        assert len(log_files) > 0, "At least one log file should be created"
 
     def test_status_command_shows_running(self, background_pipeline):
         """Test that status command shows pipeline as running."""

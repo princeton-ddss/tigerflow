@@ -86,7 +86,7 @@ def metrics(
         if not logs_dir.exists():
             continue
 
-        for log_file in logs_dir.glob("*.err"):
+        for log_file in logs_dir.glob("*.log"):
             all_metrics.extend(_parse_metrics(log_file, task_dir.name))
 
     if output_json:
@@ -101,7 +101,7 @@ def _parse_metrics(log_file: Path, task_name: str) -> list[dict]:
     try:
         with open(log_file) as f:
             for line in f:
-                if '"_metrics"' in line:
+                if "METRICS" in line:
                     # Extract JSON from log line (after the log prefix)
                     try:
                         # Find the JSON object in the line
