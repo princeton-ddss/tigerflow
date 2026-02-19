@@ -1169,17 +1169,26 @@ constraints and storage limitations, but the task logic remains otherwise identi
 <p>We implement the transcription step as a Slurm task because it involves compute-intensive work
 and we want to process files in parallel.</p>
 <div class="highlight"><span class="filename">transcribe.py</span><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlurmTask</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Transcribe</span><span class="p">(</span><span class="n">SlurmTask</span><span class="p">):</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Params</span><span class="p">:</span>
+        <span class="n">model_file</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="n">Path</span><span class="p">,</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the Whisper model file&quot;</span><span class="p">),</span>
+        <span class="p">]</span>
+
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">whisper</span>
 
-        <span class="n">context</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">whisper</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s2">&quot;/home/sp8538/.cache/whisper/medium.pt&quot;</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">whisper</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">model_file</span><span class="p">))</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model loaded successfully&quot;</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
@@ -1223,6 +1232,7 @@ and we want to process files in parallel.</p>
 <span class="go">│    --sbatch-option         TEXT     Additional Slurm option for workers (repeatable)   │</span>
 <span class="go">│    --setup-command         TEXT     Shell command to run before the task starts        │</span>
 <span class="go">│                                     (repeatable)                                       │</span>
+<span class="go">│    --model-file            PATH     Path to the Whisper model file                     │</span>
 <span class="go">│    --task-name             TEXT     Task name [default: Transcribe]                    │</span>
 <span class="go">│    --help                           Show this message and exit.                        │</span>
 <span class="go">╰────────────────────────────────────────────────────────────────────────────────────────╯</span>
@@ -1244,6 +1254,7 @@ and we want to process files in parallel.</p>
 --memory<span class="w"> </span><span class="s2">&quot;12G&quot;</span><span class="w"> </span><span class="se">\</span>
 --time<span class="w"> </span><span class="s2">&quot;02:00:00&quot;</span><span class="w"> </span><span class="se">\</span>
 --gpus<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+--model-file<span class="w"> </span><span class="s2">&quot;/home/sp8538/.cache/whisper/medium.pt&quot;</span><span class="w"> </span><span class="se">\</span>
 --sbatch-option<span class="w"> </span><span class="s2">&quot;--mail-user=sp8538@princeton.edu&quot;</span><span class="w"> </span><span class="se">\</span>
 --setup-command<span class="w"> </span><span class="s2">&quot;module purge&quot;</span><span class="w"> </span><span class="se">\</span>
 --setup-command<span class="w"> </span><span class="s2">&quot;module load anaconda3/2024.6&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1282,12 +1293,21 @@ often result in longer queue times.</p>
 I/O-bound work (i.e., making external API requests) that can be performed concurrently.</p>
 <div class="highlight"><span class="filename">embed.py</span><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalAsyncTask</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Embed</span><span class="p">(</span><span class="n">LocalAsyncTask</span><span class="p">):</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Params</span><span class="p">:</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span><span class="p">,</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="n">help</span><span class="o">=</span><span class="s2">&quot;Embedding model name&quot;</span><span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;voyage-3.5&quot;</span>
+
     <span class="nd">@staticmethod</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
@@ -1314,7 +1334,7 @@ I/O-bound work (i.e., making external API requests) that can be performed concur
             <span class="n">headers</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span>
             <span class="n">json</span><span class="o">=</span><span class="p">{</span>
                 <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
-                <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;voyage-3.5&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
                 <span class="s2">&quot;input_type&quot;</span><span class="p">:</span> <span class="s2">&quot;document&quot;</span><span class="p">,</span>
             <span class="p">},</span>
         <span class="p">)</span> <span class="k">as</span> <span class="n">resp</span><span class="p">:</span>
@@ -1379,6 +1399,7 @@ keeping it safely within the limit.</p>
 <span class="go">│ *  --concurrency-limit        INTEGER  Maximum number of coroutines that may run concurrently at any given     │</span>
 <span class="go">│                                        time (excess coroutines are queued until capacity becomes available)    │</span>
 <span class="go">│                                        [required]                                                              │</span>
+<span class="go">│    --model                    TEXT     Embedding model name [default: voyage-3.5]                              │</span>
 <span class="go">│    --task-name                TEXT     Task name [default: Embed]                                              │</span>
 <span class="go">│    --help                              Show this message and exit.                                             │</span>
 <span class="go">╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯</span>
@@ -1395,7 +1416,8 @@ keeping it safely within the limit.</p>
 --input-ext<span class="w"> </span>.txt<span class="w"> </span><span class="se">\</span>
 --output-dir<span class="w"> </span>path/to/results/<span class="w"> </span><span class="se">\</span>
 --output-ext<span class="w"> </span>.json<span class="w"> </span><span class="se">\</span>
---concurrency-limit<span class="w"> </span><span class="m">30</span>
+--concurrency-limit<span class="w"> </span><span class="m">30</span><span class="w"> </span><span class="se">\</span>
+--model<span class="w"> </span><span class="s2">&quot;voyage-4-lite&quot;</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -1430,20 +1452,27 @@ database (<a href="https://duckdb.org/docs/stable/connect/concurrency.html">Duck
 only supports writes from a single process.</p>
 <div class="highlight"><span class="filename">ingest.py</span><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalTask</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetupContext</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Ingest</span><span class="p">(</span><span class="n">LocalTask</span><span class="p">):</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Params</span><span class="p">:</span>
+        <span class="n">db_path</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="n">Path</span><span class="p">,</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the DuckDB database file&quot;</span><span class="p">),</span>
+        <span class="p">]</span>
+
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">SetupContext</span><span class="p">):</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
 
-        <span class="n">db_path</span> <span class="o">=</span> <span class="s2">&quot;/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db&quot;</span>
-
-        <span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>  <span class="c1"># Creates file if not existing</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully connected to </span><span class="si">{</span><span class="n">db_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">db_path</span><span class="p">))</span>  <span class="c1"># Creates file if not existing</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully connected to </span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">db_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
 <span class="s2">            CREATE TABLE IF NOT EXISTS embeddings (</span>
@@ -1498,6 +1527,7 @@ only supports writes from a single process.</p>
 <span class="go">│ *  --input-ext         TEXT  Input file extension [required]                 │</span>
 <span class="go">│ *  --output-dir        PATH  Output directory to store results [required]    │</span>
 <span class="go">│ *  --output-ext        TEXT  Output file extension [required]                │</span>
+<span class="go">│    --db-path           PATH  Path to the DuckDB database file                │</span>
 <span class="go">│    --task-name         TEXT  Task name [default: Ingest]                     │</span>
 <span class="go">│    --help                    Show this message and exit.                     │</span>
 <span class="go">╰──────────────────────────────────────────────────────────────────────────────╯</span>
@@ -1513,7 +1543,8 @@ only supports writes from a single process.</p>
 --input-dir<span class="w"> </span>path/to/data/<span class="w"> </span><span class="se">\</span>
 --input-ext<span class="w"> </span>.json<span class="w"> </span><span class="se">\</span>
 --output-dir<span class="w"> </span>path/to/results/<span class="w"> </span><span class="se">\</span>
---output-ext<span class="w"> </span>.out
+--output-ext<span class="w"> </span>.out<span class="w"> </span><span class="se">\</span>
+--db-path<span class="w"> </span><span class="s2">&quot;/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db&quot;</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">

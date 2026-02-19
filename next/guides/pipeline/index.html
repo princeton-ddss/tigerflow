@@ -816,6 +816,8 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <span class="w">    </span><span class="nt">input_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.mp4</span>
 <span class="w">    </span><span class="nt">output_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.txt</span>
 <span class="w">    </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">    </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">model_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/sp8538/.cache/whisper/medium.pt</span>
 <span class="w">    </span><span class="nt">worker_resources</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">cpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">      </span><span class="nt">gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
@@ -835,6 +837,8 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <span class="w">    </span><span class="nt">output_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.json</span>
 <span class="w">    </span><span class="nt">keep_output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="w">    </span><span class="nt">concurrency_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">    </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">voyage-4-lite</span>
 <span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module purge</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module load anaconda3/2024.6</span>
@@ -845,6 +849,8 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <span class="w">    </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./ingest.py</span>
 <span class="w">    </span><span class="nt">input_ext</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.json</span>
 <span class="w">    </span><span class="nt">keep_output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db</span>
 <span class="w">    </span><span class="nt">setup_commands</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module purge</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">module load anaconda3/2024.6</span>
@@ -856,12 +862,7 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <li><code>module</code> specifies the Python module defining task logic. Can be the path to a user-defined task (e.g., <code>/path/to/transcribe.py</code>) or the import path of a library task (e.g., <code>tigerflow.library.echo</code>). Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.</li>
 <li><code>depends_on</code> specifies the name of the parent task whose output is used as input for the current task.</li>
 <li><code>keep_output</code> specifies whether to retain output files from the current task. If unspecified, it defaults to <code>true</code>.</li>
-<li><code>params</code> specifies custom parameters to pass to the task (see <a href="../task/#custom-parameters">Custom Parameters</a>). For example:
-  <div class="highlight"><pre><span></span><code><span class="nt">params</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">model_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;whisper-large&quot;</span>
-<span class="w">  </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
-<span class="w">  </span><span class="nt">verbose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div></li>
+<li><code>params</code> specifies custom parameters to pass to the task (see <a href="../task/#custom-parameters">Custom Parameters</a>).</li>
 <li><code>setup_commands</code> specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.</li>
 <li><code>max_workers</code> is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.</li>
 <li><code>worker_resources</code> is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.</li>
