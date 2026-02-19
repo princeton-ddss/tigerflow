@@ -1,11 +1,20 @@
 import asyncio
 from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from tigerflow.tasks import LocalAsyncTask
 from tigerflow.utils import SetupContext
 
 
 class Embed(LocalAsyncTask):
+    class Params:
+        model: Annotated[
+            str,
+            typer.Option(help="Embedding model name"),
+        ] = "voyage-3.5"
+
     @staticmethod
     async def setup(context: SetupContext):
         import os
@@ -32,7 +41,7 @@ class Embed(LocalAsyncTask):
             headers=context.headers,
             json={
                 "input": text.strip(),
-                "model": "voyage-3.5",
+                "model": context.model,
                 "input_type": "document",
             },
         ) as resp:

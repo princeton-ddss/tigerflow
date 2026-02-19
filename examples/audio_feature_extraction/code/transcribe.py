@@ -1,17 +1,26 @@
 from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from tigerflow.tasks import SlurmTask
 from tigerflow.utils import SetupContext
 
-MODEL_PATH = Path(__file__).parent.parent / "models" / "whisper" / "medium.pt"
+MODEL_FILE = Path(__file__).parent.parent / "models" / "whisper" / "medium.pt"
 
 
 class Transcribe(SlurmTask):
+    class Params:
+        model_file: Annotated[
+            Path,
+            typer.Option(help="Path to the Whisper model file"),
+        ] = MODEL_FILE
+
     @staticmethod
     def setup(context: SetupContext):
         import whisper
 
-        context.model = whisper.load_model(MODEL_PATH)
+        context.model = whisper.load_model(str(context.model_file))
         print("Model loaded successfully")
 
     @staticmethod

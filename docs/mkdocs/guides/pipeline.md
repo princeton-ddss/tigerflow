@@ -54,6 +54,8 @@ tasks:
     input_ext: .mp4
     output_ext: .txt
     max_workers: 3
+    params:
+      model_file: /home/sp8538/.cache/whisper/medium.pt
     worker_resources:
       cpus: 1
       gpus: 1
@@ -73,6 +75,8 @@ tasks:
     output_ext: .json
     keep_output: false
     concurrency_limit: 10
+    params:
+      model: voyage-4-lite
     setup_commands:
       - module purge
       - module load anaconda3/2024.6
@@ -83,6 +87,8 @@ tasks:
     module: ./ingest.py
     input_ext: .json
     keep_output: false
+    params:
+      db_path: /home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db
     setup_commands:
       - module purge
       - module load anaconda3/2024.6
@@ -95,13 +101,7 @@ where:
 - `module` specifies the Python module defining task logic. Can be the path to a user-defined task (e.g., `/path/to/transcribe.py`) or the import path of a library task (e.g., `tigerflow.library.echo`). Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.
 - `depends_on` specifies the name of the parent task whose output is used as input for the current task.
 - `keep_output` specifies whether to retain output files from the current task. If unspecified, it defaults to `true`.
-- `params` specifies custom parameters to pass to the task (see [Custom Parameters](task.md#custom-parameters)). For example:
-  ```yaml
-  params:
-    model_name: "whisper-large"
-    temperature: 0.5
-    verbose: true
-  ```
+- `params` specifies custom parameters to pass to the task (see [Custom Parameters](task.md#custom-parameters)).
 - `setup_commands` specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.
 - `max_workers` is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.
 - `worker_resources` is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.
