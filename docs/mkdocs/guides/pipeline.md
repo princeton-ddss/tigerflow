@@ -361,3 +361,42 @@ in the code or data.
     which led to the empty transcriptions in the first place.
 
     We may then exclude such videos from the pipeline to prevent future errors.
+
+## Viewing Metrics
+
+To view timing metrics for processed files:
+
+=== "Command"
+
+    ```bash
+    tigerflow metrics path/to/results/
+    ```
+
+=== "Output"
+
+    ```
+    Metrics Summary
+    Total files: 91 (83 success, 8 failed)
+    Average duration: 1250.5ms
+
+    ┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+    ┃ Task       ┃ File                ┃ Started  ┃ Finished ┃ Duration (ms) ┃ Status  ┃
+    ┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+    │ transcribe │ 1.mp4               │ 09:20:31 │ 09:21:45 │       74000.0 │ success │
+    │ transcribe │ 2.mp4               │ 09:20:31 │ 09:21:52 │       81000.0 │ success │
+    │ embed      │ 1.txt               │ 09:21:46 │ 09:21:46 │         450.2 │ success │
+    │ ...        │ ...                 │ ...      │ ...      │           ... │ ...     │
+    └────────────┴─────────────────────┴──────────┴──────────┴───────────────┴─────────┘
+    ```
+
+Use `--task` to filter metrics for a specific task:
+
+```bash
+tigerflow metrics path/to/results/ --task transcribe
+```
+
+For scripting, use `--json` to output machine-readable JSON with full timestamps:
+
+```bash
+tigerflow metrics path/to/results/ --json
+```

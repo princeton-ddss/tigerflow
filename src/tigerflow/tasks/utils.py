@@ -1,7 +1,7 @@
 import json
 import subprocess
-import time
 from contextlib import contextmanager
+from datetime import datetime, timezone
 
 from tigerflow.logconfig import logger
 from tigerflow.models import TaskStatus, TaskStatusKind
@@ -24,20 +24,21 @@ def log_metrics(filename: str):
                 handle_error()
     """
     metrics = {"status": "success"}
-    start = time.perf_counter()
+    started_at = datetime.now(timezone.utc)
     try:
         yield metrics
     except Exception:
         metrics["status"] = "error"
         raise
     finally:
-        duration_ms = (time.perf_counter() - start) * 1000
+        finished_at = datetime.now(timezone.utc)
         logger.info(
             json.dumps(
                 {
                     "_metrics": True,
                     "file": filename,
-                    "duration_ms": round(duration_ms, 3),
+                    "started_at": started_at.isoformat(),
+                    "finished_at": finished_at.isoformat(),
                     "status": metrics["status"],
                 }
             )

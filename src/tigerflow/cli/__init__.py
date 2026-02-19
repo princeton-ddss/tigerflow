@@ -4,6 +4,7 @@ import typer
 
 from tigerflow.utils import get_version
 
+from .metrics import metrics as metrics_func
 from .report import app as report_app
 from .run import run as run_func
 from .status import status as status_func
@@ -14,6 +15,7 @@ app = typer.Typer()
 app.command(name="run")(run_func)
 app.command(name="status")(status_func)
 app.command(name="stop")(stop_func)
+app.command(name="metrics")(metrics_func)
 app.add_typer(report_app, name="report")
 app.add_typer(tasks_app, name="tasks")
 
