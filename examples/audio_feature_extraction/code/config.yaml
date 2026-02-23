@@ -22,6 +22,8 @@ tasks:
     output_ext: .json
     keep_output: false
     concurrency_limit: 10
+    params:
+      model: voyage-4-lite
   - name: ingest
     depends_on: embed
     kind: local

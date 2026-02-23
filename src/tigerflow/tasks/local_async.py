@@ -4,10 +4,9 @@ import sys
 import traceback
 from abc import abstractmethod
 from pathlib import Path
+from typing import Annotated
 
-import aiofiles
 import typer
-from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalAsyncTaskConfig
@@ -34,6 +33,8 @@ class LocalAsyncTask(Task):
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
+        import aiofiles
+
         for path in (input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
@@ -91,6 +92,10 @@ class LocalAsyncTask(Task):
                 await asyncio.sleep(settings.task_poll_interval)
 
         async def main():
+            # Inject custom params into context
+            for key, value in self.config.params.items():
+                setattr(self._context, key, value)
+
             # Run common setup
             logger.info("Setting up task")
             await self.setup(self._context)
@@ -178,6 +183,7 @@ class LocalAsyncTask(Task):
                     help="Task name",
                 ),
             ] = cls.get_name(),
+            _params: dict = {},
         ):
             """
             Run the task as a CLI application
@@ -189,12 +195,13 @@ class LocalAsyncTask(Task):
                 input_ext=input_ext,
                 output_ext=output_ext,
                 concurrency_limit=concurrency_limit,
+                params=_params,
             )
 
             task = cls(config)
             task.start(input_dir, output_dir)
 
-        typer.run(main)
+        typer.run(cls.build_cli(main))
 
     @staticmethod
     async def setup(context: SetupContext):

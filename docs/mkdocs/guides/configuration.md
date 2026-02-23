@@ -31,7 +31,6 @@ export TIGERFLOW_ENV_FILE=/path/to/custom.env
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `TIGERFLOW_TASK_VALIDATION_TIMEOUT` | `60` | Timeout in seconds for validating task modules |
 | `TIGERFLOW_PIPELINE_POLL_INTERVAL` | `10` | Pipeline polling interval in seconds |
 | `TIGERFLOW_TASK_POLL_INTERVAL` | `3` | Task polling interval in seconds |
 | `TIGERFLOW_SLURM_TASK_CLIENT_HOURS` | `24` | Time limit in hours for each Slurm task client job (respawns when expired) |

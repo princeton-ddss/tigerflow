@@ -1,18 +1,28 @@
 import json
 from pathlib import Path
+from typing import Annotated
 
-import duckdb
+import typer
 
 from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
 
 DB_PATH = Path(__file__).parent.parent / "results" / "test.db"
 
 
 class Ingest(LocalTask):
+    class Params:
+        db_path: Annotated[
+            Path,
+            typer.Option(help="Path to the DuckDB database file"),
+        ] = DB_PATH
+
     @staticmethod
-    def setup(context):
-        conn = duckdb.connect(DB_PATH)  # Creates file if not existing
-        print(f"Successfully connected to {DB_PATH}")
+    def setup(context: SetupContext):
+        import duckdb
+
+        conn = duckdb.connect(str(context.db_path))  # Creates file if not existing
+        print(f"Successfully connected to {context.db_path}")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS embeddings (
@@ -25,8 +35,8 @@ class Ingest(LocalTask):
         context.conn = conn
 
     @staticmethod
-    def run(context, input_file, output_file):
-        with open(input_file, "r") as f:
+    def run(context: SetupContext, input_file: Path, output_file: Path):
+        with open(input_file) as f:
             content = json.load(f)
 
         embedding = content["data"][0]["embedding"]
@@ -37,7 +47,7 @@ class Ingest(LocalTask):
         )
 
     @staticmethod
-    def teardown(context):
+    def teardown(context: SetupContext):
         context.conn.close()
         print("DB connection closed")
 

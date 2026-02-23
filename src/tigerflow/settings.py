@@ -14,12 +14,6 @@ class TigerflowSettings(BaseSettings):
         extra="ignore",
     )
 
-    task_validation_timeout: int = Field(
-        default=60,
-        gt=0,
-        description="Timeout in seconds for validating task modules",
-    )
-
     pipeline_poll_interval: int = Field(
         default=10,
         gt=0,

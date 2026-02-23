@@ -8,11 +8,9 @@ import traceback
 from abc import abstractmethod
 from pathlib import Path
 from types import FrameType
+from typing import Annotated
 
 import typer
-from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
-from dask_jobqueue import SLURMCluster
-from typing_extensions import Annotated
 
 from tigerflow.logconfig import logger
 from tigerflow.models import (
@@ -40,6 +38,9 @@ class SlurmTask(Task):
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
+        from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
+        from dask_jobqueue import SLURMCluster
+
         for path in (input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
@@ -48,31 +49,41 @@ class SlurmTask(Task):
         self.config.output_dir = output_dir
         self.config.log_dir.mkdir(exist_ok=True)
 
-        # Reference functions to use in plugin
+        # Reference functions and params to use in plugin
         setup_func = type(self).setup
         teardown_func = type(self).teardown
+        params = self.config.params
 
         class TaskWorkerPlugin(WorkerPlugin):
             async def setup(self, worker: Worker):
                 logger.info("Setting up task")
-                worker.context = SetupContext()
+                context = SetupContext()
+
+                # Inject params into context
+                for key, value in params.items():
+                    setattr(context, key, value)
+
                 loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, setup_func, worker.context)
-                worker.context.freeze()  # Make it read-only
+                await loop.run_in_executor(None, setup_func, context)
+                context.freeze()  # Make it read-only
+
+                setattr(worker, "context", context)
                 logger.info("Task setup complete")
 
             async def teardown(self, worker: Worker):
                 logger.info("Shutting down task")
+                context = getattr(worker, "context")
                 loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, teardown_func, worker.context)
+                await loop.run_in_executor(None, teardown_func, context)
                 logger.info("Task shutdown complete")
 
         def task(input_file: Path, output_file: Path):
             worker = get_worker()
+            context = getattr(worker, "context")
             try:
                 logger.info("Starting processing: {}", input_file.name)
                 with atomic_write(output_file) as temp_file:
-                    self.run(worker.context, input_file, temp_file)
+                    self.run(context, input_file, temp_file)
                 logger.info("Successfully processed: {}", input_file.name)
             except Exception:
                 error_fname = (
@@ -235,7 +246,7 @@ class SlurmTask(Task):
                     help="Task name",
                 ),
             ] = cls.get_name(),
-            _run_directly: Annotated[
+            run_directly: Annotated[
                 bool,
                 typer.Option(
                     "--run-directly",
@@ -246,6 +257,7 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
+            _params: dict = {},
         ):
             """
             Run the task as a CLI application
@@ -267,16 +279,17 @@ class SlurmTask(Task):
                 setup_commands=setup_commands,
                 max_workers=max_workers,
                 worker_resources=worker_resources,
+                params=_params,
             )
 
-            if _run_directly:
+            if run_directly:
                 task = cls(config)
                 task.start(input_dir, output_dir)
             else:
                 runner = SlurmTaskRunner(config)
                 runner.start(input_dir, output_dir)
 
-        typer.run(main)
+        typer.run(cls.build_cli(main))
 
     @staticmethod
     def setup(context: SetupContext):
@@ -384,6 +397,7 @@ class SlurmTaskRunner:
                 sys.exit(128 + self._received_signal)
 
     def _check_status(self):
+        assert self._job_id is not None, "_check_status should be called after start"
         status = get_slurm_task_status(self._job_id, self.config.worker_job_name)
 
         if self._status != status:
@@ -399,7 +413,11 @@ class SlurmTaskRunner:
             )
 
     def _handle_timeout(self):
-        if not self._status.is_alive and "TIMEOUT" in self._status.detail:
+        if (
+            not self._status.is_alive
+            and self._status.detail
+            and "TIMEOUT" in self._status.detail
+        ):
             script = self.config.to_script()
             self._job_id = submit_to_slurm(script)
             logger.info("Re-submitted with Slurm job ID {}", self._job_id)

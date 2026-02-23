@@ -1,13 +1,20 @@
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture
-def tmp_module(tmp_path: Path) -> Path:
+def tasks_dir() -> Path:
+    """Path to sample task modules used in tests."""
+    return Path(__file__).parent / "tasks"
+
+
+@pytest.fixture
+def tmp_module(tmp_path: Path) -> str:
     """Create a temporary Python module file for testing."""
     module = tmp_path / "task_module.py"
     module.write_text("# test module\n")
-    return module
+    return str(module)
 
 
 @pytest.fixture

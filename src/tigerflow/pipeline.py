@@ -1,3 +1,4 @@
+import os
 import shutil
 import signal
 import subprocess
@@ -11,17 +12,15 @@ from types import FrameType
 import yaml
 
 from tigerflow.logconfig import logger
-from tigerflow.settings import settings
 from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
     PipelineConfig,
-    PipelineProgress,
     SlurmTaskConfig,
-    TaskProgress,
     TaskStatus,
     TaskStatusKind,
 )
+from tigerflow.settings import settings
 from tigerflow.staging import PipelineState
 from tigerflow.tasks.utils import get_slurm_task_status
 from tigerflow.utils import is_valid_task_cli, submit_to_slurm
@@ -37,10 +36,13 @@ class Pipeline:
         output_dir: Path,
         idle_timeout: int = 10,  # In minutes
         delete_input: bool = False,
+        pid_file: Path | None = None,
     ):
         for path in (config_file, input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
+
+        self._pid_file = pid_file
 
         self._input_dir = input_dir.resolve()
         self._output_dir = output_dir.resolve()
@@ -64,8 +66,8 @@ class Pipeline:
         )
 
         for task in self._config.tasks:
-            if not is_valid_task_cli(task.module, timeout=settings.task_validation_timeout):
-                raise ValueError(f"Invalid CLI: {task.module}")
+            if not is_valid_task_cli(task.module):
+                raise ValueError(f"Invalid task CLI: {task.module}")
 
         # Map task I/O directories from the dependency graph
         for task in self._config.tasks:
@@ -158,6 +160,11 @@ class Pipeline:
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             signal.signal(sig, self._signal_handler)
 
+        # Write PID file after signal handlers are set up, so that if SIGTERM
+        # arrives after the PID file exists, the cleanup in the finally block runs.
+        if self._pid_file is not None:
+            self._pid_file.write_text(str(os.getpid()))
+
         try:
             logger.info("Starting pipeline execution")
             self._start_tasks()
@@ -185,6 +192,8 @@ class Pipeline:
                 self._check_task_status()
                 time.sleep(1)
             logger.info("Pipeline shutdown complete")
+            if self._pid_file is not None:
+                self._pid_file.unlink(missing_ok=True)
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
 
@@ -267,7 +276,11 @@ class Pipeline:
         for task in self._config.tasks:
             if isinstance(task, SlurmTaskConfig):
                 task_status = self._task_status[task.name]
-                if not task_status.is_alive and "TIMEOUT" in task_status.detail:
+                if (
+                    not task_status.is_alive
+                    and task_status.detail
+                    and "TIMEOUT" in task_status.detail
+                ):
                     script = task.to_script()
                     job_id = submit_to_slurm(script)
                     self._slurm_task_ids[task.name] = job_id
@@ -349,37 +362,6 @@ class Pipeline:
             logger.warning("Idle timeout reached, initiating shutdown")
             self._received_signal = signal.SIGTERM
             self._shutdown_event.set()
-
-    @staticmethod
-    def report_progress(output_dir: Path) -> PipelineProgress:
-        """
-        Report progress across pipeline tasks.
-        """
-        internal_dir = output_dir / ".tigerflow"
-        for path in (output_dir, internal_dir):
-            if not path.exists():
-                raise FileNotFoundError(path)
-
-        symlinks_dir = internal_dir / ".symlinks"
-        finished_dir = internal_dir / ".finished"
-
-        pipeline = PipelineProgress()
-        pipeline.staged = {f for f in symlinks_dir.iterdir() if f.is_file()}
-        pipeline.finished = {f for f in finished_dir.iterdir() if f.is_file()}
-        for folder in internal_dir.iterdir():  # TODO: Iterate tasks topologically
-            if folder.is_dir() and not folder.name.startswith("."):  # Task directory
-                task = TaskProgress(name=folder.name)
-                for file in folder.iterdir():
-                    if file.is_file():
-                        if file.suffix == "":
-                            task.ongoing.add(file)
-                        elif file.name.endswith(".err"):
-                            task.failed.add(file)
-                        else:
-                            task.processed.add(file)
-                pipeline.tasks.append(task)
-
-        return pipeline
 
     @staticmethod
     def _get_subprocess_status(process: subprocess.Popen) -> TaskStatus:

@@ -13,46 +13,49 @@ Connected, tasks transform into a data processing [**pipeline**](pipeline.md).
 
 TigerFlow supports three types of tasks:
 
-- `LocalTask`: Runs *synchronous* operations on a login/head node
-- `LocalAsyncTask`: Runs *asynchronous* operations on a login/head node
-- `SlurmTask`: Runs *parallel* operations across compute nodes via Slurm
+- `LocalTask`: Runs _synchronous_ operations on a login/head node
+- `LocalAsyncTask`: Runs _asynchronous_ operations on a login/head node
+- `SlurmTask`: Runs _parallel_ operations across compute nodes via Slurm
 
 ## Hello, Tasks!
 
 To define a task, subclass one of the above abstract types and implement the following methods:
 
-| Method     | Required  | Description                                                                             |
-|------------|:---------:|-----------------------------------------------------------------------------------------|
-| `setup`    | No        | Initializes shared context used across multiple files (e.g., loading a model)           |
-| `run`      | Yes       | Contains the processing logic applied to each file                                      |
-| `teardown` | No        | Performs cleanup operations for graceful shutdown (e.g., closing a database connection) |
+| Method     | Required | Description                                                                             |
+| ---------- | :------: | --------------------------------------------------------------------------------------- |
+| `setup`    |    No    | Initializes shared context used across multiple files (e.g., loading a model)           |
+| `run`      |   Yes    | Contains the processing logic applied to each file                                      |
+| `teardown` |    No    | Performs cleanup operations for graceful shutdown (e.g., closing a database connection) |
 
 Then, simply call the inherited `cli()` method to turn the module into a runnable CLI application.
 
 For instance, here's a simple "Hello, World!" local task:
 
 ```py title="hello.py"
+from pathlib import Path
+
 from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
 
 
 class HelloWorld(LocalTask):
     @staticmethod
-    def setup(context):
+    def setup(context: SetupContext):
         context.greeting = "Hello"
         print("Setup executed successfully!")
 
     @staticmethod
-    def run(context, input_file, output_file):
-        with open(input_file, "r") as fi:
-            content = fi.read()
+    def run(context: SetupContext, input_file: Path, output_file: Path):
+        with open(input_file, "r") as f:
+            content = f.read()
 
         new_content = context.greeting + ", " + content.upper()
 
-        with open(output_file, "w") as fo:
-            fo.write(new_content)
+        with open(output_file, "w") as f:
+            f.write(new_content)
 
     @staticmethod
-    def teardown(context):
+    def teardown(context: SetupContext):
         print("Teardown executed successfully!")
 
 
@@ -128,6 +131,202 @@ For example, `path/to/data/4.txt` produces `path/to/results/4.txt`.
 
     If a task encounters an error, TigerFlow generates an error output file, e.g., `4.err` instead of `4.txt`. This file contains specific error messages to assist with debugging.
 
+## Lazy Imports
+
+When working with heavy dependencies like `whisper`, `duckdb`, or `aiohttp`, it is best to import
+them inside your `setup`, `run`, or `teardown` methods rather than at the top of the task module.
+This "lazy loading" pattern defers imports until code actually executes:
+
+```py
+# import whisper  ❌ Runs every time the CLI is invoked
+
+from tigerflow.tasks import SlurmTask
+from tigerflow.utils import SetupContext
+
+
+class Transcribe(SlurmTask):
+    @staticmethod
+    def setup(context: SetupContext):
+        import whisper  # ✅ Imported only when setup runs
+
+        context.model = whisper.load_model("/home/sp8538/.cache/whisper/medium.pt")
+```
+
+Why does this matter?
+
+- **For `SlurmTask`**, lazy imports are essential. Task modules are serialized and shipped to
+  cluster workers, so module-level imports would require dependencies on the head node where
+  they are not needed — and may fail entirely if packages are only installed on workers.
+
+- **For `LocalTask` and `LocalAsyncTask`**, lazy imports are a good practice that reduces
+  startup time and memory footprint, especially when validating task modules.
+
+## Custom Parameters
+
+Tasks can define custom CLI parameters using an inner `Params` class. These parameters are automatically added to the CLI and made available via `context` in the `run` method.
+
+```py title="greet.py"
+from pathlib import Path
+from typing import Annotated
+
+import typer
+
+from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
+
+
+class Greet(LocalTask):
+    class Params:
+        greeting: Annotated[
+            str,
+            typer.Option(help="Greeting to prepend"),
+        ] = "Hello"
+        uppercase: Annotated[
+            bool,
+            typer.Option("--uppercase", help="Convert to uppercase"),
+        ] = False
+
+    @staticmethod
+    def run(context: SetupContext, input_file: Path, output_file: Path):
+        with open(input_file) as f:
+            content = f.read()
+
+        if context.uppercase:
+            content = content.upper()
+
+        result = f"{context.greeting}, {content}"
+
+        with open(output_file, "w") as f:
+            f.write(result)
+
+
+Greet.cli()
+```
+
+The `Params` class supports:
+
+- **Type annotations**: Use standard Python types (`str`, `int`, `bool`, etc.)
+- **Default values**: Parameters with defaults become optional CLI arguments
+- **Typer options**: Use `Annotated[type, typer.Option(...)]` to add help text and customize CLI behavior
+
+Parameters are accessible via `context` using their attribute names. For example, `context.greeting` and `context.uppercase` in the example above.
+
+=== "Command"
+
+    ```bash
+    python greet.py --help
+    ```
+
+=== "Output"
+
+    ```console
+    Usage: greet.py [OPTIONS]
+
+    Run the task as a CLI application
+
+    ╭─ Options ────────────────────────────────────────────────────────────────────╮
+    │ *  --input-dir         PATH  Input directory to read data [required]         │
+    │ *  --input-ext         TEXT  Input file extension [required]                 │
+    │ *  --output-dir        PATH  Output directory to store results [required]    │
+    │ *  --output-ext        TEXT  Output file extension [required]                │
+    │    --greeting          TEXT  Greeting to prepend [default: Hello]            │
+    │    --uppercase               Convert to uppercase                            │
+    │    --task-name         TEXT  Task name [default: Greet]                      │
+    │    --help                    Show this message and exit.                     │
+    ╰──────────────────────────────────────────────────────────────────────────────╯
+    ```
+
+We can then run the task with custom parameters:
+
+```bash
+python greet.py \
+  --input-dir path/to/data/ \
+  --input-ext .txt \
+  --output-dir path/to/results/ \
+  --output-ext .txt \
+  --greeting "Hi there" \
+  --uppercase
+```
+
+!!! tip "Parameter Names"
+
+    Parameter names with underscores (e.g., `my_param`) are converted to hyphenated CLI flags (e.g., `--my-param`). In `context`, use the original underscore form: `context.my_param`.
+
+!!! warning "Reserved Parameter Names"
+
+    Custom parameter names must not conflict with base CLI parameters. Reserved names include `input_dir`, `output_dir`, `input_ext`, `output_ext`, and task-specific options like `max_workers`, `cpus`, `memory`, `time`, `gpus`, and `concurrency_limit`.
+
+## Library Tasks
+
+Library tasks are reusable, pre-packaged tasks that can be run directly or referenced in pipeline configurations. TigerFlow supports two types of library tasks:
+
+- **Built-in tasks**: Shipped with TigerFlow in `tigerflow.library`
+- **Installed tasks**: Third-party tasks installed via Python packages
+
+### Discovering Tasks
+
+Use the `tigerflow tasks` CLI commands to discover available tasks:
+
+=== "List Tasks"
+
+    ```bash
+    tigerflow tasks list
+    ```
+
+    ```console
+    Built-in tasks:
+      echo - Echo task - copies input to output with optional transformations.
+    ```
+
+=== "Task Info"
+
+    ```bash
+    tigerflow tasks info echo
+    ```
+
+    ```console
+    Task: echo
+    Source: built-in
+    Module: tigerflow.library.echo
+
+    Description:
+    Echo task - copies input to output with optional transformations.
+
+    Parameters for Echo:
+      --prefix:
+      --suffix:
+      --uppercase: False
+    ```
+
+### Running Library Tasks
+
+Library tasks can be run directly as Python modules:
+
+```bash
+python -m tigerflow.library.echo \
+  --input-dir ./input \
+  --output-dir ./output \
+  --input-ext .txt \
+  --output-ext .txt \
+  --prefix ">>> "
+```
+
+### Creating Installable Tasks
+
+To distribute your tasks as an installable Python package, register them using entry points. In your `pyproject.toml`:
+
+```toml
+[project.entry-points."tigerflow.tasks"]
+my-task = "mypackage.tasks.mytask:MyTask"
+```
+
+The entry point value can be either:
+
+- A module path: `mypackage.tasks.mytask`
+- A module path with class name: `mypackage.tasks.mytask:MyTask`
+
+Once installed, the task appears in `tigerflow tasks list` under "Installed tasks" and can be referenced by name in pipeline configurations.
+
 ## Examples
 
 Say we want to implement a workflow that involves the following tasks:
@@ -151,19 +350,31 @@ We implement the transcription step as a Slurm task because it involves compute-
 and we want to process files in parallel.
 
 ```py title="transcribe.py"
-import whisper
+from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from tigerflow.tasks import SlurmTask
+from tigerflow.utils import SetupContext
 
 
 class Transcribe(SlurmTask):
+    class Params:
+        model_file: Annotated[
+            Path,
+            typer.Option(help="Path to the Whisper model file"),
+        ]
+
     @staticmethod
-    def setup(context):
-        context.model = whisper.load_model("/home/sp8538/.cache/whisper/medium.pt")
+    def setup(context: SetupContext):
+        import whisper
+
+        context.model = whisper.load_model(str(context.model_file))
         print("Model loaded successfully")
 
     @staticmethod
-    def run(context, input_file, output_file):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         result = context.model.transcribe(str(input_file))
         print(f"Transcription ran successfully for {input_file}")
 
@@ -207,6 +418,7 @@ Calling `Transcribe.cli()` turns this module into a runnable CLI application:
     │    --sbatch-option         TEXT     Additional Slurm option for workers (repeatable)   │
     │    --setup-command         TEXT     Shell command to run before the task starts        │
     │                                     (repeatable)                                       │
+    │    --model-file            PATH     Path to the Whisper model file                     │
     │    --task-name             TEXT     Task name [default: Transcribe]                    │
     │    --help                           Show this message and exit.                        │
     ╰────────────────────────────────────────────────────────────────────────────────────────╯
@@ -227,6 +439,7 @@ We can then run the task as follows:
     --memory "12G" \
     --time "02:00:00" \
     --gpus 1 \
+    --model-file "/home/sp8538/.cache/whisper/medium.pt" \
     --sbatch-option "--mail-user=sp8538@princeton.edu" \
     --setup-command "module purge" \
     --setup-command "module load anaconda3/2024.6" \
@@ -263,22 +476,33 @@ often result in longer queue times.
 
 ### Embedding Text Files (`LocalAsyncTask`)
 
-We implement the embedding step as a local *asynchronous* task because it involves
+We implement the embedding step as a local _asynchronous_ task because it involves
 I/O-bound work (i.e., making external API requests) that can be performed concurrently.
 
 ```py title="embed.py"
 import asyncio
-import os
+from pathlib import Path
+from typing import Annotated
 
-import aiofiles
-import aiohttp
+import typer
 
 from tigerflow.tasks import LocalAsyncTask
+from tigerflow.utils import SetupContext
 
 
 class Embed(LocalAsyncTask):
+    class Params:
+        model: Annotated[
+            str,
+            typer.Option(help="Embedding model name"),
+        ] = "voyage-3.5"
+
     @staticmethod
-    async def setup(context):
+    async def setup(context: SetupContext):
+        import os
+
+        import aiohttp
+
         context.url = "https://api.voyageai.com/v1/embeddings"
         context.headers = {
             "Authorization": f"Bearer {os.environ['VOYAGE_API_KEY']}",
@@ -288,7 +512,9 @@ class Embed(LocalAsyncTask):
         print("Session created successfully!")
 
     @staticmethod
-    async def run(context, input_file, output_file):
+    async def run(context: SetupContext, input_file: Path, output_file: Path):
+        import aiofiles
+
         async with aiofiles.open(input_file, "r") as f:
             text = await f.read()
 
@@ -297,7 +523,7 @@ class Embed(LocalAsyncTask):
             headers=context.headers,
             json={
                 "input": text.strip(),
-                "model": "voyage-3.5",
+                "model": context.model,
                 "input_type": "document",
             },
         ) as resp:
@@ -309,7 +535,7 @@ class Embed(LocalAsyncTask):
             await f.write(result)
 
     @staticmethod
-    async def teardown(context):
+    async def teardown(context: SetupContext):
         await context.session.close()
         print("Session closed successfully!")
 
@@ -368,6 +594,7 @@ Calling `Embed.cli()` turns this module into a runnable CLI application:
     │ *  --concurrency-limit        INTEGER  Maximum number of coroutines that may run concurrently at any given     │
     │                                        time (excess coroutines are queued until capacity becomes available)    │
     │                                        [required]                                                              │
+    │    --model                    TEXT     Embedding model name [default: voyage-3.5]                              │
     │    --task-name                TEXT     Task name [default: Embed]                                              │
     │    --help                              Show this message and exit.                                             │
     ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -383,7 +610,8 @@ We can then run the task as follows:
     --input-ext .txt \
     --output-dir path/to/results/ \
     --output-ext .json \
-    --concurrency-limit 30
+    --concurrency-limit 30 \
+    --model "voyage-4-lite"
     ```
 
 === "Output"
@@ -414,25 +642,34 @@ We can then run the task as follows:
 
 ### Ingesting Text Embeddings (`LocalTask`)
 
-We implement the ingestion step as a local *synchronous* task because our target
+We implement the ingestion step as a local _synchronous_ task because our target
 database ([DuckDB](https://duckdb.org/docs/stable/connect/concurrency.html))
 only supports writes from a single process.
 
 ```py title="ingest.py"
 import json
+from pathlib import Path
+from typing import Annotated
 
-import duckdb
+import typer
 
 from tigerflow.tasks import LocalTask
+from tigerflow.utils import SetupContext
 
 
 class Ingest(LocalTask):
-    @staticmethod
-    def setup(context):
-        db_path = "/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db"
+    class Params:
+        db_path: Annotated[
+            Path,
+            typer.Option(help="Path to the DuckDB database file"),
+        ]
 
-        conn = duckdb.connect(db_path)  # Creates file if not existing
-        print(f"Successfully connected to {db_path}")
+    @staticmethod
+    def setup(context: SetupContext):
+        import duckdb
+
+        conn = duckdb.connect(str(context.db_path))  # Creates file if not existing
+        print(f"Successfully connected to {context.db_path}")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS embeddings (
@@ -445,7 +682,7 @@ class Ingest(LocalTask):
         context.conn = conn
 
     @staticmethod
-    def run(context, input_file, output_file):
+    def run(context: SetupContext, input_file: Path, output_file: Path):
         with open(input_file, "r") as f:
             content = json.load(f)
 
@@ -457,7 +694,7 @@ class Ingest(LocalTask):
         )
 
     @staticmethod
-    def teardown(context):
+    def teardown(context: SetupContext):
         context.conn.close()
         print("DB connection closed")
 
@@ -491,6 +728,7 @@ Calling `Ingest.cli()` turns this module into a runnable CLI application:
     │ *  --input-ext         TEXT  Input file extension [required]                 │
     │ *  --output-dir        PATH  Output directory to store results [required]    │
     │ *  --output-ext        TEXT  Output file extension [required]                │
+    │    --db-path           PATH  Path to the DuckDB database file                │
     │    --task-name         TEXT  Task name [default: Ingest]                     │
     │    --help                    Show this message and exit.                     │
     ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -505,7 +743,8 @@ We can then run the task as follows:
     --input-dir path/to/data/ \
     --input-ext .json \
     --output-dir path/to/results/ \
-    --output-ext .out
+    --output-ext .out \
+    --db-path "/home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db"
     ```
 
 === "Output"

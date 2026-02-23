@@ -63,22 +63,36 @@ def import_callable(ref: str) -> Callable:
     return obj
 
 
-def is_valid_task_cli(file: Path, *, timeout: int = 60) -> bool:
-    required_options = ["--input-dir", "--input-ext", "--output-dir", "--output-ext"]
+def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
+    """
+    Check if the given module is a valid task CLI.
+
+    A valid task CLI runs successfully with --help (exit code 0).
+    Task subclasses using the built-in cli() method will have the
+    required options (--input-dir, --input-ext, --output-dir, --output-ext).
+
+    Parameters
+    ----------
+    module : str
+        Either a file path ending in .py or a fully qualified module name
+        (e.g., 'tigerflow.library.echo')
+    """
+    if module.endswith(".py"):
+        args = [sys.executable, module, "--help"]
+    else:
+        args = [sys.executable, "-m", module, "--help"]
 
     try:
         result = subprocess.run(
-            [sys.executable, str(file), "--help"],
+            args,
             capture_output=True,
             text=True,
             timeout=timeout,
         )
     except TimeoutExpired:
-        raise TimeoutError(f"CLI validation timed out after {timeout}s: {file}")
+        raise TimeoutError(f"CLI validation timed out after {timeout}s: {module}")
 
-    return result.returncode == 0 and all(
-        opt in result.stdout for opt in required_options
-    )
+    return result.returncode == 0
 
 
 def submit_to_slurm(script: str) -> int:
@@ -125,6 +139,47 @@ class SetupContext(SimpleNamespace):
 
     def freeze(self):
         self._frozen = True
+
+
+def read_pid_file(pid_file: Path) -> int | None:
+    """
+    Read PID from a file.
+
+    Returns None if file doesn't exist or contains invalid content.
+    """
+    if not pid_file.exists():
+        return None
+    try:
+        return int(pid_file.read_text().strip())
+    except (ValueError, OSError):
+        return None
+
+
+def is_process_running(pid: int) -> bool:
+    """
+    Check if a process with the given PID is running.
+
+    Uses os.kill(pid, 0) which checks process existence without sending a signal.
+    """
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # Process exists but we don't have permission
+
+
+def has_running_pid(pid_file: Path) -> bool:
+    """
+    Check if a PID file exists with a running process.
+
+    Returns True if a process is already running, False otherwise.
+    """
+    pid = read_pid_file(pid_file)
+    if pid is None:
+        return False
+    return is_process_running(pid)
 
 
 @contextmanager

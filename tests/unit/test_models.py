@@ -8,6 +8,7 @@ from tigerflow.models import (
     LocalAsyncTaskConfig,
     LocalTaskConfig,
     PipelineConfig,
+    PipelineOutput,
     SlurmResourceConfig,
     SlurmTaskConfig,
     TaskStatus,
@@ -82,73 +83,154 @@ class TestBaseTaskConfig:
     def test_module_must_exist(self, tmp_path: Path):
         nonexistent = tmp_path / "nonexistent.py"
         with pytest.raises(ValidationError, match="Module does not exist"):
-            BaseTaskConfig(name="test", module=nonexistent, input_ext=".txt")
+            BaseTaskConfig(name="test", module=str(nonexistent), input_ext=".txt")
 
     def test_module_must_be_file(self, tmp_path: Path):
-        directory = tmp_path / "some_dir"
+        directory = tmp_path / "some_dir.py"
         directory.mkdir()
         with pytest.raises(ValidationError, match="Module is not a file"):
-            BaseTaskConfig(name="test", module=directory, input_ext=".txt")
+            BaseTaskConfig(name="test", module=str(directory), input_ext=".txt")
 
-    def test_module_resolved_to_absolute(self, tmp_module: Path):
-        config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
-        assert config.module.is_absolute()
-
-    def test_valid_input_ext(self, tmp_module: Path):
+    def test_valid_input_ext(self, tmp_module: str):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".json")
         assert config.input_ext == ".json"
 
-    def test_valid_compound_ext(self, tmp_module: Path):
+    def test_valid_compound_ext(self, tmp_module: str):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".tar.gz")
         assert config.input_ext == ".tar.gz"
 
-    def test_invalid_input_ext_no_dot(self, tmp_module: Path):
+    def test_invalid_input_ext_no_dot(self, tmp_module: str):
         with pytest.raises(ValidationError, match="Invalid file extension"):
             BaseTaskConfig(name="test", module=tmp_module, input_ext="txt")
 
-    def test_reserved_err_ext(self, tmp_module: Path):
+    def test_reserved_err_ext(self, tmp_module: str):
         with pytest.raises(ValidationError, match="reserved"):
             BaseTaskConfig(name="test", module=tmp_module, input_ext=".err")
 
-    def test_input_dir_not_set_raises(self, tmp_module: Path):
+    def test_input_dir_not_set_raises(self, tmp_module: str):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         with pytest.raises(ValueError, match="Input directory has not been set"):
             _ = config.input_dir
 
-    def test_output_dir_not_set_raises(self, tmp_module: Path):
+    def test_output_dir_not_set_raises(self, tmp_module: str):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         with pytest.raises(ValueError, match="Output directory has not been set"):
             _ = config.output_dir
 
-    def test_input_dir_setter(self, tmp_module: Path, tmp_dirs: tuple[Path, Path]):
+    def test_input_dir_setter(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
         input_dir, _ = tmp_dirs
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         config.input_dir = input_dir
         assert config.input_dir == input_dir
 
-    def test_output_dir_setter(self, tmp_module: Path, tmp_dirs: tuple[Path, Path]):
+    def test_output_dir_setter(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
         _, output_dir = tmp_dirs
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         config.output_dir = output_dir
         assert config.output_dir == output_dir
 
-    def test_log_dir_property(self, tmp_module: Path, tmp_dirs: tuple[Path, Path]):
+    def test_log_dir_property(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
         _, output_dir = tmp_dirs
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         config.output_dir = output_dir
         assert config.log_dir == output_dir / "logs"
 
-    def test_default_output_ext(self, tmp_module: Path):
+    def test_default_output_ext(self, tmp_module: str):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         assert config.output_ext == ".out"
 
-    def test_default_keep_output(self, tmp_module: Path):
+    def test_default_keep_output(self, tmp_module: str):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         assert config.keep_output is True
 
+    def test_library_module_validated(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            input_ext=".txt",
+        )
+        assert config.module == "tigerflow.library.echo"
+
+    def test_library_module_not_found(self):
+        with pytest.raises(ValidationError, match="Module not found"):
+            BaseTaskConfig(
+                name="test",
+                module="nonexistent.module.path",
+                input_ext=".txt",
+            )
+
+    def test_params_field(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"prefix": "Hello: ", "uppercase": True},
+            input_ext=".txt",
+        )
+        assert config.params == {"prefix": "Hello: ", "uppercase": True}
+
+    def test_params_default_empty(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            input_ext=".txt",
+        )
+        assert config.params == {}
+
+    def test_python_command_with_file_module(self, tmp_module: str):
+        config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
+        assert config.python_command == f"python {config.module}"
+
+    def test_python_command_with_library_module(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            input_ext=".txt",
+        )
+        assert config.python_command == "python -m tigerflow.library.echo"
+
+    def test_params_as_cli_args_simple(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"prefix": "Hello"},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--prefix 'Hello'" in args
+
+    def test_params_as_cli_args_boolean_true(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"uppercase": True},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--uppercase" in args
+
+    def test_params_as_cli_args_boolean_false(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"uppercase": False},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--uppercase" not in args
+
+    def test_params_as_cli_args_underscores_to_hyphens(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"max_length": 512},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--max-length 512" in args
+
 
 class TestLocalTaskConfig:
-    def test_to_script(self, tmp_module: Path, tmp_dirs: tuple[Path, Path]):
+    def test_to_script(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
         input_dir, output_dir = tmp_dirs
         config = LocalTaskConfig(
             name="my_task",
@@ -164,7 +246,7 @@ class TestLocalTaskConfig:
 
         assert "#!/bin/bash" in script
         assert "exec python" in script
-        assert str(tmp_module) in script
+        assert tmp_module in script
         assert "--task-name my_task" in script
         assert f"--input-dir {input_dir}" in script
         assert "--input-ext .json" in script
@@ -172,7 +254,7 @@ class TestLocalTaskConfig:
         assert "--output-ext .csv" in script
 
     def test_to_script_with_setup_commands(
-        self, tmp_module: Path, tmp_dirs: tuple[Path, Path]
+        self, tmp_module: str, tmp_dirs: tuple[Path, Path]
     ):
         input_dir, output_dir = tmp_dirs
         config = LocalTaskConfig(
@@ -189,9 +271,43 @@ class TestLocalTaskConfig:
 
         assert "source venv/bin/activate;export VAR=1" in script
 
+    def test_to_script_with_library_module(self, tmp_dirs: tuple[Path, Path]):
+        input_dir, output_dir = tmp_dirs
+        config = LocalTaskConfig(
+            name="my_task",
+            kind="local",
+            module="tigerflow.library.echo",
+            input_ext=".txt",
+            output_ext=".txt",
+        )
+        config.input_dir = input_dir
+        config.output_dir = output_dir
+
+        script = config.to_script()
+
+        assert "python -m tigerflow.library.echo" in script
+
+    def test_to_script_with_params(self, tmp_dirs: tuple[Path, Path]):
+        input_dir, output_dir = tmp_dirs
+        config = LocalTaskConfig(
+            name="my_task",
+            kind="local",
+            module="tigerflow.library.echo",
+            params={"prefix": "Hello", "uppercase": True},
+            input_ext=".txt",
+            output_ext=".txt",
+        )
+        config.input_dir = input_dir
+        config.output_dir = output_dir
+
+        script = config.to_script()
+
+        assert "--prefix" in script
+        assert "--uppercase" in script
+
 
 class TestLocalAsyncTaskConfig:
-    def test_concurrency_limit_required(self, tmp_module: Path):
+    def test_concurrency_limit_required(self, tmp_module: str):
         with pytest.raises(ValidationError):
             LocalAsyncTaskConfig(  # type: ignore
                 name="test",
@@ -200,7 +316,7 @@ class TestLocalAsyncTaskConfig:
                 input_ext=".txt",
             )
 
-    def test_to_script(self, tmp_module: Path, tmp_dirs: tuple[Path, Path]):
+    def test_to_script(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
         input_dir, output_dir = tmp_dirs
         config = LocalAsyncTaskConfig(
             name="async_task",
@@ -220,7 +336,7 @@ class TestLocalAsyncTaskConfig:
 
 class TestSlurmTaskConfig:
     @pytest.fixture
-    def slurm_config(self, tmp_module: Path, tmp_dirs: tuple[Path, Path]):
+    def slurm_config(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
         input_dir, output_dir = tmp_dirs
         config = SlurmTaskConfig(
             name="slurm_task",
@@ -263,9 +379,7 @@ class TestSlurmTaskConfig:
         assert "--gpus 1" in script
         assert "--run-directly" in script
 
-    def test_to_script_without_gpus(
-        self, tmp_module: Path, tmp_dirs: tuple[Path, Path]
-    ):
+    def test_to_script_without_gpus(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
         input_dir, output_dir = tmp_dirs
         config = SlurmTaskConfig(
             name="cpu_task",
@@ -287,7 +401,7 @@ class TestSlurmTaskConfig:
         assert "--gpus" not in script
 
     def test_to_script_with_sbatch_options(
-        self, tmp_module: Path, tmp_dirs: tuple[Path, Path]
+        self, tmp_module: str, tmp_dirs: tuple[Path, Path]
     ):
         input_dir, output_dir = tmp_dirs
         config = SlurmTaskConfig(
@@ -315,7 +429,7 @@ class TestSlurmTaskConfig:
         assert "--sbatch-option '--mail-user=tigerflow@princeton.edu'" in script
 
     def test_to_script_with_account_option(
-        self, tmp_module: Path, tmp_dirs: tuple[Path, Path]
+        self, tmp_module: str, tmp_dirs: tuple[Path, Path]
     ):
         input_dir, output_dir = tmp_dirs
         config = SlurmTaskConfig(
@@ -339,7 +453,7 @@ class TestSlurmTaskConfig:
         assert "#SBATCH --account=myaccount" in script
 
     def test_to_script_with_short_account_option(
-        self, tmp_module: Path, tmp_dirs: tuple[Path, Path]
+        self, tmp_module: str, tmp_dirs: tuple[Path, Path]
     ):
         input_dir, output_dir = tmp_dirs
         config = SlurmTaskConfig(
@@ -376,7 +490,7 @@ class TestPipelineConfig:
         with pytest.raises(ValidationError):
             PipelineConfig(tasks=[])
 
-    def test_duplicate_task_names_rejected(self, tmp_module: Path):
+    def test_duplicate_task_names_rejected(self, tmp_module: str):
         with pytest.raises(ValidationError, match="Duplicate task name"):
             PipelineConfig(
                 tasks=[
@@ -395,7 +509,7 @@ class TestPipelineConfig:
                 ]
             )
 
-    def test_unknown_dependency_rejected(self, tmp_module: Path):
+    def test_unknown_dependency_rejected(self, tmp_module: str):
         with pytest.raises(ValidationError, match="depends on unknown task"):
             PipelineConfig(
                 tasks=[
@@ -409,7 +523,7 @@ class TestPipelineConfig:
                 ]
             )
 
-    def test_extension_mismatch_rejected(self, tmp_module: Path):
+    def test_extension_mismatch_rejected(self, tmp_module: str):
         with pytest.raises(ValidationError, match="Extension mismatch"):
             PipelineConfig(
                 tasks=[
@@ -430,7 +544,7 @@ class TestPipelineConfig:
                 ]
             )
 
-    def test_valid_dependency_chain(self, tmp_module: Path):
+    def test_valid_dependency_chain(self, tmp_module: str):
         pipeline = PipelineConfig(
             tasks=[
                 LocalTaskConfig(
@@ -452,7 +566,7 @@ class TestPipelineConfig:
         )
         assert len(pipeline.tasks) == 2
 
-    def test_tasks_sorted_topologically(self, tmp_module: Path):
+    def test_tasks_sorted_topologically(self, tmp_module: str):
         # Submit tasks in reverse order
         pipeline = PipelineConfig(
             tasks=[
@@ -476,7 +590,7 @@ class TestPipelineConfig:
         assert pipeline.tasks[0].name == "task1"
         assert pipeline.tasks[1].name == "task2"
 
-    def test_root_tasks_must_share_input_ext(self, tmp_module: Path):
+    def test_root_tasks_must_share_input_ext(self, tmp_module: str):
         with pytest.raises(ValidationError, match="same input extension"):
             PipelineConfig(
                 tasks=[
@@ -495,7 +609,7 @@ class TestPipelineConfig:
                 ]
             )
 
-    def test_root_input_ext_property(self, tmp_module: Path):
+    def test_root_input_ext_property(self, tmp_module: str):
         pipeline = PipelineConfig(
             tasks=[
                 LocalTaskConfig(
@@ -508,7 +622,7 @@ class TestPipelineConfig:
         )
         assert pipeline.root_input_ext == ".txt"
 
-    def test_root_tasks_property(self, tmp_module: Path):
+    def test_root_tasks_property(self, tmp_module: str):
         pipeline = PipelineConfig(
             tasks=[
                 LocalTaskConfig(
@@ -531,7 +645,7 @@ class TestPipelineConfig:
         assert len(root_tasks) == 1
         assert root_tasks[0].name == "task1"
 
-    def test_terminal_tasks_property(self, tmp_module: Path):
+    def test_terminal_tasks_property(self, tmp_module: str):
         pipeline = PipelineConfig(
             tasks=[
                 LocalTaskConfig(
@@ -554,7 +668,7 @@ class TestPipelineConfig:
         assert len(terminal_tasks) == 1
         assert terminal_tasks[0].name == "task2"
 
-    def test_branching_pipeline(self, tmp_module: Path):
+    def test_branching_pipeline(self, tmp_module: str):
         # task1 -> task2; task1 -> task3
         pipeline = PipelineConfig(
             tasks=[
@@ -584,7 +698,7 @@ class TestPipelineConfig:
         assert len(pipeline.root_tasks) == 1
         assert len(pipeline.terminal_tasks) == 2
 
-    def test_dependency_cycle_rejected(self, tmp_module: Path):
+    def test_dependency_cycle_rejected(self, tmp_module: str):
         # task1 -> task2 -> task3 -> task1
         with pytest.raises(ValidationError, match="cycle"):
             PipelineConfig(
@@ -615,3 +729,45 @@ class TestPipelineConfig:
                     ),
                 ]
             )
+
+
+class TestPipelineOutput:
+    def test_init_resolves_path(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        assert output.root == tmp_path.resolve()
+
+    def test_init_sets_internal_paths(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        assert output.internal == tmp_path / ".tigerflow"
+        assert output.pid_file == tmp_path / ".tigerflow" / "run.pid"
+        assert output.log_file == tmp_path / ".tigerflow" / "run.log"
+        assert output.symlinks == tmp_path / ".tigerflow" / ".symlinks"
+        assert output.finished == tmp_path / ".tigerflow" / ".finished"
+
+    def test_validate_raises_when_root_missing(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path / "nonexistent")
+        with pytest.raises(FileNotFoundError, match="Output directory does not exist"):
+            output.validate()
+
+    def test_validate_raises_when_internal_missing(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        with pytest.raises(FileNotFoundError, match="missing .tigerflow"):
+            output.validate()
+
+    def test_validate_passes_when_structure_exists(self, tmp_path: Path):
+        internal = tmp_path / ".tigerflow"
+        internal.mkdir()
+        output = PipelineOutput(tmp_path)
+        output.validate()  # Should not raise
+
+    def test_create_makes_internal_dir(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        assert not output.internal.exists()
+        output.create()
+        assert output.internal.exists()
+
+    def test_create_is_idempotent(self, tmp_path: Path):
+        output = PipelineOutput(tmp_path)
+        output.create()
+        output.create()  # Should not raise
+        assert output.internal.exists()

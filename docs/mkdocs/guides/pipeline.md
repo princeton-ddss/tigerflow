@@ -54,6 +54,8 @@ tasks:
     input_ext: .mp4
     output_ext: .txt
     max_workers: 3
+    params:
+      model_file: /home/sp8538/.cache/whisper/medium.pt
     worker_resources:
       cpus: 1
       gpus: 1
@@ -73,6 +75,8 @@ tasks:
     output_ext: .json
     keep_output: false
     concurrency_limit: 10
+    params:
+      model: voyage-4-lite
     setup_commands:
       - module purge
       - module load anaconda3/2024.6
@@ -83,6 +87,8 @@ tasks:
     module: ./ingest.py
     input_ext: .json
     keep_output: false
+    params:
+      db_path: /home/sp8538/tiktok/pipeline/tigerflow/demo/results/test.db
     setup_commands:
       - module purge
       - module load anaconda3/2024.6
@@ -92,9 +98,10 @@ tasks:
 where:
 
 - `kind` specifies the task type (one of: `local`, `local_async`, or `slurm`).
-- `module` specifies the Python script defining task logic. Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.
+- `module` specifies the Python module defining task logic. Can be the path to a user-defined task (e.g., `/path/to/transcribe.py`) or the import path of a library task (e.g., `tigerflow.library.echo`). Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.
 - `depends_on` specifies the name of the parent task whose output is used as input for the current task.
 - `keep_output` specifies whether to retain output files from the current task. If unspecified, it defaults to `true`.
+- `params` specifies custom parameters to pass to the task (see [Custom Parameters](task.md#custom-parameters)).
 - `setup_commands` specifies a list of Bash commands to run before starting the task. This can be used to activate a virtual environment required for the task logic.
 - `max_workers` is a field applicable only to Slurm tasks. It specifies the maximum number of parallel workers used for auto-scaling.
 - `worker_resources` is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.
@@ -183,6 +190,73 @@ This behavior is useful for streaming-like workflows where data may arrive spora
 !!! info
 
     To see all available options for the `run` subcommand, run `tigerflow run --help`.
+
+### Background Mode
+
+For long-running pipelines, especially on remote servers where you may disconnect from the terminal,
+we can run the pipeline in the background using the `--background` flag:
+
+=== "Command"
+
+    ```bash
+    tigerflow run config.yaml path/to/data/ path/to/results/ --background
+    ```
+
+=== "Output"
+
+    ```
+    Started (pid 12345)
+    ```
+
+The pipeline starts as a detached process, returning control to the terminal immediately.
+All output is written to `.tigerflow/run.log` in the output directory.
+
+!!! note
+
+    Only one pipeline can run against a given output directory at a time. Attempting to start
+    a second pipeline targeting the same output directory will fail with an error indicating
+    that a pipeline is already running.
+
+## Managing Running Pipelines
+
+### Checking Status
+
+We can check whether a pipeline is running using the `status` command:
+
+=== "Command"
+
+    ```bash
+    tigerflow status path/to/results/
+    ```
+
+=== "Output (running)"
+
+    ```
+    Pipeline running (pid 12345)
+    45 finished, 44 staged, 2 failed
+    ```
+
+=== "Output (not running)"
+
+    ```
+    Pipeline stopped
+    91 finished, 0 staged, 8 failed
+    ```
+
+!!! tip
+
+    For scripting, use `--json` to output machine-readable JSON.
+
+### Stopping a Pipeline
+
+To gracefully stop a running pipeline:
+
+```bash
+tigerflow stop path/to/results/
+```
+
+The pipeline will finish processing any in-progress files before shutting down.
+Use `--force` for immediate termination without waiting for cleanup.
 
 Since the pipeline has been configured to retain output files only for the transcription task,
 the output directory (i.e., `path/to/results/`) will look as follows:
