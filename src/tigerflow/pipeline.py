@@ -21,7 +21,7 @@ from tigerflow.models import (
     TaskStatusKind,
 )
 from tigerflow.settings import settings
-from tigerflow.staging import PipelineState
+from tigerflow.staging import StagingContext
 from tigerflow.tasks.utils import get_slurm_task_status
 from tigerflow.utils import is_valid_task_cli, submit_to_slurm
 
@@ -212,9 +212,10 @@ class Pipeline:
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
-    def _build_pipeline_state(self) -> PipelineState:
+    def _build_pipeline_state(self) -> StagingContext:
         """Build current pipeline state for staging middleware."""
         n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
+        n_failed = sum(len(e) for e in self._task_error_filenames.values())
         n_staged = sum(1 for f in self._symlinks_dir.iterdir() if f.is_file())
         n_waiting = sum(
             1
@@ -223,17 +224,17 @@ class Pipeline:
             and f.name.endswith(self._config.root_input_ext)
             and f.name not in self._filenames
         )
-        return PipelineState(
+        return StagingContext(
             waiting=n_waiting,
-            staged=n_staged - n_finished,
+            staged=n_staged - n_failed,
             completed=n_finished,
-            failed=sum(len(e) for e in self._task_error_filenames.values()),
+            failed=n_failed,
             input_dir=self._input_dir,
             output_dir=self._output_dir,
         )
 
     def _stage_new_files(self):
-        state = self._build_pipeline_state()
+        context = self._build_pipeline_state()
         candidates = [
             f
             for f in self._input_dir.iterdir()
@@ -241,7 +242,7 @@ class Pipeline:
             and f.name.endswith(self._config.root_input_ext)
             and f.name not in self._filenames
         ]
-        to_stage = self._config.staging.process(candidates, state)
+        to_stage = self._config.staging.process(candidates, context)
         for file in to_stage:
             self._symlinks_dir.joinpath(file.name).symlink_to(file)
             self._filenames.add(file.name)

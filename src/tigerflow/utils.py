@@ -4,10 +4,10 @@ import re
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import TimeoutExpired
-from typing import Callable
 from types import SimpleNamespace
 
 
