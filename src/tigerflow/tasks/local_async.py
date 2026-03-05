@@ -183,7 +183,7 @@ class LocalAsyncTask(Task):
                     help="Task name",
                 ),
             ] = cls.get_name(),
-            _params: dict = {},
+            _params: dict | None = None,
         ):
             """
             Run the task as a CLI application
@@ -195,7 +195,7 @@ class LocalAsyncTask(Task):
                 input_ext=input_ext,
                 output_ext=output_ext,
                 concurrency_limit=concurrency_limit,
-                params=_params,
+                params=_params or {},
             )
 
             task = cls(config)
