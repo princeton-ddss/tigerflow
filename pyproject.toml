@@ -4,7 +4,8 @@ version = "0.1.0a3"
 description = "Data pipeline framework for Slurm-managed HPC clusters"
 readme = "README.md"
 authors = [
-    { name = "Sangyoon Park", email = "datumvitae@gmail.com" }
+    { name = "Sangyoon Park", email = "datumvitae@gmail.com" },
+    { name = "Colin Swaney", email = "colinswaney@princeton.edu" },
 ]
 license = "MIT"
 license-files = ["LICENSE"]
