@@ -22,7 +22,7 @@ from tigerflow.staging import (
 
 @pytest.fixture
 def mock_context(tmp_path: Path) -> StagingContext:
-    """Create a mock pipeline state for testing."""
+    """Create a mock staging context for testing."""
     return StagingContext(
         waiting=10,
         staged=5,
@@ -199,7 +199,7 @@ class TestMaxStagedLimit:
         files = [tmp_path / f"file{i}.txt" for i in range(10)]
         for f in files:
             f.touch()
-        state = StagingContext(
+        context = StagingContext(
             waiting=10,
             staged=8,
             completed=0,
@@ -208,14 +208,14 @@ class TestMaxStagedLimit:
             output_dir=tmp_path / "output",
         )
         middleware = MaxStagedLimit(kind="max_staged", count=10)
-        result = middleware(files, state)
+        result = middleware(files, context)
         assert len(result) == 2  # Only 2 more can be staged
 
     def test_returns_empty_when_at_capacity(self, tmp_path: Path):
         files = [tmp_path / f"file{i}.txt" for i in range(5)]
         for f in files:
             f.touch()
-        state = StagingContext(
+        context = StagingContext(
             waiting=5,
             staged=10,
             completed=0,
@@ -224,7 +224,7 @@ class TestMaxStagedLimit:
             output_dir=tmp_path / "output",
         )
         middleware = MaxStagedLimit(kind="max_staged", count=10)
-        result = middleware(files, state)
+        result = middleware(files, context)
         assert result == []
 
     def test_rejects_zero_count(self):
@@ -299,14 +299,14 @@ class TestSortBy:
 
 
 class TestCallableMiddleware:
-    def test_calls_function_with_candidates_and_state(
+    def test_calls_function_with_candidates_and_context(
         self, tmp_path: Path, mock_context: StagingContext
     ):
         # Create a test module with a staging function
         test_module = tmp_path / "test_staging_func.py"
         test_module.write_text(
             """
-def keep_first(candidates, state):
+def keep_first(candidates, context):
     return candidates[:1]
 """
         )
@@ -331,7 +331,7 @@ def keep_first(candidates, state):
         test_module = tmp_path / "test_error_func.py"
         test_module.write_text(
             """
-def raise_error(candidates, state):
+def raise_error(candidates, context):
     raise ValueError("test error")
 """
         )

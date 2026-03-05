@@ -234,7 +234,7 @@ class Pipeline:
         )
 
     def _stage_new_files(self):
-        context = self._build_pipeline_state()
+        context = self._build_staging_context()
         candidates = [
             f
             for f in self._input_dir.iterdir()
