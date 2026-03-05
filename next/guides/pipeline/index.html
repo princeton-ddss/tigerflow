@@ -493,6 +493,84 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#staging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Staging
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Staging">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Middleware
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in Middleware">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sorting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sorting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Middleware
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#running-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -659,6 +737,84 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#staging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Staging
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Staging">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Middleware
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in Middleware">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sorting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sorting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Middleware
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -868,6 +1024,182 @@ For example, the tasks above can be structured into a pipeline as follows:</p>
 <li><code>worker_resources</code> is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.</li>
 <li><code>concurrency_limit</code> is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).</li>
 </ul>
+<h2 id="staging">Staging<a class="headerlink" href="#staging" title="Permanent link">&para;</a></h2>
+<p>By default, a pipeline stages all matching files from the input directory immediately.
+<strong>Staging middleware</strong> lets you control <em>which</em> files get staged and <em>how many</em> are staged
+at a time. Middleware steps are defined under the <code>staging.steps</code> key in the pipeline
+configuration and are applied in order, forming a pipeline of filters, limits, and
+transformations on the list of candidate files.</p>
+<div class="highlight"><span class="filename">config.yaml</span><pre><span></span><code><span class="nt">staging</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">min_size</span>
+<span class="w">      </span><span class="nt">bytes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1024</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">filename_match</span>
+<span class="w">      </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;^recording_\\d+&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sort_by</span>
+<span class="w">      </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mtime</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">max_batch</span>
+<span class="w">      </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="nt">tasks</span><span class="p">:</span>
+<span class="w">  </span><span class="c1"># ...</span>
+</code></pre></div>
+<p>In this example, only files that are at least 1 KB and whose names match the given pattern
+are staged, sorted by modification time (oldest first), in batches of up to 20 per polling
+cycle.</p>
+<h3 id="built-in-middleware">Built-in Middleware<a class="headerlink" href="#built-in-middleware" title="Permanent link">&para;</a></h3>
+<h4 id="filters">Filters<a class="headerlink" href="#filters" title="Permanent link">&para;</a></h4>
+<p>Filters remove candidates that do not meet a criterion. All remaining candidates are passed
+to the next step.</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>min_size</code></td>
+<td>Keep files at least this large</td>
+<td><code>bytes</code> (int, required)</td>
+</tr>
+<tr>
+<td><code>max_size</code></td>
+<td>Keep files at most this large</td>
+<td><code>bytes</code> (int, required)</td>
+</tr>
+<tr>
+<td><code>min_age</code></td>
+<td>Keep files older than a threshold (by last modification time)</td>
+<td><code>seconds</code> (float, required)</td>
+</tr>
+<tr>
+<td><code>filename_match</code></td>
+<td>Keep files whose names match a regex pattern</td>
+<td><code>pattern</code> (str, required)</td>
+</tr>
+<tr>
+<td><code>companion_file</code></td>
+<td>Keep files that have a companion file with the given extension</td>
+<td><code>ext</code> (str, required)</td>
+</tr>
+</tbody>
+</table>
+<p>For example, <code>min_age</code> can prevent staging files that are still being written, and
+<code>companion_file</code> can gate staging on an external signal (e.g., <code>recording_001.done</code>
+alongside <code>recording_001.mp4</code>).</p>
+<h4 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h4>
+<p>Limits control how many files are staged.</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max_staged</code></td>
+<td>Cap the total number of files staged in the pipeline at any time</td>
+<td><code>count</code> (int, required)</td>
+</tr>
+<tr>
+<td><code>max_batch</code></td>
+<td>Cap the number of files staged per polling cycle</td>
+<td><code>count</code> (int, required)</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Place limits <em>after</em> filters and sorting so that the most relevant files are
+prioritized.</p>
+</div>
+<h4 id="sorting">Sorting<a class="headerlink" href="#sorting" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sort_by</code></td>
+<td>Sort candidates before limits are applied</td>
+<td><code>key</code> (<code>name</code>, <code>size</code>, or <code>mtime</code>; default: <code>name</code>), <code>reverse</code> (bool; default: <code>false</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="custom-middleware">Custom Middleware<a class="headerlink" href="#custom-middleware" title="Permanent link">&para;</a></h3>
+<p>For logic not covered by the built-in middleware, you can provide a custom callable
+using the <code>callable</code> kind:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">staging</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">callable</span>
+<span class="w">      </span><span class="nt">function</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;my_module:my_filter&quot;</span>
+</code></pre></div>
+<p>The callable must accept two positional arguments --- a list of <code>Path</code> objects (the
+candidates) and a <code>StagingContext</code> --- and return a filtered list of <code>Path</code> objects:</p>
+<div class="highlight"><span class="filename">my_module.py</span><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tigerflow.staging</span><span class="w"> </span><span class="kn">import</span> <span class="n">StagingContext</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">my_filter</span><span class="p">(</span><span class="n">candidates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span> <span class="n">context</span><span class="p">:</span> <span class="n">StagingContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+    <span class="c1"># Example: only stage files when fewer than 100 are already staged</span>
+    <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">staged</span> <span class="o">&gt;=</span> <span class="mi">100</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">return</span> <span class="n">candidates</span>
+</code></pre></div>
+<p>The <code>StagingContext</code> provides a read-only view of the current pipeline state:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>waiting</code></td>
+<td><code>int</code></td>
+<td>Files in the input directory not yet staged</td>
+</tr>
+<tr>
+<td><code>staged</code></td>
+<td><code>int</code></td>
+<td>Files staged but not yet completed</td>
+</tr>
+<tr>
+<td><code>completed</code></td>
+<td><code>int</code></td>
+<td>Files that have finished all tasks</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td><code>int</code></td>
+<td>Total error files across all tasks</td>
+</tr>
+<tr>
+<td><code>input_dir</code></td>
+<td><code>Path</code></td>
+<td>The pipeline's input directory</td>
+</tr>
+<tr>
+<td><code>output_dir</code></td>
+<td><code>Path</code></td>
+<td>The pipeline's output directory</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If a custom callable raises an exception, it returns an empty list (no files staged)
+and a warning is logged. Make sure your callable handles edge cases gracefully.</p>
+</div>
 <h2 id="running-a-pipeline">Running a Pipeline<a class="headerlink" href="#running-a-pipeline" title="Permanent link">&para;</a></h2>
 <p>Assuming the configuration file and task scripts are in the current directory,
 we can run the pipeline as follows:</p>
