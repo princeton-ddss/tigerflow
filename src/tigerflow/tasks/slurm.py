@@ -227,19 +227,19 @@ class SlurmTask(Task):
                 ),
             ] = None,
             sbatch_options: Annotated[
-                list[str],
+                list[str] | None,
                 typer.Option(
                     "--sbatch-option",
                     help="Additional Slurm option for workers (repeatable)",
                 ),
-            ] = [],
+            ] = None,
             setup_commands: Annotated[
-                list[str],
+                list[str] | None,
                 typer.Option(
                     "--setup-command",
                     help="Shell command to run before the task starts (repeatable)",
                 ),
-            ] = [],
+            ] = None,
             task_name: Annotated[
                 str,
                 typer.Option(
@@ -257,7 +257,7 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
-            _params: dict = {},
+            _params: dict | None = None,
         ):
             """
             Run the task as a CLI application
@@ -267,7 +267,7 @@ class SlurmTask(Task):
                 gpus=gpus,
                 memory=memory,
                 time=time,
-                sbatch_options=sbatch_options,
+                sbatch_options=sbatch_options or [],
             )
 
             config = SlurmTaskConfig(
@@ -276,10 +276,10 @@ class SlurmTask(Task):
                 module=cls.get_module_path(),
                 input_ext=input_ext,
                 output_ext=output_ext,
-                setup_commands=setup_commands,
+                setup_commands=setup_commands or [],
                 max_workers=max_workers,
                 worker_resources=worker_resources,
-                params=_params,
+                params=_params or {},
             )
 
             if run_directly:
