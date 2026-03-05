@@ -212,8 +212,8 @@ class Pipeline:
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
-    def _build_pipeline_state(self) -> StagingContext:
-        """Build current pipeline state for staging middleware."""
+    def _build_staging_context(self) -> StagingContext:
+        """Build the current context for staging middleware."""
         n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
         n_failed = sum(len(e) for e in self._task_error_filenames.values())
         n_staged = sum(1 for f in self._symlinks_dir.iterdir() if f.is_file())
