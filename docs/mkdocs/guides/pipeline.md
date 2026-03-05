@@ -107,6 +107,114 @@ where:
 - `worker_resources` is a section applicable only to Slurm tasks. It specifies compute, memory, and other resources to allocate for each worker.
 - `concurrency_limit` is a field applicable only to local asynchronous tasks. It specifies the maximum number of coroutines (e.g., API requests) that may run concurrently at any given time (excess coroutines are queued until capacity becomes available).
 
+## Staging
+
+By default, a pipeline stages all matching files from the input directory immediately.
+**Staging middleware** lets you control _which_ files get staged and _how many_ are staged
+at a time. Middleware steps are defined under the `staging.steps` key in the pipeline
+configuration and are applied in order, forming a pipeline of filters, limits, and
+transformations on the list of candidate files.
+
+```yaml title="config.yaml"
+staging:
+  steps:
+    - kind: min_size
+      bytes: 1024
+    - kind: filename_match
+      pattern: "^recording_\\d+"
+    - kind: sort_by
+      key: mtime
+    - kind: max_batch
+      count: 20
+tasks:
+  # ...
+```
+
+In this example, only files that are at least 1 KB and whose names match the given pattern
+are staged, sorted by modification time (oldest first), in batches of up to 20 per polling
+cycle.
+
+### Built-in Middleware
+
+#### Filters
+
+Filters remove candidates that do not meet a criterion. All remaining candidates are passed
+to the next step.
+
+| Kind | Description | Parameters |
+| ---- | ----------- | ---------- |
+| `min_size` | Keep files at least this large | `bytes` (int, required) |
+| `max_size` | Keep files at most this large | `bytes` (int, required) |
+| `min_age` | Keep files older than a threshold (by last modification time) | `seconds` (float, required) |
+| `filename_match` | Keep files whose names match a regex pattern | `pattern` (str, required) |
+| `companion_file` | Keep files that have a companion file with the given extension | `ext` (str, required) |
+
+For example, `min_age` can prevent staging files that are still being written, and
+`companion_file` can gate staging on an external signal (e.g., `recording_001.done`
+alongside `recording_001.mp4`).
+
+#### Limits
+
+Limits control how many files are staged.
+
+| Kind | Description | Parameters |
+| ---- | ----------- | ---------- |
+| `max_staged` | Cap the total number of files staged in the pipeline at any time | `count` (int, required) |
+| `max_batch` | Cap the number of files staged per polling cycle | `count` (int, required) |
+
+!!! tip
+
+    Place limits _after_ filters and sorting so that the most relevant files are
+    prioritized.
+
+#### Sorting
+
+| Kind | Description | Parameters |
+| ---- | ----------- | ---------- |
+| `sort_by` | Sort candidates before limits are applied | `key` (`name`, `size`, or `mtime`; default: `name`), `reverse` (bool; default: `false`) |
+
+### Custom Middleware
+
+For logic not covered by the built-in middleware, you can provide a custom callable
+using the `callable` kind:
+
+```yaml
+staging:
+  steps:
+    - kind: callable
+      function: "my_module:my_filter"
+```
+
+The callable must accept two positional arguments --- a list of `Path` objects (the
+candidates) and a `StagingContext` --- and return a filtered list of `Path` objects:
+
+```python title="my_module.py"
+from pathlib import Path
+from tigerflow.staging import StagingContext
+
+def my_filter(candidates: list[Path], context: StagingContext) -> list[Path]:
+    # Example: only stage files when fewer than 100 are already staged
+    if context.staged >= 100:
+        return []
+    return candidates
+```
+
+The `StagingContext` provides a read-only view of the current pipeline state:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `waiting` | `int` | Files in the input directory not yet staged |
+| `staged` | `int` | Files staged but not yet completed |
+| `completed` | `int` | Files that have finished all tasks |
+| `failed` | `int` | Total error files across all tasks |
+| `input_dir` | `Path` | The pipeline's input directory |
+| `output_dir` | `Path` | The pipeline's output directory |
+
+!!! warning
+
+    If a custom callable raises an exception, it returns an empty list (no files staged)
+    and a warning is logged. Make sure your callable handles edge cases gracefully.
+
 ## Running a Pipeline
 
 Assuming the configuration file and task scripts are in the current directory,
