@@ -178,7 +178,14 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
             for err in task_errors:
                 if shown >= 5:
                     break
-                lines.append(f"  [dim]{task_name}[/dim] {err.file}: {err.message}")
+                err_detail = (
+                    f"{err.exception_type}: {err.message}"
+                    if err.exception_type
+                    else err.message or "Unknown error"
+                )
+                lines.append(
+                    f"  [dim]{task_name}[/dim]  {err.file}  [red]{err_detail}[/red]"
+                )
                 shown += 1
             if shown >= 5:
                 break

@@ -589,7 +589,7 @@ class PipelineOutput:
                         data = json.loads(file.read_text())
                         task_errors.append(
                             FileError(
-                                file=stem,
+                                file=data.get("file", stem),
                                 path=str(file),
                                 timestamp=datetime.fromisoformat(data["timestamp"]),
                                 exception_type=data.get("exception_type", ""),
