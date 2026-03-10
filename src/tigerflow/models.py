@@ -403,7 +403,10 @@ class FileError(BaseModel):
 
     file: str
     path: str
+    timestamp: datetime | None = None
+    exception_type: str = ""
     message: str = ""
+    traceback: str = ""
 
 
 class TaskMeta(BaseModel):
@@ -583,12 +586,19 @@ class PipelineOutput:
                     stem = file.name.removesuffix(".err")
                     failed_stems.add(stem)
                     try:
-                        message = file.read_text().strip().split("\n")[-1]
-                    except (OSError, IndexError):
-                        message = ""
-                    task_errors.append(
-                        FileError(file=stem, path=str(file), message=message)
-                    )
+                        data = json.loads(file.read_text())
+                        task_errors.append(
+                            FileError(
+                                file=stem,
+                                path=str(file),
+                                timestamp=datetime.fromisoformat(data["timestamp"]),
+                                exception_type=data.get("exception_type", ""),
+                                message=data.get("message", ""),
+                                traceback=data.get("traceback", ""),
+                            )
+                        )
+                    except (OSError, json.JSONDecodeError, KeyError):
+                        task_errors.append(FileError(file=stem, path=str(file)))
             if task_errors:
                 errors[task_dir.name] = task_errors
 

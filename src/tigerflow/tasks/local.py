@@ -1,7 +1,6 @@
 import signal
 import sys
 import threading
-import traceback
 from abc import abstractmethod
 from pathlib import Path
 from types import FrameType
@@ -15,7 +14,7 @@ from tigerflow.settings import settings
 from tigerflow.utils import SetupContext, atomic_write
 
 from ._base import Task
-from .utils import log_metrics
+from .utils import log_metrics, write_error_file
 
 
 class LocalTask(Task):
@@ -53,9 +52,7 @@ class LocalTask(Task):
                         output_file.name.removesuffix(self.config.output_ext) + ".err"
                     )
                     error_file = output_dir / error_fname
-                    with atomic_write(error_file) as temp_file:
-                        with open(temp_file, "w") as f:
-                            f.write(traceback.format_exc())
+                    write_error_file(error_file, input_file.name)
                     logger.error("Failed processing: {}", input_file.name)
 
         # Clean up incomplete temporary files left behind by a prior process instance

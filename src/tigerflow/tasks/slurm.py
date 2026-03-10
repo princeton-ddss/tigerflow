@@ -4,7 +4,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 from abc import abstractmethod
 from pathlib import Path
 from types import FrameType
@@ -23,7 +22,7 @@ from tigerflow.settings import settings
 from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
 
 from ._base import Task
-from .utils import get_slurm_task_status, log_metrics
+from .utils import get_slurm_task_status, log_metrics, write_error_file
 
 
 class SlurmTask(Task):
@@ -92,9 +91,7 @@ class SlurmTask(Task):
                         output_file.name.removesuffix(self.config.output_ext) + ".err"
                     )
                     error_file = self.config.output_dir / error_fname
-                    with atomic_write(error_file) as temp_file:
-                        with open(temp_file, "w") as f:
-                            f.write(traceback.format_exc())
+                    write_error_file(error_file, input_file.name)
                     logger.error("Failed processing: {}", input_file.name)
 
         # Define parameters for each Slurm job

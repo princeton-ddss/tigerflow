@@ -290,7 +290,6 @@ def report(
                 pass
     elif json:
         pipeline_report = output.report(run_id_filter=run)
-        metrics_data = _compute_metrics_summary(pipeline_report.metrics)
 
         sections = (
             {s.strip().lower() for s in include.split(",")}
@@ -334,11 +333,42 @@ def report(
                 "tasks": task_list,
             }
         if "metrics" in sections:
-            result["metrics"] = metrics_data
+            result["metrics"] = {
+                name: {
+                    "summary": {
+                        "count": len(file_metrics),
+                        "avg_ms": sum(m.duration_ms for m in file_metrics)
+                        / len(file_metrics),
+                        "min_ms": min(m.duration_ms for m in file_metrics),
+                        "max_ms": max(m.duration_ms for m in file_metrics),
+                    }
+                    if file_metrics
+                    else {},
+                    "files": [
+                        {
+                            "file": m.file,
+                            "started_at": m.started_at.isoformat(),
+                            "finished_at": m.finished_at.isoformat(),
+                            "duration_ms": m.duration_ms,
+                            "status": m.status,
+                        }
+                        for m in file_metrics
+                    ],
+                }
+                for name, file_metrics in pipeline_report.metrics.items()
+            }
         if "errors" in sections:
             result["errors"] = {
                 name: [
-                    {"file": e.file, "path": e.path, "message": e.message} for e in errs
+                    {
+                        "file": e.file,
+                        "path": e.path,
+                        "timestamp": e.timestamp.isoformat() if e.timestamp else None,
+                        "exception_type": e.exception_type,
+                        "message": e.message,
+                        "traceback": e.traceback,
+                    }
+                    for e in errs
                 ]
                 for name, errs in pipeline_report.errors.items()
             }

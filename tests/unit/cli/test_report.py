@@ -4,17 +4,15 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from tigerflow.cli import app
 from tigerflow.cli.report import (
     _compute_metrics_summary,
-    _compute_task_metrics,
     _make_progress_bar,
     _make_sparkline,
 )
-from tigerflow.models import FileMetrics, PipelineOutput, PipelineReport, TaskProgress
+from tigerflow.models import FileMetrics, PipelineOutput
 
 runner = CliRunner()
 
@@ -241,7 +239,7 @@ class TestRunLevelProgress:
 
         now = datetime.now()
         task_lines = [
-            f'2026-03-10 12:00:01 | METRICS | {json.dumps({"file": "file1.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": "success"})}',
+            f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': 'file1.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}",
         ]
         (task_logs / "20260310-120000.log").write_text("\n".join(task_lines))
 
@@ -269,7 +267,9 @@ class TestRunLevelProgress:
             '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
         ]
         for i in range(10):
-            pipeline_lines.append(f'2026-03-10 12:00:00 | STAGED  | {json.dumps({"file": f"file{i}.txt"})}')
+            pipeline_lines.append(
+                f"2026-03-10 12:00:00 | STAGED  | {json.dumps({'file': f'file{i}.txt'})}"
+            )
         (pipeline_logs / "20260310-120000.log").write_text("\n".join(pipeline_lines))
 
         # Task log with METRICS
@@ -282,7 +282,9 @@ class TestRunLevelProgress:
         task_lines = []
         for i in range(8):
             status = "success" if i < 6 else "error"
-            task_lines.append(f'2026-03-10 12:00:01 | METRICS | {json.dumps({"file": f"file{i}.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": status})}')
+            task_lines.append(
+                f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': status})}"
+            )
         (task_logs / "20260310-120000.log").write_text("\n".join(task_lines))
 
         output = PipelineOutput(tmp_path)
@@ -310,7 +312,9 @@ class TestRunLevelProgress:
             '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}, {"name": "task2", "depends_on": "task1"}]}',
         ]
         for i in range(10):
-            pipeline_lines.append(f'2026-03-10 12:00:00 | STAGED  | {json.dumps({"file": f"file{i}.txt"})}')
+            pipeline_lines.append(
+                f"2026-03-10 12:00:00 | STAGED  | {json.dumps({'file': f'file{i}.txt'})}"
+            )
         (pipeline_logs / "20260310-120000.log").write_text("\n".join(pipeline_lines))
 
         # Task1 logs with METRICS
@@ -323,7 +327,9 @@ class TestRunLevelProgress:
         lines1 = []
         for i in range(10):
             status = "success" if i < 8 else "error"
-            lines1.append(f'2026-03-10 12:00:01 | METRICS | {json.dumps({"file": f"file{i}.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": status})}')
+            lines1.append(
+                f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': status})}"
+            )
         (logs1 / "20260310-120000.log").write_text("\n".join(lines1))
 
         # Task2 logs with METRICS
@@ -334,7 +340,9 @@ class TestRunLevelProgress:
 
         lines2 = []
         for i in range(5):
-            lines2.append(f'2026-03-10 12:00:02 | METRICS | {json.dumps({"file": f"file{i}.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": "success"})}')
+            lines2.append(
+                f"2026-03-10 12:00:02 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
+            )
         (logs2 / "20260310-120000.log").write_text("\n".join(lines2))
 
         output = PipelineOutput(tmp_path)
@@ -369,9 +377,15 @@ class TestMultipleRuns:
         pipeline_logs.mkdir()
 
         # Create logs for 3 runs
-        (pipeline_logs / "20260310-100000.log").write_text('2026-03-10 10:00:00 | INIT | {"tasks": []}')
-        (pipeline_logs / "20260310-120000.log").write_text('2026-03-10 12:00:00 | INIT | {"tasks": []}')
-        (pipeline_logs / "20260310-110000.log").write_text('2026-03-10 11:00:00 | INIT | {"tasks": []}')
+        (pipeline_logs / "20260310-100000.log").write_text(
+            '2026-03-10 10:00:00 | INIT | {"tasks": []}'
+        )
+        (pipeline_logs / "20260310-120000.log").write_text(
+            '2026-03-10 12:00:00 | INIT | {"tasks": []}'
+        )
+        (pipeline_logs / "20260310-110000.log").write_text(
+            '2026-03-10 11:00:00 | INIT | {"tasks": []}'
+        )
 
         output = PipelineOutput(tmp_path)
         assert output._get_run_id() == "20260310-120000"
@@ -391,7 +405,9 @@ class TestMultipleRuns:
             '2026-03-10 10:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
         ]
         for i in range(5):
-            run1_lines.append(f'2026-03-10 10:00:00 | STAGED  | {json.dumps({"file": f"file{i}.txt"})}')
+            run1_lines.append(
+                f"2026-03-10 10:00:00 | STAGED  | {json.dumps({'file': f'file{i}.txt'})}"
+            )
         (pipeline_logs / "20260310-100000.log").write_text("\n".join(run1_lines))
 
         # Run 2: staged 10 files
@@ -399,7 +415,9 @@ class TestMultipleRuns:
             '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
         ]
         for i in range(10):
-            run2_lines.append(f'2026-03-10 12:00:00 | STAGED  | {json.dumps({"file": f"file{i}.txt"})}')
+            run2_lines.append(
+                f"2026-03-10 12:00:00 | STAGED  | {json.dumps({'file': f'file{i}.txt'})}"
+            )
         (pipeline_logs / "20260310-120000.log").write_text("\n".join(run2_lines))
 
         output = PipelineOutput(tmp_path)
@@ -465,12 +483,16 @@ class TestMultipleRuns:
             '2026-03-10 10:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
         ]
         for i in range(5):
-            run1_pipeline.append(f'2026-03-10 10:00:00 | STAGED  | {json.dumps({"file": f"run1_file{i}.txt"})}')
+            run1_pipeline.append(
+                f"2026-03-10 10:00:00 | STAGED  | {json.dumps({'file': f'run1_file{i}.txt'})}"
+            )
         (pipeline_logs / "20260310-100000.log").write_text("\n".join(run1_pipeline))
 
         run1_task = []
         for i in range(5):
-            run1_task.append(f'2026-03-10 10:00:01 | METRICS | {json.dumps({"file": f"run1_file{i}.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": "success"})}')
+            run1_task.append(
+                f"2026-03-10 10:00:01 | METRICS | {json.dumps({'file': f'run1_file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
+            )
         (task_logs / "20260310-100000.log").write_text("\n".join(run1_task))
 
         # Run 2: 10 files staged, 7 processed
@@ -478,12 +500,16 @@ class TestMultipleRuns:
             '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
         ]
         for i in range(10):
-            run2_pipeline.append(f'2026-03-10 12:00:00 | STAGED  | {json.dumps({"file": f"run2_file{i}.txt"})}')
+            run2_pipeline.append(
+                f"2026-03-10 12:00:00 | STAGED  | {json.dumps({'file': f'run2_file{i}.txt'})}"
+            )
         (pipeline_logs / "20260310-120000.log").write_text("\n".join(run2_pipeline))
 
         run2_task = []
         for i in range(7):
-            run2_task.append(f'2026-03-10 12:00:01 | METRICS | {json.dumps({"file": f"run2_file{i}.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": "success"})}')
+            run2_task.append(
+                f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'run2_file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
+            )
         (task_logs / "20260310-120000.log").write_text("\n".join(run2_task))
 
         output = PipelineOutput(tmp_path)
@@ -532,14 +558,14 @@ class TestSlurmLogParsing:
         # Worker 1 processed file1
         worker1_log = task_logs / "20260310-120000-task1-worker-12345.log"
         worker1_log.write_text(
-            f'2026-03-10 12:00:01 | METRICS | {json.dumps({"file": "file1.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": "success"})}\n'
+            f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': 'file1.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}\n"
         )
 
         # Worker 2 processed file2 and file3
         worker2_log = task_logs / "20260310-120000-task1-worker-12346.log"
         worker2_log.write_text(
-            f'2026-03-10 12:00:02 | METRICS | {json.dumps({"file": "file2.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": "success"})}\n'
-            f'2026-03-10 12:00:03 | METRICS | {json.dumps({"file": "file3.txt", "started_at": now.isoformat(), "finished_at": now.isoformat(), "status": "error"})}\n'
+            f"2026-03-10 12:00:02 | METRICS | {json.dumps({'file': 'file2.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}\n"
+            f"2026-03-10 12:00:03 | METRICS | {json.dumps({'file': 'file3.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'error'})}\n"
         )
 
         output = PipelineOutput(tmp_path)
@@ -698,8 +724,6 @@ class TestReportCommand:
         (internal / ".symlinks").mkdir()
         (internal / ".finished").mkdir()
 
-        result = runner.invoke(
-            app, ["report", str(tmp_path), "--json", "--watch"]
-        )
+        result = runner.invoke(app, ["report", str(tmp_path), "--json", "--watch"])
         assert result.exit_code == 1
         assert "--watch cannot be used with --json" in result.output
