@@ -287,12 +287,12 @@ class TestBackgroundRun:
         log_file = output_dir / ".tigerflow" / "run.log"
         assert log_file.exists(), "Log file should be created"
 
-    def test_status_command_shows_running(self, background_pipeline):
-        """Test that status command shows pipeline as running."""
+    def test_report_command_shows_running(self, background_pipeline):
+        """Test that report command shows pipeline as running."""
         output_dir = background_pipeline
 
         result = subprocess.run(  # type: ignore[call-overload]
-            [UV_PATH, "run", "tigerflow", "status", str(output_dir)],
+            [UV_PATH, "run", "tigerflow", "report", str(output_dir)],
             capture_output=True,
             text=True,
             timeout=30,
@@ -325,22 +325,22 @@ class TestBackgroundRun:
             os.kill(pid, signal.SIGKILL)
             pytest.fail("Process should have terminated after stop command")
 
-    def test_status_json_output(self, background_pipeline):
-        """Test that status --json outputs valid JSON."""
+    def test_report_json_output(self, background_pipeline):
+        """Test that report --json outputs valid JSON."""
         import json
 
         output_dir = background_pipeline
 
         result = subprocess.run(  # type: ignore[call-overload]
-            [UV_PATH, "run", "tigerflow", "status", str(output_dir), "--json"],
+            [UV_PATH, "run", "tigerflow", "report", str(output_dir), "--json"],
             capture_output=True,
             text=True,
             timeout=30,
         )
 
         data = json.loads(result.stdout)
-        assert data["running"] is True
-        assert "pid" in data
-        assert "finished" in data
-        assert "staged" in data
-        assert "failed" in data
+        assert data["status"]["running"] is True
+        assert "pid" in data["status"]
+        assert "processed" in data["progress"]
+        assert "staged" in data["progress"]
+        assert "failed" in data["progress"]

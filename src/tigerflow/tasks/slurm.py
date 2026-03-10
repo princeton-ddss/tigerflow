@@ -4,7 +4,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 from abc import abstractmethod
 from pathlib import Path
 from types import FrameType
@@ -23,7 +22,7 @@ from tigerflow.settings import settings
 from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
 
 from ._base import Task
-from .utils import get_slurm_task_status
+from .utils import get_slurm_task_status, log_metrics, write_error_file
 
 
 class SlurmTask(Task):
@@ -37,7 +36,7 @@ class SlurmTask(Task):
         self.config = config
 
     @logger.catch(reraise=True)
-    def start(self, input_dir: Path, output_dir: Path):
+    def start(self, input_dir: Path, output_dir: Path, run_id: str | None = None):
         from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
         from dask_jobqueue import SLURMCluster
 
@@ -78,22 +77,22 @@ class SlurmTask(Task):
                 logger.info("Task shutdown complete")
 
         def task(input_file: Path, output_file: Path):
-            worker = get_worker()
-            context = getattr(worker, "context")
-            try:
-                logger.info("Starting processing: {}", input_file.name)
-                with atomic_write(output_file) as temp_file:
-                    self.run(context, input_file, temp_file)
-                logger.info("Successfully processed: {}", input_file.name)
-            except Exception:
-                error_fname = (
-                    output_file.name.removesuffix(self.config.output_ext) + ".err"
-                )
-                error_file = self.config.output_dir / error_fname
-                with atomic_write(error_file) as temp_file:
-                    with open(temp_file, "w") as f:
-                        f.write(traceback.format_exc())
-                logger.error("Failed processing: {}", input_file.name)
+            with log_metrics(input_file.name) as metrics:
+                worker = get_worker()
+                context = getattr(worker, "context")
+                try:
+                    logger.info("Starting processing: {}", input_file.name)
+                    with atomic_write(output_file) as temp_file:
+                        self.run(context, input_file, temp_file)
+                    logger.info("Successfully processed: {}", input_file.name)
+                except Exception:
+                    metrics["status"] = "error"
+                    error_fname = (
+                        output_file.name.removesuffix(self.config.output_ext) + ".err"
+                    )
+                    error_file = self.config.output_dir / error_fname
+                    write_error_file(error_file, input_file.name)
+                    logger.error("Failed processing: {}", input_file.name)
 
         # Define parameters for each Slurm job
         cluster = SLURMCluster(
@@ -106,8 +105,12 @@ class SlurmTask(Task):
             job_extra_directives=self.config.worker_resources.sbatch_options
             + [
                 f"--job-name={self.config.worker_job_name}",
-                f"--output={self.config.log_dir}/%x-%j.out",
-                f"--error={self.config.log_dir}/%x-%j.err",
+                f"--output={self.config.log_dir}/{run_id}-%x-%j.out"
+                if run_id
+                else f"--output={self.config.log_dir}/%x-%j.out",
+                f"--error={self.config.log_dir}/{run_id}-%x-%j.log"
+                if run_id
+                else f"--error={self.config.log_dir}/%x-%j.log",
                 f"--gres=gpu:{self.config.worker_resources.gpus}"
                 if self.config.worker_resources.gpus
                 else "",
@@ -257,6 +260,14 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
+            run_id: Annotated[
+                str | None,
+                typer.Option(
+                    "--run-id",
+                    help="Run identifier for log file naming.",
+                    hidden=True,  # Internal use only
+                ),
+            ] = None,
             _params: dict | None = None,
         ):
             """
@@ -281,10 +292,12 @@ class SlurmTask(Task):
                 worker_resources=worker_resources,
                 params=_params or {},
             )
+            if run_id:
+                config.run_id = run_id
 
             if run_directly:
                 task = cls(config)
-                task.start(input_dir, output_dir)
+                task.start(input_dir, output_dir, run_id=run_id)
             else:
                 runner = SlurmTaskRunner(config)
                 runner.start(input_dir, output_dir)

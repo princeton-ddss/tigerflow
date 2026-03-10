@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import signal
@@ -154,6 +155,15 @@ class Pipeline:
         self._received_signal = signum
         self._shutdown_event.set()
 
+    def _log_to_file(self, level: str, data: dict):
+        """Write structured log entry to pipeline log file."""
+        if not hasattr(self, "_pipeline_log_file"):
+            return
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        line = f"{timestamp} | {level:<8} | {json.dumps(data)}\n"
+        with open(self._pipeline_log_file, "a") as f:
+            f.write(line)
+
     @logger.catch(reraise=True)
     def run(self):
         # Register signal handlers for graceful shutdown
@@ -198,7 +208,21 @@ class Pipeline:
                 sys.exit(128 + self._received_signal)
 
     def _start_tasks(self):
+        run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+        self._run_id = run_id
+
+        # Create pipeline log directory and file
+        self._pipeline_log_dir = self._internal_dir / "logs"
+        self._pipeline_log_dir.mkdir(parents=True, exist_ok=True)
+        self._pipeline_log_file = self._pipeline_log_dir / f"{run_id}.log"
+
+        tasks_meta = [
+            {"name": t.name, "depends_on": t.depends_on} for t in self._config.tasks
+        ]
+        self._log_to_file("INIT", {"tasks": tasks_meta})
+        logger.log("INIT", json.dumps({"tasks": tasks_meta}))
         for task in self._config.tasks:
+            task.run_id = run_id
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
@@ -246,8 +270,8 @@ class Pipeline:
         for file in to_stage:
             self._symlinks_dir.joinpath(file.name).symlink_to(file)
             self._filenames.add(file.name)
-        if to_stage:
-            logger.info("Staged {} new files for processing", len(to_stage))
+            self._log_to_file("STAGED", {"file": file.name})
+            logger.log("STAGED", json.dumps({"file": file.name}))
 
     def _check_task_status(self):
         for task in self._config.tasks:
