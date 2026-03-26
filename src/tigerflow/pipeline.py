@@ -85,23 +85,29 @@ class Pipeline:
             if task.keep_output:
                 self._output_dir.joinpath(task.name).mkdir(exist_ok=True)
 
-        # If opted in, delete input files that have been marked as finished
-        if self._delete_input:
-            for file in self._finished_dir.iterdir():
-                source_file = self._input_dir / file.name
-                source_file.unlink(missing_ok=True)
-
-        # Clean up any invalid or broken symlinks
+        # Collect file IDs that need cleanup
+        finished_ids = set()
+        for file in self._finished_dir.iterdir():
+            file_id = file.name.removesuffix(self._config.root_input_ext)
+            finished_ids.add(file_id)
+        cleanup_ids = set(finished_ids)
         for file in self._symlinks_dir.iterdir():
             if not file.is_symlink():
                 file.unlink()
-            elif not file.exists():
-                file.unlink()
-                # Remove all downstream task outputs since source data is missing
+            else:
                 file_id = file.name.removesuffix(self._config.root_input_ext)
-                for task in self._config.tasks:
-                    file = task.output_dir / f"{file_id}{task.output_ext}"
-                    file.unlink(missing_ok=True)
+                if not file.exists() or file_id in finished_ids:
+                    file.unlink()
+                    cleanup_ids.add(file_id)
+
+        # Remove orphaned task outputs and input files
+        for file_id in cleanup_ids:
+            for task in self._config.tasks:
+                task_file = task.output_dir / f"{file_id}{task.output_ext}"
+                task_file.unlink(missing_ok=True)
+            if self._delete_input:
+                filename = f"{file_id}{self._config.root_input_ext}"
+                self._input_dir.joinpath(filename).unlink(missing_ok=True)
 
         # Clean up any invalid or unsuccessful task outputs
         for task in self._config.tasks:
@@ -332,19 +338,21 @@ class Pipeline:
             )
         )
 
+        # Record completion and clean up staged/input files
+        for file_id in completed_file_ids:
+            filename = f"{file_id}{self._config.root_input_ext}"
+            self._finished_dir.joinpath(filename).touch()
+            self._symlinks_dir.joinpath(filename).unlink(missing_ok=True)
+            if self._delete_input:
+                self._input_dir.joinpath(filename).unlink(missing_ok=True)
+
         # Clean up intermediate data for completed files
         for task in self._config.tasks:
             for file_id in completed_file_ids:
                 file = task.output_dir / f"{file_id}{task.output_ext}"
-                file.unlink()
+                file.unlink(missing_ok=True)
 
-        # Record completion
-        for file_id in completed_file_ids:
-            filename = f"{file_id}{self._config.root_input_ext}"
-            self._symlinks_dir.joinpath(filename).unlink()
-            if self._delete_input:
-                self._input_dir.joinpath(filename).unlink(missing_ok=True)
-            self._finished_dir.joinpath(filename).touch()
+        # Log progress
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
             n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
