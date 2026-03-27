@@ -10,6 +10,8 @@ from pathlib import Path
 from subprocess import TimeoutExpired
 from types import SimpleNamespace
 
+TEMP_FILE_PREFIX = ".~tf_"
+
 
 def get_version() -> str:
     from importlib.metadata import PackageNotFoundError, version
@@ -183,16 +185,23 @@ def has_running_pid(pid_file: Path) -> bool:
 
 
 @contextmanager
-def atomic_write(filepath: os.PathLike):
+def atomic_write(filepath: str | os.PathLike[str]):
     """
     Context manager for atomic writing:
-    1. Creates a temporary file
+    1. Creates a temporary file with the target's suffix
+       (so libraries that inspect the extension behave correctly)
+       and a distinguishable prefix (so downstream tasks that
+       match on extension alone won't pick it up prematurely)
     2. Yields its path for writing
     3. Atomically replaces the target file on success
     """
     filepath = Path(filepath)
 
-    fd, temp_path = tempfile.mkstemp(dir=filepath.parent)
+    fd, temp_path = tempfile.mkstemp(
+        prefix=TEMP_FILE_PREFIX,
+        suffix=filepath.suffix,
+        dir=filepath.parent,
+    )
     os.close(fd)
 
     temp_path = Path(temp_path)

@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 
 from tigerflow.utils import (
+    TEMP_FILE_PREFIX,
+    atomic_write,
     has_running_pid,
     import_callable,
     is_process_running,
@@ -163,3 +165,39 @@ class TestImportCallable:
     def test_raises_type_error_for_non_callable(self):
         with pytest.raises(TypeError, match="does not resolve to a callable"):
             import_callable("os.path:sep")
+
+
+class TestAtomicWrite:
+    def test_temp_file_has_prefix_and_suffix(self, tmp_path: Path):
+        target = tmp_path / "output.csv"
+        with atomic_write(target) as temp:
+            assert temp.name.startswith(TEMP_FILE_PREFIX)
+            assert temp.suffix == ".csv"
+            temp.write_text("data")
+        assert target.read_text() == "data"
+        assert not temp.exists(), "Temp file should be replaced by target"
+
+    def test_temp_file_no_suffix(self, tmp_path: Path):
+        target = tmp_path / "noext"
+        with atomic_write(target) as temp:
+            assert temp.name.startswith(TEMP_FILE_PREFIX)
+            assert temp.suffix == ""
+            temp.write_text("data")
+        assert target.read_text() == "data"
+
+    def test_temp_file_cleaned_on_error(self, tmp_path: Path):
+        target = tmp_path / "output.txt"
+        with pytest.raises(RuntimeError):
+            with atomic_write(target) as temp:
+                temp.write_text("partial")
+                raise RuntimeError("boom")
+        assert not temp.exists(), "Temp file should be removed on error"
+        assert not target.exists(), "Target should not be created on error"
+
+    def test_accepts_str_path(self, tmp_path: Path):
+        target = tmp_path / "output.json"
+        with atomic_write(str(target)) as temp:
+            assert temp.name.startswith(TEMP_FILE_PREFIX)
+            assert temp.suffix == ".json"
+            temp.write_text("{}")
+        assert target.read_text() == "{}"

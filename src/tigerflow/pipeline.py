@@ -23,7 +23,7 @@ from tigerflow.models import (
 from tigerflow.settings import settings
 from tigerflow.staging import StagingContext
 from tigerflow.tasks.utils import get_slurm_task_status
-from tigerflow.utils import is_valid_task_cli, submit_to_slurm
+from tigerflow.utils import TEMP_FILE_PREFIX, is_valid_task_cli, submit_to_slurm
 
 
 class Pipeline:
@@ -112,7 +112,10 @@ class Pipeline:
         # Clean up any invalid or unsuccessful task outputs
         for task in self._config.tasks:
             for file in task.output_dir.iterdir():
-                if file.is_file() and not file.name.endswith(task.output_ext):
+                if file.is_file() and (
+                    not file.name.endswith(task.output_ext)
+                    or file.name.startswith(TEMP_FILE_PREFIX)
+                ):
                     file.unlink()
 
         # Initialize a set to track files being processed or already processed
@@ -133,7 +136,11 @@ class Pipeline:
         for task in self._config.tasks:
             processed_filenames: set[str] = set()
             for file in task.output_dir.iterdir():
-                if file.is_file() and file.name.endswith(task.output_ext):
+                if (
+                    file.is_file()
+                    and file.name.endswith(task.output_ext)
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
+                ):
                     processed_filenames.add(file.name)
             self._task_processed_filenames[task.name] = processed_filenames
 
@@ -302,6 +309,7 @@ class Pipeline:
                 if (
                     file.is_file()
                     and file.name.endswith(".err")
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
                     and file.name not in self._task_error_filenames[task.name]
                 ):
                     self._task_error_filenames[task.name].add(file.name)
@@ -319,6 +327,7 @@ class Pipeline:
                 if (
                     file.is_file()
                     and file.name.endswith(task.output_ext)
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
                     and file.name not in self._task_processed_filenames[task.name]
                 ):
                     self._task_processed_filenames[task.name].add(file.name)

@@ -20,7 +20,12 @@ from tigerflow.models import (
     TaskStatusKind,
 )
 from tigerflow.settings import settings
-from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
+from tigerflow.utils import (
+    TEMP_FILE_PREFIX,
+    SetupContext,
+    atomic_write,
+    submit_to_slurm,
+)
 
 from ._base import Task
 from .utils import get_slurm_task_status
@@ -428,6 +433,7 @@ class SlurmTaskRunner:
             if (
                 file.is_file()
                 and file.name.endswith(self.config.output_ext)
+                and not file.name.startswith(TEMP_FILE_PREFIX)
                 and file.name not in self._processed_filenames
             ):
                 self._processed_filenames.add(file.name)
@@ -441,6 +447,7 @@ class SlurmTaskRunner:
             if (
                 file.is_file()
                 and file.name.endswith(".err")
+                and not file.name.startswith(TEMP_FILE_PREFIX)
                 and file.name not in self._error_filenames
             ):
                 self._error_filenames.add(file.name)
