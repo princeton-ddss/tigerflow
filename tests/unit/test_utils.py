@@ -38,8 +38,8 @@ class TestTaskCliValidation:
         script.write_text(
             textwrap.dedent(
                 """
-            import sys
-            sys.exit(1)
+            import nonexistent_package
+            nonexistent_package.run()
             """
             )
         )
@@ -63,8 +63,9 @@ class TestTaskCliValidation:
         validate_task_cli(str(valid_cli))  # Should not raise
 
     def test_file_module_nonzero_exit_raises_value_error(self, cli_nonzero_exit: Path):
-        with pytest.raises(ValueError, match="Invalid task CLI"):
+        with pytest.raises(ValueError, match="Invalid task CLI") as exc_info:
             validate_task_cli(str(cli_nonzero_exit))
+        assert "ModuleNotFoundError" in str(exc_info.value)
 
     def test_file_module_timeout_raises_timeout_error(self, cli_slow: Path):
         with pytest.raises(TimeoutError, match="timed out after 1s"):
@@ -78,8 +79,9 @@ class TestTaskCliValidation:
         validate_task_cli("tigerflow.library.echo")  # Should not raise
 
     def test_nonexistent_library_module_raises_value_error(self):
-        with pytest.raises(ValueError, match="Invalid task CLI"):
+        with pytest.raises(ValueError, match="Invalid task CLI") as exc_info:
             validate_task_cli("nonexistent.module.path")
+        assert "ModuleNotFoundError" in str(exc_info.value)
 
 
 class TestPidUtilityFunctions:
