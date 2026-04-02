@@ -1,4 +1,4 @@
-import json as json_lib
+import json
 import time
 from pathlib import Path
 from typing import Annotated
@@ -19,13 +19,11 @@ def _make_sparkline(values: list[int | float], width: int = 20) -> str:
     min_val, max_val = min(values), max(values)
     val_range = max_val - min_val
     scale = 7 / val_range if val_range else 0
-    # Take the last `width` values
     recent = values[-width:]
     sparkline = "".join(
         blocks[min(7, int((v - min_val) * scale))] if scale else blocks[4]
         for v in recent
     )
-    # Pad left to ensure consistent width
     return sparkline.rjust(width)
 
 
@@ -77,7 +75,6 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
             return f"{ms / 1000:.1f}s"
         return f"{ms:.0f}ms"
 
-    # Compute metrics summary once
     metrics_data = _compute_metrics_summary(report.metrics)
 
     lines = [""]
@@ -219,7 +216,7 @@ def report(
             show_default=False,
         ),
     ],
-    json: Annotated[
+    use_json: Annotated[
         bool,
         typer.Option(
             "--json",
@@ -250,13 +247,13 @@ def report(
     try:
         output.validate()
     except FileNotFoundError as e:
-        if json:
-            print(json_lib.dumps({"error": str(e)}))
+        if use_json:
+            print(json.dumps({"error": str(e)}))
         else:
             Console().print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
 
-    if watch and json:
+    if watch and use_json:
         Console().print("[red]Error: --watch cannot be used with --json[/red]")
         raise typer.Exit(1)
 
@@ -271,7 +268,7 @@ def report(
                     time.sleep(1)
             except KeyboardInterrupt:
                 pass
-    elif json:
+    elif use_json:
         pipeline_report = output.report()
 
         sections = (
@@ -345,7 +342,7 @@ def report(
                 for name, errs in pipeline_report.errors.items()
             }
 
-        print(json_lib.dumps(result, indent=2, default=str))
+        print(json.dumps(result, indent=2, default=str))
     else:
         pipeline_report = output.report()
         console = Console(highlight=False)

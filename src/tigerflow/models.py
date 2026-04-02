@@ -402,20 +402,15 @@ class TaskMeta(BaseModel):
 class PipelineReport(BaseModel):
     """Complete pipeline status and progress report."""
 
-    # Directory
     output_dir: Path
-    # Status
     status: Literal["running", "stopped"]
     pid: int | None = None
-    # Progress
     processed: int = 0
     in_progress: int = 0
     failed: int = 0
     staged: int | None = None  # None if stopped
     tasks: list[TaskProgress] = []
-    # Metrics
     metrics: dict[str, list[FileMetrics]] = {}
-    # Errors
     errors: dict[str, list[FileError]] = {}
 
 
