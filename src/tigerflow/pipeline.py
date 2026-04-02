@@ -23,7 +23,7 @@ from tigerflow.models import (
 from tigerflow.settings import settings
 from tigerflow.staging import StagingContext
 from tigerflow.tasks.utils import get_slurm_task_status
-from tigerflow.utils import TEMP_FILE_PREFIX, is_valid_task_cli, submit_to_slurm
+from tigerflow.utils import TEMP_FILE_PREFIX, submit_to_slurm, validate_task_cli
 
 
 class Pipeline:
@@ -66,8 +66,7 @@ class Pipeline:
         )
 
         for task in self._config.tasks:
-            if not is_valid_task_cli(task.module):
-                raise ValueError(f"Invalid task CLI: {task.module}")
+            validate_task_cli(task.module)
 
         # Map task I/O directories from the dependency graph
         for task in self._config.tasks:
