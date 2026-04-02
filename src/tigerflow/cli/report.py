@@ -111,10 +111,7 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
         lines.append("")
         max_name_len = max((len(task.name) for task in report.tasks), default=4)
         available = (
-            report.processed
-            + report.in_progress
-            + (report.staged or 0)
-            + report.failed
+            report.processed + report.in_progress + (report.staged or 0) + report.failed
         )
         for task in report.tasks:
             name = task.name.ljust(max_name_len)

@@ -252,7 +252,13 @@ class TestAllRunsMetrics:
 
         assert len(metrics) == 5
         files = {m.file for m in metrics}
-        assert files == {"file0.txt", "file1.txt", "file2.txt", "file3.txt", "file4.txt"}
+        assert files == {
+            "file0.txt",
+            "file1.txt",
+            "file2.txt",
+            "file3.txt",
+            "file4.txt",
+        }
 
 
 class TestTaskProgress:

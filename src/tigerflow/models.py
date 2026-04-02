@@ -66,6 +66,7 @@ class BaseTaskConfig(BaseModel):
     setup_commands: list[str] = []
     _input_dir: Path | None = None
     _output_dir: Path | None = None
+
     @field_validator("module")
     @classmethod
     def validate_module(cls, module: str) -> str:
@@ -396,7 +397,6 @@ class TaskMeta(BaseModel):
 
     name: str
     depends_on: str | None = None
-
 
 
 class PipelineReport(BaseModel):

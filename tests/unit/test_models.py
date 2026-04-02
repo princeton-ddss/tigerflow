@@ -236,7 +236,6 @@ class TestLocalTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-
         script = config.to_script()
 
         assert "#!/bin/bash" in script
@@ -262,7 +261,6 @@ class TestLocalTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-
         script = config.to_script()
 
         assert "source venv/bin/activate;export VAR=1" in script
@@ -278,7 +276,6 @@ class TestLocalTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-
 
         script = config.to_script()
 
@@ -296,7 +293,6 @@ class TestLocalTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-
 
         script = config.to_script()
 
@@ -325,7 +321,6 @@ class TestLocalAsyncTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-
 
         script = config.to_script()
 
@@ -396,7 +391,6 @@ class TestSlurmTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-
         script = config.to_script()
 
         assert "--gpus" not in script
@@ -424,7 +418,6 @@ class TestSlurmTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-
         script = config.to_script()
 
         assert "--sbatch-option '--partition=gpu'" in script
@@ -450,7 +443,6 @@ class TestSlurmTaskConfig:
         config.input_dir = input_dir
         config.output_dir = output_dir
 
-
         script = config.to_script()
 
         assert "#SBATCH --account=myaccount" in script
@@ -474,7 +466,6 @@ class TestSlurmTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-
 
         script = config.to_script()
 
