@@ -65,9 +65,8 @@ def import_callable(ref: str) -> Callable:
     return obj
 
 
-def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
-    """
-    Check if the given module is a valid task CLI.
+def validate_task_cli(module: str, *, timeout: int = 60):
+    """Validate that the given module is a valid task CLI.
 
     A valid task CLI runs successfully with --help (exit code 0).
     Task subclasses using the built-in cli() method will have the
@@ -78,6 +77,14 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     module : str
         Either a file path ending in .py or a fully qualified module name
         (e.g., 'tigerflow.library.echo')
+
+    Raises
+    ------
+    ValueError
+        If the CLI exits with a non-zero code. The error message includes
+        the stderr (or stdout) output from running ``--help``.
+    TimeoutError
+        If the CLI does not respond within the timeout.
     """
     if module.endswith(".py"):
         args = [sys.executable, module, "--help"]
@@ -94,7 +101,11 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     except TimeoutExpired:
         raise TimeoutError(f"CLI validation timed out after {timeout}s: {module}")
 
-    return result.returncode == 0
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise ValueError(
+            f"Invalid task CLI '{module}' (exit code {result.returncode}):\n{detail}"
+        )
 
 
 def submit_to_slurm(script: str) -> int:
