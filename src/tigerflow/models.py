@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from tigerflow.settings import settings
 from tigerflow.staging import StagingPipeline
-from tigerflow.utils import validate_file_ext
+from tigerflow.utils import TEMP_FILE_PREFIX, validate_file_ext
 
 
 class TaskStatusKind(Enum):
@@ -417,7 +417,7 @@ class PipelineOutput:
                 task = TaskProgress(name=folder.name)
                 for file in folder.iterdir():
                     if file.is_file():
-                        if file.suffix == "":
+                        if file.name.startswith(TEMP_FILE_PREFIX):
                             task.ongoing.add(file)
                         elif file.name.endswith(".err"):
                             task.failed.add(file)

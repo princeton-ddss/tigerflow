@@ -1,10 +1,12 @@
 import inspect
+from pathlib import Path
 from typing import Annotated
 
 import pytest
 import typer
 
 from tigerflow.tasks._base import Task
+from tigerflow.utils import TEMP_FILE_PREFIX
 
 
 class TestGetParamsFromClass:
@@ -172,3 +174,134 @@ class TestBuildCli:
         assert "MyTask.Params" in error_msg
         assert "input_dir" in error_msg
         assert "reserved" in error_msg
+
+
+class TestRemoveTemporaryFiles:
+    def test_removes_files_with_temp_prefix(self, tmp_path: Path):
+        temp = tmp_path / f"{TEMP_FILE_PREFIX}abc123.csv"
+        temp.write_text("partial")
+        normal = tmp_path / "data.csv"
+        normal.write_text("real")
+
+        Task._remove_temporary_files(tmp_path)
+
+        assert not temp.exists()
+        assert normal.exists()
+
+    def test_ignores_directories(self, tmp_path: Path):
+        subdir = tmp_path / f"{TEMP_FILE_PREFIX}dir"
+        subdir.mkdir()
+
+        Task._remove_temporary_files(tmp_path)
+
+        assert subdir.exists()
+
+    def test_empty_directory(self, tmp_path: Path):
+        Task._remove_temporary_files(tmp_path)  # Should not raise
+
+
+class TestGetUnprocessedFiles:
+    def test_includes_unprocessed_input(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        output_dir = tmp_path / "out"
+        input_dir.mkdir()
+        output_dir.mkdir()
+
+        (input_dir / "doc1.txt").write_text("data")
+
+        result = Task._get_unprocessed_files(
+            input_dir=input_dir,
+            input_ext=".txt",
+            output_dir=output_dir,
+            output_ext=".csv",
+        )
+        assert len(result) == 1
+        assert result[0].name == "doc1.txt"
+
+    def test_includes_input_with_temp_output(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        output_dir = tmp_path / "out"
+        input_dir.mkdir()
+        output_dir.mkdir()
+
+        (input_dir / "doc1.txt").write_text("data")
+        (output_dir / f"{TEMP_FILE_PREFIX}xyz.csv").write_text("partial")
+
+        result = Task._get_unprocessed_files(
+            input_dir=input_dir,
+            input_ext=".txt",
+            output_dir=output_dir,
+            output_ext=".csv",
+        )
+        assert len(result) == 1
+        assert result[0].name == "doc1.txt"
+
+    def test_includes_input_with_temp_error(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        output_dir = tmp_path / "out"
+        input_dir.mkdir()
+        output_dir.mkdir()
+
+        (input_dir / "doc1.txt").write_text("data")
+        (output_dir / f"{TEMP_FILE_PREFIX}xyz.err").write_text("partial err")
+
+        result = Task._get_unprocessed_files(
+            input_dir=input_dir,
+            input_ext=".txt",
+            output_dir=output_dir,
+            output_ext=".csv",
+        )
+        assert len(result) == 1
+        assert result[0].name == "doc1.txt"
+
+    def test_excludes_temp_input(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        output_dir = tmp_path / "out"
+        input_dir.mkdir()
+        output_dir.mkdir()
+
+        (input_dir / "doc1.txt").write_text("real")
+        (input_dir / f"{TEMP_FILE_PREFIX}abc.txt").write_text("partial")
+
+        result = Task._get_unprocessed_files(
+            input_dir=input_dir,
+            input_ext=".txt",
+            output_dir=output_dir,
+            output_ext=".csv",
+        )
+        assert len(result) == 1
+        assert result[0].name == "doc1.txt"
+
+    def test_excludes_input_with_final_output(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        output_dir = tmp_path / "out"
+        input_dir.mkdir()
+        output_dir.mkdir()
+
+        (input_dir / "doc1.txt").write_text("data")
+        (output_dir / "doc1.csv").write_text("done")
+
+        result = Task._get_unprocessed_files(
+            input_dir=input_dir,
+            input_ext=".txt",
+            output_dir=output_dir,
+            output_ext=".csv",
+        )
+        assert result == []
+
+    def test_excludes_input_with_final_error(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        output_dir = tmp_path / "out"
+        input_dir.mkdir()
+        output_dir.mkdir()
+
+        (input_dir / "doc1.txt").write_text("data")
+        (output_dir / "doc1.err").write_text("failed")
+
+        result = Task._get_unprocessed_files(
+            input_dir=input_dir,
+            input_ext=".txt",
+            output_dir=output_dir,
+            output_ext=".csv",
+        )
+        assert result == []

@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import get_type_hints
 
+from tigerflow.utils import TEMP_FILE_PREFIX
+
 
 class Task(ABC):
     @classmethod
@@ -96,11 +98,8 @@ class Task(ABC):
 
     @staticmethod
     def _remove_temporary_files(dirpath: Path):
-        """
-        Remove any files with no file extension.
-        """
         for file in dirpath.iterdir():
-            if file.is_file() and file.suffix == "":
+            if file.is_file() and file.name.startswith(TEMP_FILE_PREFIX):
                 file.unlink()
 
     @staticmethod
@@ -124,7 +123,9 @@ class Task(ABC):
             file.name.removesuffix(ext)
             for file in output_dir.iterdir()
             for ext in (output_ext, ".err")
-            if file.is_file() and file.name.endswith(ext)
+            if file.is_file()
+            and file.name.endswith(ext)
+            and not file.name.startswith(TEMP_FILE_PREFIX)
         }
 
         unprocessed_files = [
@@ -132,6 +133,7 @@ class Task(ABC):
             for file in input_dir.iterdir()
             if file.is_file()
             and file.name.endswith(input_ext)
+            and not file.name.startswith(TEMP_FILE_PREFIX)
             and file.name.removesuffix(input_ext) not in processed_ids
         ]
 
