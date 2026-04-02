@@ -577,8 +577,6 @@ class TestMetricsSummary:
         }
         result = _compute_metrics_summary(metrics)
         assert result["total"] == 2
-        assert result["success"] == 2
-        assert result["failed"] == 0
         assert result["min_duration_ms"] == 100
         assert result["max_duration_ms"] == 200
         assert result["avg_duration_ms"] == 150

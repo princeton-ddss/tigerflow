@@ -28,42 +28,49 @@ def _make_sparkline(values: list[int | float], width: int = 20) -> str:
 
 
 def _compute_task_metrics(task_metrics: list[FileMetrics]) -> dict:
-    """Compute metrics summary for a single task."""
+    """Compute metrics for a single task. Summary uses successes only."""
     if not task_metrics:
         return {}
 
-    durations = [m.duration_ms for m in task_metrics]
+    successes = [m for m in task_metrics if m.status == "success"]
+    durations = [m.duration_ms for m in successes]
     return {
-        "count": len(task_metrics),
-        "avg_ms": sum(durations) / len(durations),
-        "min_ms": min(durations),
-        "max_ms": max(durations),
+        "count": len(successes),
+        "avg_ms": sum(durations) / len(durations) if durations else 0,
+        "min_ms": min(durations) if durations else 0,
+        "max_ms": max(durations) if durations else 0,
         "durations": durations,
+        "files": [
+            {
+                "file": m.file,
+                "started_at": m.started_at.isoformat(),
+                "finished_at": m.finished_at.isoformat(),
+                "duration_ms": m.duration_ms,
+                "status": m.status,
+            }
+            for m in task_metrics
+        ],
     }
 
 
 def _compute_metrics_summary(metrics: dict[str, list[FileMetrics]]) -> dict:
     """Compute summary statistics from metrics."""
-    all_metrics = [m for task_metrics in metrics.values() for m in task_metrics]
+    successes = [
+        m
+        for task_metrics in metrics.values()
+        for m in task_metrics
+        if m.status == "success"
+    ]
 
-    if not all_metrics:
+    if not successes:
         return {}
 
-    total = len(all_metrics)
-    success = sum(1 for m in all_metrics if m.status == "success")
-    failed = total - success
-    durations = [m.duration_ms for m in all_metrics]
-    avg_duration_ms = sum(durations) / len(durations) if durations else 0
-    min_duration_ms = min(durations) if durations else 0
-    max_duration_ms = max(durations) if durations else 0
-
+    durations = [m.duration_ms for m in successes]
     return {
-        "total": total,
-        "success": success,
-        "failed": failed,
-        "avg_duration_ms": avg_duration_ms,
-        "min_duration_ms": min_duration_ms,
-        "max_duration_ms": max_duration_ms,
+        "total": len(successes),
+        "avg_duration_ms": sum(durations) / len(durations),
+        "min_duration_ms": min(durations),
+        "max_duration_ms": max(durations),
     }
 
 
@@ -139,6 +146,8 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
                 task_metrics = report.metrics.get(task.name, [])
                 if task_metrics:
                     tm = _compute_task_metrics(task_metrics)
+                    if not tm["durations"]:
+                        continue
                     sparkline = _make_sparkline(tm["durations"])
                     min_d = fmt_duration(tm["min_ms"])
                     avg_d = fmt_duration(tm["avg_ms"])
@@ -303,27 +312,7 @@ def report(
             }
         if "metrics" in sections:
             result["metrics"] = {
-                name: {
-                    "summary": {
-                        "count": len(file_metrics),
-                        "avg_ms": sum(m.duration_ms for m in file_metrics)
-                        / len(file_metrics),
-                        "min_ms": min(m.duration_ms for m in file_metrics),
-                        "max_ms": max(m.duration_ms for m in file_metrics),
-                    }
-                    if file_metrics
-                    else {},
-                    "files": [
-                        {
-                            "file": m.file,
-                            "started_at": m.started_at.isoformat(),
-                            "finished_at": m.finished_at.isoformat(),
-                            "duration_ms": m.duration_ms,
-                            "status": m.status,
-                        }
-                        for m in file_metrics
-                    ],
-                }
+                name: _compute_task_metrics(file_metrics)
                 for name, file_metrics in pipeline_report.metrics.items()
             }
         if "errors" in sections:
