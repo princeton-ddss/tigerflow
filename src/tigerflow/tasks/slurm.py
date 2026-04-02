@@ -36,7 +36,7 @@ class SlurmTask(Task):
         self.config = config
 
     @logger.catch(reraise=True)
-    def start(self, input_dir: Path, output_dir: Path, run_id: str | None = None):
+    def start(self, input_dir: Path, output_dir: Path):
         from dask.distributed import Client, Future, Worker, WorkerPlugin, get_worker
         from dask_jobqueue import SLURMCluster
 
@@ -46,7 +46,6 @@ class SlurmTask(Task):
 
         self.config.input_dir = input_dir
         self.config.output_dir = output_dir
-        self.config.log_dir.mkdir(exist_ok=True)
 
         # Reference functions and params to use in plugin
         setup_func = type(self).setup
@@ -105,12 +104,8 @@ class SlurmTask(Task):
             job_extra_directives=self.config.worker_resources.sbatch_options
             + [
                 f"--job-name={self.config.worker_job_name}",
-                f"--output={self.config.log_dir}/{run_id}-%x-%j.out"
-                if run_id
-                else f"--output={self.config.log_dir}/%x-%j.out",
-                f"--error={self.config.log_dir}/{run_id}-%x-%j.log"
-                if run_id
-                else f"--error={self.config.log_dir}/%x-%j.log",
+                f"--output={self.config.output_dir}/task-%j.out",
+                f"--error={self.config.output_dir}/task-%j.log",
                 f"--gres=gpu:{self.config.worker_resources.gpus}"
                 if self.config.worker_resources.gpus
                 else "",
@@ -260,14 +255,6 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
-            run_id: Annotated[
-                str | None,
-                typer.Option(
-                    "--run-id",
-                    help="Run identifier for log file naming.",
-                    hidden=True,  # Internal use only
-                ),
-            ] = None,
             _params: dict | None = None,
         ):
             """
@@ -292,12 +279,10 @@ class SlurmTask(Task):
                 worker_resources=worker_resources,
                 params=_params or {},
             )
-            if run_id:
-                config.run_id = run_id
 
             if run_directly:
                 task = cls(config)
-                task.start(input_dir, output_dir, run_id=run_id)
+                task.start(input_dir, output_dir)
             else:
                 runner = SlurmTaskRunner(config)
                 runner.start(input_dir, output_dir)

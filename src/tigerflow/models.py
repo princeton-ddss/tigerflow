@@ -33,7 +33,6 @@ class FileMetrics(BaseModel):
 
     file: str
     task: str
-    run_id: str | None
     started_at: datetime
     finished_at: datetime
     status: Literal["success", "error"]
@@ -67,8 +66,6 @@ class BaseTaskConfig(BaseModel):
     setup_commands: list[str] = []
     _input_dir: Path | None = None
     _output_dir: Path | None = None
-    _run_id: str | None = None
-
     @field_validator("module")
     @classmethod
     def validate_module(cls, module: str) -> str:
@@ -144,20 +141,6 @@ class BaseTaskConfig(BaseModel):
     def output_dir(self, value: Path):
         self._output_dir = value
 
-    @property
-    def run_id(self) -> str:
-        if not self._run_id:
-            raise ValueError("Run ID has not been set")
-        return self._run_id
-
-    @run_id.setter
-    def run_id(self, value: str):
-        self._run_id = value
-
-    @property
-    def log_dir(self) -> Path:
-        return self.output_dir / "logs"
-
     def to_script(self) -> str:
         """
         Compose a Bash script that executes the task.
@@ -169,7 +152,7 @@ class LocalTaskConfig(BaseTaskConfig):
     kind: Literal["local"]
 
     def to_script(self) -> str:
-        log_file = self.log_dir / f"{self.run_id}.log"
+        log_file = self.output_dir / "task.log"
         setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
@@ -198,7 +181,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
     concurrency_limit: int
 
     def to_script(self) -> str:
-        log_file = self.log_dir / f"{self.run_id}.log"
+        log_file = self.output_dir / "task.log"
         setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
@@ -266,7 +249,6 @@ class SlurmTaskConfig(BaseTaskConfig):
                 f"--gpus {self.worker_resources.gpus}"
                 if self.worker_resources.gpus
                 else "",
-                f"--run-id {self.run_id}",
                 "--run-directly",
             ]
             + [
@@ -280,8 +262,8 @@ class SlurmTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             #SBATCH --job-name={self.client_job_name}
-            #SBATCH --output={self.log_dir}/%x-%j.out
-            #SBATCH --error={self.log_dir}/%x-%j.err
+            #SBATCH --output={self.output_dir}/task-%j.out
+            #SBATCH --error={self.output_dir}/task-%j.err
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=1
@@ -416,13 +398,6 @@ class TaskMeta(BaseModel):
     depends_on: str | None = None
 
 
-class RunLog(BaseModel):
-    """Parsed data from a run's log files."""
-
-    tasks: list[TaskMeta] = []
-    staged: set[str] = set()
-    metrics: list[FileMetrics] = []
-
 
 class PipelineReport(BaseModel):
     """Complete pipeline status and progress report."""
@@ -432,7 +407,6 @@ class PipelineReport(BaseModel):
     # Status
     status: Literal["running", "stopped"]
     pid: int | None = None
-    run_id: str | None = None
     # Progress
     processed: int = 0
     in_progress: int = 0
@@ -486,49 +460,37 @@ class PipelineOutput:
             if d.is_dir() and not d.name.startswith(".")
         ]
 
-    def _get_run_id(self) -> str | None:
-        """Get most recent run_id from pipeline log files."""
-        pipeline_logs = self.internal / "logs"
-        if pipeline_logs.exists():
-            for log_file in sorted(pipeline_logs.glob("*.log"), reverse=True):
-                stem = log_file.stem
-                if len(stem) >= 15 and stem[8] == "-":
-                    return stem[:15]
-        return None
+    def _get_task_meta(self) -> list[TaskMeta]:
+        """Get task metadata from the most recent INIT entry in run.log."""
+        if not self.log_file.exists():
+            return []
 
-    def _parse_run_log(self, run_id: str) -> RunLog:
-        """Parse a run's log files in one pass."""
         tasks: list[TaskMeta] = []
-        staged: set[str] = set()
+        try:
+            with open(self.log_file) as f:
+                for line in f:
+                    if "INIT" not in line:
+                        continue
+                    start = line.find("{")
+                    if start == -1:
+                        continue
+                    data = json.loads(line[start:])
+                    tasks = [TaskMeta(**t) for t in data.get("tasks", [])]
+        except (OSError, json.JSONDecodeError, KeyError):
+            pass
+        return tasks
+
+    def _parse_all_metrics(self) -> list[FileMetrics]:
+        """Parse METRICS from task log files.
+
+        Reads from:
+        - {task}/task.log (local/local_async tasks, appended across runs)
+        - {task}/task-{job_id}.log (Slurm worker logs)
+        """
         metrics: list[FileMetrics] = []
 
-        # Parse INIT and STAGED from pipeline log
-        pipeline_log = self.internal / "logs" / f"{run_id}.log"
-        if pipeline_log.exists():
-            try:
-                with open(pipeline_log) as f:
-                    for line in f:
-                        start = line.find("{")
-                        if start == -1:
-                            continue
-
-                        if "INIT" in line and not tasks:
-                            data = json.loads(line[start:])
-                            tasks = [TaskMeta(**t) for t in data.get("tasks", [])]
-                        elif "STAGED" in line:
-                            data = json.loads(line[start:])
-                            staged.add(data["file"])
-            except (OSError, json.JSONDecodeError, KeyError):
-                pass
-
-        # Parse METRICS from task log files
         for task_dir in self._get_task_dirs():
-            logs_dir = task_dir / "logs"
-            if not logs_dir.exists():
-                continue
-
-            # Match {run_id}.log (local) and {run_id}-*.log (Slurm workers)
-            log_files = list(logs_dir.glob(f"{run_id}*.log"))
+            log_files = list(task_dir.glob("task*.log"))
 
             for log_file in log_files:
                 try:
@@ -544,7 +506,6 @@ class PipelineOutput:
                                 FileMetrics(
                                     file=data["file"],
                                     task=task_dir.name,
-                                    run_id=run_id,
                                     started_at=datetime.fromisoformat(
                                         data["started_at"]
                                     ),
@@ -557,19 +518,15 @@ class PipelineOutput:
                 except (OSError, json.JSONDecodeError, KeyError):
                     continue
 
-        return RunLog(tasks=tasks, staged=staged, metrics=metrics)
+        return metrics
 
-    def report(self, run_id_filter: str | None = None) -> PipelineReport:
+    def report(self) -> PipelineReport:
         """Generate a complete pipeline status report."""
         self.validate()
 
         is_running, pid = self._get_status()
-        run_id = run_id_filter or self._get_run_id()
 
-        # Parse current run's log
-        run_log = self._parse_run_log(run_id) if run_id else RunLog()
-
-        # === Directory-Level Counts (Filesystem) ===
+        # === Filesystem Counts ===
 
         # processed = files in .finished/
         finished_stems: set[str] = set()
@@ -621,19 +578,23 @@ class PipelineOutput:
                 if (
                     file.is_file()
                     and not file.name.endswith(".err")
-                    and file.name != "logs"
+                    and not file.name.endswith(".log")
+                    and not file.name.startswith("task-")
                 ):
                     stems_with_output.add(file.stem)
 
         in_progress_stems = symlink_stems & stems_with_output
         staged_stems = symlink_stems - stems_with_output
 
-        # === Run-Level Counts (Per-Task, from Log) ===
+        # === Per-Task Progress (from METRICS logs, all runs) ===
+
+        all_metrics = self._parse_all_metrics()
+        task_meta = self._get_task_meta()
 
         # Group metrics by task
         metrics_by_task: dict[str, list[FileMetrics]] = {}
-        task_succeeded: dict[str, set[str]] = {}  # task -> set of succeeded file stems
-        for m in run_log.metrics:
+        task_succeeded: dict[str, set[str]] = {}
+        for m in all_metrics:
             if m.task not in metrics_by_task:
                 metrics_by_task[m.task] = []
             metrics_by_task[m.task].append(m)
@@ -644,29 +605,30 @@ class PipelineOutput:
 
         # Compute per-task progress
         tasks: list[TaskProgress] = []
-        for task_meta in run_log.tasks:
-            task_name = task_meta.name
-            depends_on = task_meta.depends_on
-
-            # Compute available files for this task
-            if depends_on is None:
-                # Root task: all staged files are available
-                available = run_log.staged
+        for tm in task_meta:
+            # Available files for this task
+            if tm.depends_on is None:
+                # Root task: all files the pipeline has seen (filesystem)
+                available = (
+                    len(finished_stems)
+                    + len(in_progress_stems)
+                    + len(staged_stems)
+                    + len(failed_stems)
+                )
             else:
-                # Dependent task: files that succeeded in dependency
-                available = task_succeeded.get(depends_on, set())
+                # Downstream task: files that succeeded in parent
+                available = len(task_succeeded.get(tm.depends_on, set()))
 
-            # Count processed and failed from metrics
-            task_metrics = metrics_by_task.get(task_name, [])
+            # Processed from metrics, failed from filesystem
+            task_metrics = metrics_by_task.get(tm.name, [])
             task_processed = sum(1 for m in task_metrics if m.status == "success")
-            task_failed = sum(1 for m in task_metrics if m.status == "error")
-            task_staged = len(available) - task_processed - task_failed
+            task_failed = len(errors.get(tm.name, []))
 
             tasks.append(
                 TaskProgress(
-                    name=task_name,
+                    name=tm.name,
                     processed=task_processed,
-                    staged=max(0, task_staged),
+                    staged=max(0, available - task_processed - task_failed),
                     failed=task_failed,
                 )
             )
@@ -675,7 +637,6 @@ class PipelineOutput:
             output_dir=self.root,
             status="running" if is_running else "stopped",
             pid=pid,
-            run_id=run_id,
             processed=len(finished_stems),
             in_progress=len(in_progress_stems),
             failed=len(failed_stems),

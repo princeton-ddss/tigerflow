@@ -51,11 +51,9 @@ class TestPipelineOutputReport:
         # Create a task directory with logs
         task_dir = internal / "task1"
         task_dir.mkdir()
-        logs_dir = task_dir / "logs"
-        logs_dir.mkdir()
 
         # Write metrics for all 5 files
-        log_file = logs_dir / "20260310-120000.log"
+        log_file = task_dir / "task.log"
         now = datetime.now()
         lines = []
         for i in range(5):
@@ -90,11 +88,9 @@ class TestPipelineOutputReport:
         # Create task directory with some errors
         task_dir = internal / "task1"
         task_dir.mkdir()
-        logs_dir = task_dir / "logs"
-        logs_dir.mkdir()
 
         # Write metrics - 7 success, 3 errors
-        log_file = logs_dir / "20260310-120000.log"
+        log_file = task_dir / "task.log"
         now = datetime.now()
         lines = []
         for i in range(10):
@@ -134,8 +130,6 @@ class TestPipelineOutputReport:
         # Create task directory with output files
         task_dir = internal / "task1"
         task_dir.mkdir()
-        logs_dir = task_dir / "logs"
-        logs_dir.mkdir()
 
         # 4 files have task output (in_progress)
         for i in range(4):
@@ -177,12 +171,10 @@ class TestMultiTaskPipeline:
         # Task1 directory
         task1_dir = internal / "task1"
         task1_dir.mkdir()
-        (task1_dir / "logs").mkdir()
 
         # Task2 directory
         task2_dir = internal / "task2"
         task2_dir.mkdir()
-        (task2_dir / "logs").mkdir()
 
         # Create task1 output files for files 0-99 (all processed by task1)
         for i in range(100):
@@ -210,73 +202,87 @@ class TestMultiTaskPipeline:
         assert report.in_progress == 20
 
 
-class TestRunLevelProgress:
-    """Test run-level task progress from logs."""
+class TestTaskMeta:
+    """Test task metadata parsing."""
 
-    def test_parse_run_log_with_init_staged_metrics(self, tmp_path: Path):
-        """Parse INIT/STAGED from pipeline log, METRICS from task log."""
+    def test_get_task_meta_from_latest_init(self, tmp_path: Path):
+        """Task metadata comes from the most recent INIT log."""
         internal = tmp_path / ".tigerflow"
         internal.mkdir()
         (internal / ".symlinks").mkdir()
         (internal / ".finished").mkdir()
 
-        # Pipeline log with INIT and STAGED
-        pipeline_logs = internal / "logs"
-        pipeline_logs.mkdir()
-        pipeline_lines = [
-            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
-            '2026-03-10 12:00:00 | STAGED  | {"file": "file1.txt"}',
-            '2026-03-10 12:00:00 | STAGED  | {"file": "file2.txt"}',
-            '2026-03-10 12:00:00 | STAGED  | {"file": "file3.txt"}',
-        ]
-        (pipeline_logs / "20260310-120000.log").write_text("\n".join(pipeline_lines))
-
-        # Task log with METRICS
-        task_dir = internal / "task1"
-        task_dir.mkdir()
-        task_logs = task_dir / "logs"
-        task_logs.mkdir()
-
-        now = datetime.now()
-        task_lines = [
-            f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': 'file1.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}",
-        ]
-        (task_logs / "20260310-120000.log").write_text("\n".join(task_lines))
+        (internal / "run.log").write_text(
+            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}'
+        )
 
         output = PipelineOutput(tmp_path)
-        run_log = output._parse_run_log("20260310-120000")
+        tasks = output._get_task_meta()
 
-        assert len(run_log.tasks) == 1
-        assert run_log.tasks[0].name == "task1"
-        assert run_log.tasks[0].depends_on is None
-        assert run_log.staged == {"file1.txt", "file2.txt", "file3.txt"}
-        assert len(run_log.metrics) == 1
-        assert run_log.metrics[0].file == "file1.txt"
+        assert len(tasks) == 1
+        assert tasks[0].name == "task1"
+        assert tasks[0].depends_on is None
 
-    def test_task_progress_from_run_log(self, tmp_path: Path):
-        """Task progress computed from INIT, STAGED, and METRICS."""
+
+class TestAllRunsMetrics:
+    """Test metrics parsing across all runs."""
+
+    def test_parse_all_metrics(self, tmp_path: Path):
+        """METRICS are collected from all task log files."""
         internal = tmp_path / ".tigerflow"
         internal.mkdir()
         (internal / ".symlinks").mkdir()
         (internal / ".finished").mkdir()
 
-        # Pipeline log with INIT and STAGED
-        pipeline_logs = internal / "logs"
-        pipeline_logs.mkdir()
-        pipeline_lines = [
-            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
-        ]
-        for i in range(10):
-            pipeline_lines.append(
-                f"2026-03-10 12:00:00 | STAGED  | {json.dumps({'file': f'file{i}.txt'})}"
-            )
-        (pipeline_logs / "20260310-120000.log").write_text("\n".join(pipeline_lines))
-
-        # Task log with METRICS
         task_dir = internal / "task1"
         task_dir.mkdir()
-        task_logs = task_dir / "logs"
-        task_logs.mkdir()
+
+        now = datetime.now()
+
+        # All metrics appended to single task.log
+        all_lines = []
+        for i in range(5):
+            all_lines.append(
+                f"2026-03-10 10:00:01 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
+            )
+        (task_dir / "task.log").write_text("\n".join(all_lines))
+
+        output = PipelineOutput(tmp_path)
+        metrics = output._parse_all_metrics()
+
+        assert len(metrics) == 5
+        files = {m.file for m in metrics}
+        assert files == {"file0.txt", "file1.txt", "file2.txt", "file3.txt", "file4.txt"}
+
+
+class TestTaskProgress:
+    """Test per-task progress from metrics and filesystem."""
+
+    def test_task_progress_with_symlinks(self, tmp_path: Path):
+        """Task progress uses filesystem for root available, metrics for counts."""
+        internal = tmp_path / ".tigerflow"
+        internal.mkdir()
+        symlinks = internal / ".symlinks"
+        symlinks.mkdir()
+        (internal / ".finished").mkdir()
+
+        # 10 symlinks (2 still staged, 8 have task output or errored)
+        for i in range(10):
+            (symlinks / f"file{i}.txt").symlink_to(tmp_path / f"file{i}.txt")
+
+        # Pipeline log with INIT
+        (internal / "run.log").write_text(
+            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}'
+        )
+
+        # Task directory with output files for 6 and errors for 2
+        task_dir = internal / "task1"
+        task_dir.mkdir()
+
+        for i in range(6):
+            (task_dir / f"file{i}.out").touch()
+        for i in range(6, 8):
+            (task_dir / f"file{i}.err").write_text("Error")
 
         now = datetime.now()
         task_lines = []
@@ -285,43 +291,45 @@ class TestRunLevelProgress:
             task_lines.append(
                 f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': status})}"
             )
-        (task_logs / "20260310-120000.log").write_text("\n".join(task_lines))
+        (task_dir / "task.log").write_text("\n".join(task_lines))
 
         output = PipelineOutput(tmp_path)
         report = output.report()
 
-        # Run-level task progress
         assert len(report.tasks) == 1
         task = report.tasks[0]
         assert task.name == "task1"
         assert task.processed == 6
         assert task.failed == 2
-        assert task.staged == 2  # 10 - 6 - 2
+        # Root available = in_progress (6) + staged (2) + errored (2) + finished (0) = 10
+        # staged = 10 - 6 - 2 = 2
+        assert task.staged == 2
 
     def test_multi_task_dependency_chain(self, tmp_path: Path):
         """Task2 available = task1 succeeded files."""
         internal = tmp_path / ".tigerflow"
         internal.mkdir()
-        (internal / ".symlinks").mkdir()
+        symlinks = internal / ".symlinks"
+        symlinks.mkdir()
         (internal / ".finished").mkdir()
 
-        # Pipeline log with INIT and STAGED
-        pipeline_logs = internal / "logs"
-        pipeline_logs.mkdir()
-        pipeline_lines = [
-            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}, {"name": "task2", "depends_on": "task1"}]}',
-        ]
+        # 10 symlinks still active
         for i in range(10):
-            pipeline_lines.append(
-                f"2026-03-10 12:00:00 | STAGED  | {json.dumps({'file': f'file{i}.txt'})}"
-            )
-        (pipeline_logs / "20260310-120000.log").write_text("\n".join(pipeline_lines))
+            (symlinks / f"file{i}.txt").symlink_to(tmp_path / f"file{i}.txt")
 
-        # Task1 logs with METRICS
+        # Pipeline log with INIT
+        (internal / "run.log").write_text(
+            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}, {"name": "task2", "depends_on": "task1"}]}'
+        )
+
+        # Task1: all 10 processed, 8 success, 2 error
         task1_dir = internal / "task1"
         task1_dir.mkdir()
-        logs1 = task1_dir / "logs"
-        logs1.mkdir()
+
+        for i in range(8):
+            (task1_dir / f"file{i}.out1").touch()
+        for i in range(8, 10):
+            (task1_dir / f"file{i}.err").write_text("Error")
 
         now = datetime.now()
         lines1 = []
@@ -330,20 +338,18 @@ class TestRunLevelProgress:
             lines1.append(
                 f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': status})}"
             )
-        (logs1 / "20260310-120000.log").write_text("\n".join(lines1))
+        (task1_dir / "task.log").write_text("\n".join(lines1))
 
-        # Task2 logs with METRICS
+        # Task2: 5 of 8 available processed
         task2_dir = internal / "task2"
         task2_dir.mkdir()
-        logs2 = task2_dir / "logs"
-        logs2.mkdir()
 
         lines2 = []
         for i in range(5):
             lines2.append(
                 f"2026-03-10 12:00:02 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
-        (logs2 / "20260310-120000.log").write_text("\n".join(lines2))
+        (task2_dir / "task.log").write_text("\n".join(lines2))
 
         output = PipelineOutput(tmp_path)
         report = output.report()
@@ -352,12 +358,12 @@ class TestRunLevelProgress:
         task1 = report.tasks[0]
         task2 = report.tasks[1]
 
-        # Task1: 10 available, 8 processed, 2 failed, 0 staged
+        # Task1: root available = in_progress (8) + staged (0) + errored (2) + finished (0) = 10
         assert task1.processed == 8
         assert task1.failed == 2
-        assert task1.staged == 0
+        assert task1.staged == 0  # 10 - 8 - 2
 
-        # Task2: 8 available (task1 successes), 5 processed, 0 failed, 3 staged
+        # Task2: available = task1 successes = 8, 5 processed
         assert task2.processed == 5
         assert task2.failed == 0
         assert task2.staged == 3
@@ -365,70 +371,6 @@ class TestRunLevelProgress:
 
 class TestMultipleRuns:
     """Test behavior with multiple pipeline runs."""
-
-    def test_get_run_id_returns_most_recent(self, tmp_path: Path):
-        """_get_run_id returns the most recent run."""
-        internal = tmp_path / ".tigerflow"
-        internal.mkdir()
-        (internal / ".symlinks").mkdir()
-        (internal / ".finished").mkdir()
-
-        pipeline_logs = internal / "logs"
-        pipeline_logs.mkdir()
-
-        # Create logs for 3 runs
-        (pipeline_logs / "20260310-100000.log").write_text(
-            '2026-03-10 10:00:00 | INIT | {"tasks": []}'
-        )
-        (pipeline_logs / "20260310-120000.log").write_text(
-            '2026-03-10 12:00:00 | INIT | {"tasks": []}'
-        )
-        (pipeline_logs / "20260310-110000.log").write_text(
-            '2026-03-10 11:00:00 | INIT | {"tasks": []}'
-        )
-
-        output = PipelineOutput(tmp_path)
-        assert output._get_run_id() == "20260310-120000"
-
-    def test_run_id_filter_scopes_to_specific_run(self, tmp_path: Path):
-        """run_id_filter returns data for a specific historical run."""
-        internal = tmp_path / ".tigerflow"
-        internal.mkdir()
-        (internal / ".symlinks").mkdir()
-        (internal / ".finished").mkdir()
-
-        pipeline_logs = internal / "logs"
-        pipeline_logs.mkdir()
-
-        # Run 1: staged 5 files
-        run1_lines = [
-            '2026-03-10 10:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
-        ]
-        for i in range(5):
-            run1_lines.append(
-                f"2026-03-10 10:00:00 | STAGED  | {json.dumps({'file': f'file{i}.txt'})}"
-            )
-        (pipeline_logs / "20260310-100000.log").write_text("\n".join(run1_lines))
-
-        # Run 2: staged 10 files
-        run2_lines = [
-            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
-        ]
-        for i in range(10):
-            run2_lines.append(
-                f"2026-03-10 12:00:00 | STAGED  | {json.dumps({'file': f'file{i}.txt'})}"
-            )
-        (pipeline_logs / "20260310-120000.log").write_text("\n".join(run2_lines))
-
-        output = PipelineOutput(tmp_path)
-
-        # Default (latest run) should have 10 staged
-        run_log_latest = output._parse_run_log("20260310-120000")
-        assert len(run_log_latest.staged) == 10
-
-        # Filtered to run 1 should have 5 staged
-        run_log_run1 = output._parse_run_log("20260310-100000")
-        assert len(run_log_run1.staged) == 5
 
     def test_directory_counts_accumulate_across_runs(self, tmp_path: Path):
         """Directory-level processed count includes files from all runs."""
@@ -438,20 +380,17 @@ class TestMultipleRuns:
         finished = internal / ".finished"
         finished.mkdir()
 
-        pipeline_logs = internal / "logs"
-        pipeline_logs.mkdir()
+        # INIT entries in run.log (both runs)
+        (internal / "run.log").write_text(
+            '2026-03-10 10:00:00 | INIT | {"tasks": [{"name": "task1", "depends_on": null}]}\n'
+            '2026-03-10 12:00:00 | INIT | {"tasks": [{"name": "task1", "depends_on": null}]}'
+        )
 
         # Run 1: 5 files finished
-        (pipeline_logs / "20260310-100000.log").write_text(
-            '2026-03-10 10:00:00 | INIT | {"tasks": [{"name": "task1", "depends_on": null}]}'
-        )
         for i in range(5):
             (finished / f"run1_file{i}.txt").touch()
 
         # Run 2: 3 more files finished
-        (pipeline_logs / "20260310-120000.log").write_text(
-            '2026-03-10 12:00:00 | INIT | {"tasks": [{"name": "task1", "depends_on": null}]}'
-        )
         for i in range(3):
             (finished / f"run2_file{i}.txt").touch()
 
@@ -461,70 +400,50 @@ class TestMultipleRuns:
         # Directory-level: 8 total processed (5 + 3)
         assert report.processed == 8
 
-    def test_run_level_counts_scoped_to_run(self, tmp_path: Path):
-        """Run-level task progress only counts files from that run."""
+    def test_task_progress_aggregates_across_runs(self, tmp_path: Path):
+        """Task progress counts metrics from all runs."""
         internal = tmp_path / ".tigerflow"
         internal.mkdir()
         (internal / ".symlinks").mkdir()
-        (internal / ".finished").mkdir()
+        finished = internal / ".finished"
+        finished.mkdir()
 
-        pipeline_logs = internal / "logs"
-        pipeline_logs.mkdir()
+        # INIT entries in run.log
+        (internal / "run.log").write_text(
+            '2026-03-10 10:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}\n'
+            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}'
+        )
 
         task_dir = internal / "task1"
         task_dir.mkdir()
-        task_logs = task_dir / "logs"
-        task_logs.mkdir()
 
         now = datetime.now()
 
-        # Run 1: 5 files staged, 5 processed
-        run1_pipeline = [
-            '2026-03-10 10:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
-        ]
-        for i in range(5):
-            run1_pipeline.append(
-                f"2026-03-10 10:00:00 | STAGED  | {json.dumps({'file': f'run1_file{i}.txt'})}"
-            )
-        (pipeline_logs / "20260310-100000.log").write_text("\n".join(run1_pipeline))
+        # All metrics appended to single task.log
+        all_task_lines = []
 
-        run1_task = []
+        # Run 1: 5 files processed
         for i in range(5):
-            run1_task.append(
+            all_task_lines.append(
                 f"2026-03-10 10:00:01 | METRICS | {json.dumps({'file': f'run1_file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
-        (task_logs / "20260310-100000.log").write_text("\n".join(run1_task))
+            (finished / f"run1_file{i}.txt").touch()
 
-        # Run 2: 10 files staged, 7 processed
-        run2_pipeline = [
-            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}',
-        ]
-        for i in range(10):
-            run2_pipeline.append(
-                f"2026-03-10 12:00:00 | STAGED  | {json.dumps({'file': f'run2_file{i}.txt'})}"
-            )
-        (pipeline_logs / "20260310-120000.log").write_text("\n".join(run2_pipeline))
-
-        run2_task = []
+        # Run 2: 7 files processed
         for i in range(7):
-            run2_task.append(
+            all_task_lines.append(
                 f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'run2_file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
-        (task_logs / "20260310-120000.log").write_text("\n".join(run2_task))
+            (finished / f"run2_file{i}.txt").touch()
+
+        (task_dir / "task.log").write_text("\n".join(all_task_lines))
 
         output = PipelineOutput(tmp_path)
-
-        # Default report (run 2): task should show 7 processed, 3 staged
         report = output.report()
-        assert len(report.tasks) == 1
-        assert report.tasks[0].processed == 7
-        assert report.tasks[0].staged == 3
 
-        # Filtered to run 1: task should show 5 processed, 0 staged
-        report_run1 = output.report(run_id_filter="20260310-100000")
-        assert len(report_run1.tasks) == 1
-        assert report_run1.tasks[0].processed == 5
-        assert report_run1.tasks[0].staged == 0
+        # Task progress aggregates across both runs
+        assert len(report.tasks) == 1
+        assert report.tasks[0].processed == 12  # 5 + 7
 
 
 class TestSlurmLogParsing:
@@ -537,48 +456,36 @@ class TestSlurmLogParsing:
         (internal / ".symlinks").mkdir()
         (internal / ".finished").mkdir()
 
-        # Pipeline log
-        pipeline_logs = internal / "logs"
-        pipeline_logs.mkdir()
-        (pipeline_logs / "20260310-120000.log").write_text(
-            '2026-03-10 12:00:00 | INIT    | {"tasks": [{"name": "task1", "depends_on": null}]}\n'
-            '2026-03-10 12:00:00 | STAGED  | {"file": "file1.txt"}\n'
-            '2026-03-10 12:00:00 | STAGED  | {"file": "file2.txt"}\n'
-            '2026-03-10 12:00:00 | STAGED  | {"file": "file3.txt"}\n'
-        )
-
-        # Task logs directory with multiple Slurm worker logs
+        # Task directory with multiple Slurm worker logs
         task_dir = internal / "task1"
         task_dir.mkdir()
-        task_logs = task_dir / "logs"
-        task_logs.mkdir()
 
         now = datetime.now()
 
         # Worker 1 processed file1
-        worker1_log = task_logs / "20260310-120000-task1-worker-12345.log"
+        worker1_log = task_dir / "task-12345.log"
         worker1_log.write_text(
             f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': 'file1.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}\n"
         )
 
         # Worker 2 processed file2 and file3
-        worker2_log = task_logs / "20260310-120000-task1-worker-12346.log"
+        worker2_log = task_dir / "task-12346.log"
         worker2_log.write_text(
             f"2026-03-10 12:00:02 | METRICS | {json.dumps({'file': 'file2.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}\n"
             f"2026-03-10 12:00:03 | METRICS | {json.dumps({'file': 'file3.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'error'})}\n"
         )
 
         output = PipelineOutput(tmp_path)
-        run_log = output._parse_run_log("20260310-120000")
+        metrics = output._parse_all_metrics()
 
         # Should find all 3 METRICS entries across both worker logs
-        assert len(run_log.metrics) == 3
-        files = {m.file for m in run_log.metrics}
+        assert len(metrics) == 3
+        files = {m.file for m in metrics}
         assert files == {"file1.txt", "file2.txt", "file3.txt"}
 
         # Check status counts
-        success_count = sum(1 for m in run_log.metrics if m.status == "success")
-        error_count = sum(1 for m in run_log.metrics if m.status == "error")
+        success_count = sum(1 for m in metrics if m.status == "success")
+        error_count = sum(1 for m in metrics if m.status == "error")
         assert success_count == 2
         assert error_count == 1
 
@@ -649,7 +556,6 @@ class TestMetricsSummary:
                 FileMetrics(
                     file="f1.txt",
                     task="task1",
-                    run_id="20260310-120000",
                     started_at=now,
                     finished_at=now + timedelta(milliseconds=100),
                     status="success",
@@ -657,7 +563,6 @@ class TestMetricsSummary:
                 FileMetrics(
                     file="f2.txt",
                     task="task1",
-                    run_id="20260310-120000",
                     started_at=now,
                     finished_at=now + timedelta(milliseconds=200),
                     status="success",

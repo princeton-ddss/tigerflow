@@ -81,8 +81,7 @@ class Pipeline:
 
         # Create task directories
         for task in self._config.tasks:
-            for path in (task.output_dir, task.log_dir):
-                path.mkdir(parents=True, exist_ok=True)
+            task.output_dir.mkdir(parents=True, exist_ok=True)
             if task.keep_output:
                 self._output_dir.joinpath(task.name).mkdir(exist_ok=True)
 
@@ -107,7 +106,11 @@ class Pipeline:
         # Clean up any invalid or unsuccessful task outputs
         for task in self._config.tasks:
             for file in task.output_dir.iterdir():
-                if file.is_file() and not file.name.endswith(task.output_ext):
+                if (
+                    file.is_file()
+                    and not file.name.endswith(task.output_ext)
+                    and not file.name.endswith((".log", ".out"))
+                ):
                     file.unlink()
 
         # Initialize a set to track files being processed or already processed
@@ -123,14 +126,12 @@ class Pipeline:
             task.name: set() for task in self._config.tasks
         }
 
-        # Initialize mapping to track processed files per task
-        self._task_processed_filenames: dict[str, set[str]] = {}
-        for task in self._config.tasks:
-            processed_filenames: set[str] = set()
-            for file in task.output_dir.iterdir():
-                if file.is_file() and file.name.endswith(task.output_ext):
-                    processed_filenames.add(file.name)
-            self._task_processed_filenames[task.name] = processed_filenames
+        # Initialize mapping to track processed files per task.
+        # Start empty so that existing outputs from a prior run are
+        # detected as "new" and can trigger pipeline completion.
+        self._task_processed_filenames: dict[str, set[str]] = {
+            task.name: set() for task in self._config.tasks
+        }
 
         # Initialize mapping from task name to status
         self._task_status: dict[str, TaskStatus] = {
@@ -211,10 +212,8 @@ class Pipeline:
         run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
         self._run_id = run_id
 
-        # Create pipeline log directory and file
-        self._pipeline_log_dir = self._internal_dir / "logs"
-        self._pipeline_log_dir.mkdir(parents=True, exist_ok=True)
-        self._pipeline_log_file = self._pipeline_log_dir / f"{run_id}.log"
+        # Write INIT to pipeline log (appended across runs)
+        self._pipeline_log_file = self._internal_dir / "run.log"
 
         tasks_meta = [
             {"name": t.name, "depends_on": t.depends_on} for t in self._config.tasks
@@ -222,7 +221,6 @@ class Pipeline:
         self._log_to_file("INIT", {"tasks": tasks_meta})
         logger.log("INIT", json.dumps({"tasks": tasks_meta}))
         for task in self._config.tasks:
-            task.run_id = run_id
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
@@ -270,8 +268,6 @@ class Pipeline:
         for file in to_stage:
             self._symlinks_dir.joinpath(file.name).symlink_to(file)
             self._filenames.add(file.name)
-            self._log_to_file("STAGED", {"file": file.name})
-            logger.log("STAGED", json.dumps({"file": file.name}))
 
     def _check_task_status(self):
         for task in self._config.tasks:

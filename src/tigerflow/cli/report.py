@@ -1,6 +1,5 @@
 import json as json_lib
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -83,19 +82,7 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
 
     lines = [""]
 
-    # === Run state ===
-    run_id = report.run_id or "unknown"
-
-    # Parse started_at from run_id (format: YYYYMMDD-HHMMSS)
-    started_at = ""
-    if run_id and run_id != "unknown":
-        try:
-            dt = datetime.strptime(run_id, "%Y%m%d-%H%M%S")
-            started_at = dt.strftime("%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            pass
-
-    # Status line
+    # === Status ===
     if report.status == "running":
         marker = "[sea_green3]●[/sea_green3]"
         status_text = f"running (pid {report.pid})"
@@ -104,8 +91,6 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
         status_text = "stopped"
 
     lines.append(f"[bold]Status:[/bold]  {marker} {status_text}")
-    if started_at:
-        lines.append(f"[bold]Started:[/bold] {started_at}")
     lines.append(f"[bold]Output:[/bold]  {report.output_dir}")
     lines.append("")
 
@@ -121,15 +106,16 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
     flow_parts.append(", ".join(terminal_parts))
     lines.append(f"[bold]Progress:[/bold] {' → '.join(flow_parts)}")
 
-    # Per-task progress bars
-    total = report.processed + report.in_progress + report.failed
-    if report.staged is not None:
-        total += report.staged
-
+    # Per-task progress bars (run-scoped)
     if report.tasks:
         lines.append("")
         max_name_len = max((len(task.name) for task in report.tasks), default=4)
-        available = total  # Root task has all files available
+        available = (
+            report.processed
+            + report.in_progress
+            + (report.staged or 0)
+            + report.failed
+        )
         for task in report.tasks:
             name = task.name.ljust(max_name_len)
 
@@ -250,13 +236,6 @@ def report(
             help="Sections to include in JSON (comma-separated: status,progress,metrics,errors).",
         ),
     ] = None,
-    run: Annotated[
-        str | None,
-        typer.Option(
-            "--run",
-            help="Filter to specific run ID.",
-        ),
-    ] = None,
     watch: Annotated[
         bool,
         typer.Option(
@@ -289,14 +268,14 @@ def report(
         with Live(console=console, refresh_per_second=1) as live:
             try:
                 while True:
-                    pipeline_report = output.report(run_id_filter=run)
+                    pipeline_report = output.report()
                     panel = _build_dashboard_panel(pipeline_report)
                     live.update(panel)
                     time.sleep(1)
             except KeyboardInterrupt:
                 pass
     elif json:
-        pipeline_report = output.report(run_id_filter=run)
+        pipeline_report = output.report()
 
         sections = (
             {s.strip().lower() for s in include.split(",")}
@@ -309,35 +288,24 @@ def report(
             result["status"] = {
                 "running": pipeline_report.status == "running",
                 "pid": pipeline_report.pid,
-                "run_id": pipeline_report.run_id,
             }
         if "progress" in sections:
-            # Calculate per-task staged (available - processed - failed)
-            total = (
-                pipeline_report.processed
-                + pipeline_report.in_progress
-                + pipeline_report.failed
-                + (pipeline_report.staged or 0)
-            )
-            task_list = []
-            available = total
-            for t in pipeline_report.tasks:
-                task_staged = max(0, available - t.processed - t.failed)
-                task_list.append(
+            result["progress"] = {
+                "pipeline": {
+                    "finished": pipeline_report.processed,
+                    "in_progress": pipeline_report.in_progress,
+                    "staged": pipeline_report.staged,
+                    "errored": pipeline_report.failed,
+                },
+                "tasks": [
                     {
                         "name": t.name,
                         "processed": t.processed,
-                        "staged": task_staged,
+                        "staged": t.staged,
                         "failed": t.failed,
                     }
-                )
-                available = t.processed
-            result["progress"] = {
-                "processed": pipeline_report.processed,
-                "in_progress": pipeline_report.in_progress,
-                "failed": pipeline_report.failed,
-                "staged": pipeline_report.staged,
-                "tasks": task_list,
+                    for t in pipeline_report.tasks
+                ],
             }
         if "metrics" in sections:
             result["metrics"] = {
@@ -382,7 +350,7 @@ def report(
 
         print(json_lib.dumps(result, indent=2, default=str))
     else:
-        pipeline_report = output.report(run_id_filter=run)
+        pipeline_report = output.report()
         console = Console(highlight=False)
         panel = _build_dashboard_panel(pipeline_report)
         console.print(panel)

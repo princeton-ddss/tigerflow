@@ -129,12 +129,6 @@ class TestBaseTaskConfig:
         config.output_dir = output_dir
         assert config.output_dir == output_dir
 
-    def test_log_dir_property(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
-        _, output_dir = tmp_dirs
-        config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
-        config.output_dir = output_dir
-        assert config.log_dir == output_dir / "logs"
-
     def test_default_output_ext(self, tmp_module: str):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         assert config.output_ext == ".out"
@@ -241,7 +235,7 @@ class TestLocalTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
@@ -267,7 +261,7 @@ class TestLocalTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
@@ -284,7 +278,7 @@ class TestLocalTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
@@ -302,7 +296,7 @@ class TestLocalTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
@@ -331,7 +325,7 @@ class TestLocalAsyncTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
@@ -359,7 +353,7 @@ class TestSlurmTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
         return config
 
     def test_client_job_name(self, slurm_config: SlurmTaskConfig):
@@ -401,7 +395,7 @@ class TestSlurmTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
@@ -429,7 +423,7 @@ class TestSlurmTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
@@ -455,7 +449,7 @@ class TestSlurmTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
@@ -480,7 +474,7 @@ class TestSlurmTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
-        config.run_id = "20240115-103000"
+
 
         script = config.to_script()
 
