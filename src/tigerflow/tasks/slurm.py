@@ -40,6 +40,10 @@ class SlurmTask(Task):
     @logger.catch(reraise=True)
     def __init__(self, config: SlurmTaskConfig):
         self.config = config
+        self._shutdown_event = threading.Event()
+
+    def _signal_handler(self, signum: int, frame: FrameType | None):
+        self._shutdown_event.set()
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
@@ -135,32 +139,40 @@ class SlurmTask(Task):
         # Clean up incomplete temporary files left behind by a prior cluster instance
         self._remove_temporary_files(self.config.output_dir)
 
+        # Register signal handlers
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            signal.signal(sig, self._signal_handler)
+
         # Monitor for new files and enqueue them for processing
         active_futures: dict[Path, Future] = dict()
-        while True:
-            unprocessed_files = self._get_unprocessed_files(
-                input_dir=self.config.input_dir,
-                input_ext=self.config.input_ext,
-                output_dir=self.config.output_dir,
-                output_ext=self.config.output_ext,
-            )
+        try:
+            while not self._shutdown_event.is_set():
+                unprocessed_files = self._get_unprocessed_files(
+                    input_dir=self.config.input_dir,
+                    input_ext=self.config.input_ext,
+                    output_dir=self.config.output_dir,
+                    output_ext=self.config.output_ext,
+                )
 
-            for file in unprocessed_files:
-                if file not in active_futures:  # Exclude in-progress files
-                    output_fname = (
-                        file.name.removesuffix(self.config.input_ext)
-                        + self.config.output_ext
-                    )
-                    output_file = self.config.output_dir / output_fname
-                    future = client.submit(task, file, output_file)
-                    active_futures[file] = future
+                for file in unprocessed_files:
+                    if file not in active_futures:  # Exclude in-progress files
+                        output_fname = (
+                            file.name.removesuffix(self.config.input_ext)
+                            + self.config.output_ext
+                        )
+                        output_file = self.config.output_dir / output_fname
+                        future = client.submit(task, file, output_file)
+                        active_futures[file] = future
 
-            for key in list(active_futures.keys()):
-                if active_futures[key].done():
-                    active_futures[key].release()
-                    del active_futures[key]
+                for key in list(active_futures.keys()):
+                    if active_futures[key].done():
+                        active_futures[key].release()
+                        del active_futures[key]
 
-            time.sleep(settings.task_poll_interval)
+                self._shutdown_event.wait(timeout=settings.task_poll_interval)
+        finally:
+            client.close()
+            cluster.close()
 
     @classmethod
     def cli(cls):
