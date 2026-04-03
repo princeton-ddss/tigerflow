@@ -1,4 +1,5 @@
 import asyncio
+import os
 import signal
 import subprocess
 import sys
@@ -274,6 +275,14 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
+            runner_pid: Annotated[
+                int | None,
+                typer.Option(
+                    "--runner-pid",
+                    help="PID of the orchestrating process",
+                    hidden=True,  # Internal use only
+                ),
+            ] = None,
             _params: dict | None = None,
         ):
             """
@@ -296,6 +305,7 @@ class SlurmTask(Task):
                 setup_commands=setup_commands or [],
                 max_workers=max_workers,
                 worker_resources=worker_resources,
+                runner_pid=runner_pid,
                 params=_params or {},
             )
 
@@ -387,6 +397,7 @@ class SlurmTaskRunner:
 
         self.config.input_dir = input_dir
         self.config.output_dir = output_dir
+        self.config.runner_pid = os.getpid()
 
         # Register signal handlers for graceful shutdown
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
@@ -404,8 +415,8 @@ class SlurmTaskRunner:
                 self._shutdown_event.wait(timeout=settings.task_poll_interval)
         finally:
             logger.info("Shutting down task")
-            if self._status.is_alive:
-                subprocess.run(["scancel", str(self._job_id)])
+            subprocess.run(["scancel", "-n", self.config.client_job_name])
+            subprocess.run(["scancel", "-n", self.config.worker_job_name])
             while self._status.is_alive:
                 self._check_status()
                 time.sleep(1)

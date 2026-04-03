@@ -201,6 +201,7 @@ class SlurmTaskConfig(BaseTaskConfig):
     kind: Literal["slurm"]
     max_workers: int
     worker_resources: SlurmResourceConfig
+    runner_pid: int | None = None
 
     @property
     def client_job_time(self) -> str:
@@ -208,11 +209,15 @@ class SlurmTaskConfig(BaseTaskConfig):
 
     @property
     def client_job_name(self) -> str:
-        return f"{self.name}-client"
+        if self.runner_pid is None:
+            return f"{self.name}-client"
+        return f"{self.name}-{self.runner_pid}-client"
 
     @property
     def worker_job_name(self) -> str:
-        return f"{self.name}-worker"
+        if self.runner_pid is None:
+            return f"{self.name}-worker"
+        return f"{self.name}-{self.runner_pid}-worker"
 
     def to_script(self) -> str:
         sbatch_account = next(
@@ -241,6 +246,9 @@ class SlurmTaskConfig(BaseTaskConfig):
                 if self.worker_resources.gpus
                 else "",
                 "--run-directly",
+                f"--runner-pid {self.runner_pid}"
+                if self.runner_pid is not None
+                else "",
             ]
             + [
                 f"--sbatch-option {repr(option)}"

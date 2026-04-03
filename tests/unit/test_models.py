@@ -359,8 +359,16 @@ class TestSlurmTaskConfig:
     def test_client_job_name(self, slurm_config: SlurmTaskConfig):
         assert slurm_config.client_job_name == "slurm_task-client"
 
+    def test_client_job_name_with_runner_pid(self, slurm_config: SlurmTaskConfig):
+        slurm_config.runner_pid = 12345
+        assert slurm_config.client_job_name == "slurm_task-12345-client"
+
     def test_worker_job_name(self, slurm_config: SlurmTaskConfig):
         assert slurm_config.worker_job_name == "slurm_task-worker"
+
+    def test_worker_job_name_with_runner_pid(self, slurm_config: SlurmTaskConfig):
+        slurm_config.runner_pid = 12345
+        assert slurm_config.worker_job_name == "slurm_task-12345-worker"
 
     def test_to_script_contains_sbatch_directives(self, slurm_config: SlurmTaskConfig):
         script = slurm_config.to_script()
@@ -483,6 +491,17 @@ class TestSlurmTaskConfig:
             if line.strip().startswith("#SBATCH"):
                 option = line.split("#SBATCH")[1].strip()
                 assert not option.startswith(("--account", "-A"))
+
+    def test_to_script_with_runner_pid(self, slurm_config: SlurmTaskConfig):
+        slurm_config.runner_pid = 12345
+        script = slurm_config.to_script()
+        assert "#SBATCH --job-name=slurm_task-12345-client" in script
+        assert "--runner-pid 12345" in script
+
+    def test_to_script_without_runner_pid(self, slurm_config: SlurmTaskConfig):
+        script = slurm_config.to_script()
+        assert "#SBATCH --job-name=slurm_task-client" in script
+        assert "--runner-pid" not in script
 
 
 class TestPipelineConfig:

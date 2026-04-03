@@ -196,10 +196,12 @@ class Pipeline:
                 if self._task_status[name].is_alive:
                     logger.info("[{}] Terminating...", name)
                     process.terminate()
-            for name, job_id in self._slurm_task_ids.items():
-                if self._task_status[name].is_alive:
-                    logger.info("[{}] Terminating...", name)
-                    subprocess.run(["scancel", str(job_id)])
+            for task in self._config.tasks:
+                if not isinstance(task, SlurmTaskConfig):
+                    continue
+                logger.info("[{}] Terminating...", task.name)
+                subprocess.run(["scancel", "-n", task.client_job_name])
+                subprocess.run(["scancel", "-n", task.worker_job_name])
             while any(status.is_alive for status in self._task_status.values()):
                 self._check_task_status()
                 time.sleep(1)
@@ -212,6 +214,8 @@ class Pipeline:
     def _start_tasks(self):
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
+            if isinstance(task, SlurmTaskConfig):
+                task.runner_pid = os.getpid()
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
