@@ -200,8 +200,8 @@ class Pipeline:
                 if not isinstance(task, SlurmTaskConfig):
                     continue
                 logger.info("[{}] Terminating...", task.name)
-                subprocess.run(["scancel", "-n", task.client_job_name])
                 subprocess.run(["scancel", "-n", task.worker_job_name])
+                subprocess.run(["scancel", "-n", task.client_job_name])
             while any(status.is_alive for status in self._task_status.values()):
                 self._check_task_status()
                 time.sleep(1)

@@ -415,8 +415,8 @@ class SlurmTaskRunner:
                 self._shutdown_event.wait(timeout=settings.task_poll_interval)
         finally:
             logger.info("Shutting down task")
-            subprocess.run(["scancel", "-n", self.config.client_job_name])
             subprocess.run(["scancel", "-n", self.config.worker_job_name])
+            subprocess.run(["scancel", "-n", self.config.client_job_name])
             while self._status.is_alive:
                 self._check_status()
                 time.sleep(1)
