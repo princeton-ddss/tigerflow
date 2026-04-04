@@ -32,7 +32,19 @@ def get_slurm_task_status(client_job_id: int, worker_job_name: str) -> TaskStatu
             kind=TaskStatusKind.PENDING,
             detail=f"Reason: {reason.splitlines()[-1].strip()}" if reason else None,
         )
-    else:
+    else:  # Client exited — check if workers are still draining
+        worker_status = subprocess.run(
+            ["squeue", "--me", "-n", worker_job_name, "-h", "-o", "%.10T"],
+            capture_output=True,
+            text=True,
+        ).stdout
+
+        if worker_status.strip():
+            return TaskStatus(
+                kind=TaskStatusKind.ACTIVE,
+                detail=f"draining {len(worker_status.strip().splitlines())} workers",
+            )
+
         reason = subprocess.run(
             ["sacct", "-j", str(client_job_id), "--format=State", "--noheader"],
             capture_output=True,
