@@ -59,10 +59,12 @@ class SlurmTask(Task):
         self.config.output_dir = output_dir
         self.config.log_dir.mkdir(exist_ok=True)
 
-        # Reference functions and params to use in plugin
-        setup_func = type(self).setup
-        teardown_func = type(self).teardown
+        # Avoid capturing unpicklable `self` in closures sent to workers
         params = self.config.params
+        output_ext = self.config.output_ext
+        setup_func = type(self).setup
+        run_func = type(self).run
+        teardown_func = type(self).teardown
 
         class TaskWorkerPlugin(WorkerPlugin):
             async def setup(self, worker: Worker):
@@ -93,13 +95,11 @@ class SlurmTask(Task):
             try:
                 logger.info("Starting processing: {}", input_file.name)
                 with atomic_write(output_file) as temp_file:
-                    self.run(context, input_file, temp_file)
+                    run_func(context, input_file, temp_file)
                 logger.info("Successfully processed: {}", input_file.name)
             except Exception:
-                error_fname = (
-                    output_file.name.removesuffix(self.config.output_ext) + ".err"
-                )
-                error_file = self.config.output_dir / error_fname
+                error_fname = output_file.name.removesuffix(output_ext) + ".err"
+                error_file = output_dir / error_fname
                 with atomic_write(error_file) as temp_file:
                     with open(temp_file, "w") as f:
                         f.write(traceback.format_exc())
