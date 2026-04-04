@@ -112,10 +112,12 @@ def submit_to_slurm(script: str) -> int:
     result = subprocess.run(
         ["sbatch"],
         capture_output=True,
-        check=True,
         input=script,
         text=True,
     )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise RuntimeError(f"sbatch failed (exit code {result.returncode}):\n{detail}")
 
     match = re.search(r"Submitted batch job (\d+)", result.stdout)
     if not match:
