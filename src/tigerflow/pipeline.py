@@ -215,6 +215,7 @@ class Pipeline:
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
             task.runner_pid = os.getpid()
+            task.log_dir.mkdir(parents=True, exist_ok=True)  # PID-scoped log dir
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
