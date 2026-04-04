@@ -214,8 +214,7 @@ class Pipeline:
     def _start_tasks(self):
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
-            if isinstance(task, SlurmTaskConfig):
-                task.runner_pid = os.getpid()
+            task.runner_pid = os.getpid()
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])

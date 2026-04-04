@@ -116,8 +116,8 @@ class SlurmTask(Task):
             job_extra_directives=self.config.worker_resources.sbatch_options
             + [
                 f"--job-name={self.config.worker_job_name}",
-                f"--output={self.config.log_dir}/%x-%j.out",
-                f"--error={self.config.log_dir}/%x-%j.err",
+                f"--output={self.config.log_dir}/task-worker-%j.out",
+                f"--error={self.config.log_dir}/task-worker-%j.log",
                 f"--gres=gpu:{self.config.worker_resources.gpus}"
                 if self.config.worker_resources.gpus
                 else "",
@@ -305,9 +305,11 @@ class SlurmTask(Task):
                 setup_commands=setup_commands or [],
                 max_workers=max_workers,
                 worker_resources=worker_resources,
-                runner_pid=runner_pid,
                 params=_params or {},
             )
+
+            if runner_pid is not None:
+                config.runner_pid = runner_pid
 
             if run_directly:
                 task = cls(config)

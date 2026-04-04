@@ -129,11 +129,22 @@ class TestBaseTaskConfig:
         config.output_dir = output_dir
         assert config.output_dir == output_dir
 
-    def test_log_dir_property(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
+    def test_log_dir_without_runner_pid(
+        self, tmp_module: str, tmp_dirs: tuple[Path, Path]
+    ):
         _, output_dir = tmp_dirs
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
         config.output_dir = output_dir
         assert config.log_dir == output_dir / "logs"
+
+    def test_log_dir_with_runner_pid(
+        self, tmp_module: str, tmp_dirs: tuple[Path, Path]
+    ):
+        _, output_dir = tmp_dirs
+        config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
+        config.output_dir = output_dir
+        config.runner_pid = 48201
+        assert config.log_dir == output_dir / "logs" / "48201"
 
     def test_default_output_ext(self, tmp_module: str):
         config = BaseTaskConfig(name="test", module=tmp_module, input_ext=".txt")
@@ -491,6 +502,13 @@ class TestSlurmTaskConfig:
             if line.strip().startswith("#SBATCH"):
                 option = line.split("#SBATCH")[1].strip()
                 assert not option.startswith(("--account", "-A"))
+
+    def test_to_script_log_file_directives(self, slurm_config: SlurmTaskConfig):
+        slurm_config.runner_pid = 12345
+        script = slurm_config.to_script()
+        log_dir = slurm_config.log_dir
+        assert f"#SBATCH --output={log_dir}/task-client-%j.out" in script
+        assert f"#SBATCH --error={log_dir}/task-client-%j.log" in script
 
     def test_to_script_with_runner_pid(self, slurm_config: SlurmTaskConfig):
         slurm_config.runner_pid = 12345
