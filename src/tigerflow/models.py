@@ -95,7 +95,15 @@ class BaseTaskConfig(BaseModel):
 
     @staticmethod
     def _serialize_param(value: object) -> str:
-        """Serialize a parameter value to a shell-safe CLI string."""
+        """Serialize a parameter value to a shell-safe CLI string.
+
+        Param values are limited to Typer-supported types (str, int, float,
+        Path, UUID, datetime, Enum) because Typer rejects unsupported type
+        annotations at runtime. str() produces the format Typer expects when
+        it re-parses the CLI string back into the correct Python type. Enum
+        is the exception: Typer expects the .value string, not the member
+        name that str() would produce.
+        """
         if isinstance(value, Enum):
             return shlex.quote(str(value.value))
         return shlex.quote(str(value))
