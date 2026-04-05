@@ -1,3 +1,4 @@
+import re
 import shlex
 import textwrap
 from enum import Enum
@@ -52,6 +53,17 @@ class BaseTaskConfig(BaseModel):
     _input_dir: Path | None = None
     _output_dir: Path | None = None
     _runner_pid: int | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, name: str) -> str:
+        if not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_-]*", name):
+            raise ValueError(
+                f"Invalid task name: {name!r}. "
+                "Must start with a letter and contain only letters, digits, "
+                "hyphens, or underscores."
+            )
+        return name
 
     @field_validator("module")
     @classmethod

@@ -80,6 +80,26 @@ class TestSlurmResourceConfig:
 
 
 class TestBaseTaskConfig:
+    def test_valid_name(self, tmp_module: str):
+        config = BaseTaskConfig(name="MyTask", module=tmp_module, input_ext=".txt")
+        assert config.name == "MyTask"
+
+    def test_valid_name_with_hyphens_and_underscores(self, tmp_module: str):
+        config = BaseTaskConfig(name="my-task_v2", module=tmp_module, input_ext=".txt")
+        assert config.name == "my-task_v2"
+
+    def test_invalid_name_with_spaces(self, tmp_module: str):
+        with pytest.raises(ValidationError, match="Invalid task name"):
+            BaseTaskConfig(name="my task", module=tmp_module, input_ext=".txt")
+
+    def test_invalid_name_starts_with_digit(self, tmp_module: str):
+        with pytest.raises(ValidationError, match="Invalid task name"):
+            BaseTaskConfig(name="2task", module=tmp_module, input_ext=".txt")
+
+    def test_invalid_name_empty(self, tmp_module: str):
+        with pytest.raises(ValidationError, match="Invalid task name"):
+            BaseTaskConfig(name="", module=tmp_module, input_ext=".txt")
+
     def test_module_must_exist(self, tmp_path: Path):
         nonexistent = tmp_path / "nonexistent.py"
         with pytest.raises(ValidationError, match="Module does not exist"):
