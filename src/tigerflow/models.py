@@ -344,8 +344,14 @@ class PipelineConfig(BaseModel):
         if len(root_input_ext) > 1:  # Cannot be zero due to earlier validations
             raise ValueError("Root tasks must have the same input extension")
 
-        # Sort tasks topologically
-        order_map = {name: index for index, name in enumerate(nx.topological_sort(G))}
+        # Sort tasks in tree order (DFS pre-order from roots)
+        roots = [n for n in G if G.in_degree(n) == 0]
+        order_map = {
+            name: index
+            for index, name in enumerate(
+                node for root in roots for node in nx.dfs_preorder_nodes(G, root)
+            )
+        }
         tasks.sort(key=lambda task: order_map[task.name])
 
         return tasks
