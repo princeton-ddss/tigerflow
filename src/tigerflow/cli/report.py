@@ -229,14 +229,18 @@ def report(
         bool,
         typer.Option(
             "--json",
+            "-j",
             help="Output in JSON format.",
+            show_default=False,
         ),
     ] = False,
     include: Annotated[
         str | None,
         typer.Option(
             "--include",
-            help="Sections to include in JSON (comma-separated: status,progress,metrics,errors).",
+            "-i",
+            help="Sections to include in JSON (comma-separated: status,progress,metrics,errors). Default: all.",
+            show_default=False,
         ),
     ] = None,
     watch: Annotated[
@@ -245,6 +249,7 @@ def report(
             "--watch",
             "-w",
             help="Continuously update the display.",
+            show_default=False,
         ),
     ] = False,
 ):
