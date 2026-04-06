@@ -24,7 +24,7 @@ from tigerflow.models import (
 from tigerflow.settings import settings
 from tigerflow.staging import StagingContext
 from tigerflow.tasks.utils import get_slurm_task_status
-from tigerflow.utils import is_valid_task_cli, submit_to_slurm
+from tigerflow.utils import TEMP_FILE_PREFIX, submit_to_slurm, validate_task_cli
 
 
 class Pipeline:
@@ -67,8 +67,7 @@ class Pipeline:
         )
 
         for task in self._config.tasks:
-            if not is_valid_task_cli(task.module):
-                raise ValueError(f"Invalid task CLI: {task.module}")
+            validate_task_cli(task.module)
 
         # Map task I/O directories from the dependency graph
         for task in self._config.tasks:
@@ -85,23 +84,29 @@ class Pipeline:
             if task.keep_output:
                 self._output_dir.joinpath(task.name).mkdir(exist_ok=True)
 
-        # If opted in, delete input files that have been marked as finished
-        if self._delete_input:
-            for file in self._finished_dir.iterdir():
-                source_file = self._input_dir / file.name
-                source_file.unlink(missing_ok=True)
-
-        # Clean up any invalid or broken symlinks
+        # Collect file IDs that need cleanup
+        finished_ids = set()
+        for file in self._finished_dir.iterdir():
+            file_id = file.name.removesuffix(self._config.root_input_ext)
+            finished_ids.add(file_id)
+        cleanup_ids = set(finished_ids)
         for file in self._symlinks_dir.iterdir():
             if not file.is_symlink():
                 file.unlink()
-            elif not file.exists():
-                file.unlink()
-                # Remove all downstream task outputs since source data is missing
+            else:
                 file_id = file.name.removesuffix(self._config.root_input_ext)
-                for task in self._config.tasks:
-                    file = task.output_dir / f"{file_id}{task.output_ext}"
-                    file.unlink(missing_ok=True)
+                if not file.exists() or file_id in finished_ids:
+                    file.unlink()
+                    cleanup_ids.add(file_id)
+
+        # Remove orphaned task outputs and input files
+        for file_id in cleanup_ids:
+            for task in self._config.tasks:
+                task_file = task.output_dir / f"{file_id}{task.output_ext}"
+                task_file.unlink(missing_ok=True)
+            if self._delete_input:
+                filename = f"{file_id}{self._config.root_input_ext}"
+                self._input_dir.joinpath(filename).unlink(missing_ok=True)
 
         # Clean up any invalid or unsuccessful task outputs
         for task in self._config.tasks:
@@ -110,6 +115,7 @@ class Pipeline:
                     file.is_file()
                     and not file.name.endswith(task.output_ext)
                     and not file.name.endswith((".log", ".out"))
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
                 ):
                     file.unlink()
 
@@ -195,10 +201,12 @@ class Pipeline:
                 if self._task_status[name].is_alive:
                     logger.info("[{}] Terminating...", name)
                     process.terminate()
-            for name, job_id in self._slurm_task_ids.items():
-                if self._task_status[name].is_alive:
-                    logger.info("[{}] Terminating...", name)
-                    subprocess.run(["scancel", str(job_id)])
+            for task in self._config.tasks:
+                if not isinstance(task, SlurmTaskConfig):
+                    continue
+                logger.info("[{}] Terminating...", task.name)
+                subprocess.run(["scancel", "-n", task.worker_job_name])
+                subprocess.run(["scancel", "-n", task.client_job_name])
             while any(status.is_alive for status in self._task_status.values()):
                 self._check_task_status()
                 time.sleep(1)
@@ -222,6 +230,8 @@ class Pipeline:
         logger.log("INIT", json.dumps({"tasks": tasks_meta}))
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
+            task.runner_pid = os.getpid()
+            task.log_dir.mkdir(parents=True, exist_ok=True)  # PID-scoped log dir
             script = task.to_script()
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
@@ -316,6 +326,7 @@ class Pipeline:
                 if (
                     file.is_file()
                     and file.name.endswith(".err")
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
                     and file.name not in self._task_error_filenames[task.name]
                 ):
                     self._task_error_filenames[task.name].add(file.name)
@@ -333,6 +344,7 @@ class Pipeline:
                 if (
                     file.is_file()
                     and file.name.endswith(task.output_ext)
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
                     and file.name not in self._task_processed_filenames[task.name]
                 ):
                     self._task_processed_filenames[task.name].add(file.name)
@@ -352,19 +364,21 @@ class Pipeline:
             )
         )
 
+        # Record completion and clean up staged/input files
+        for file_id in completed_file_ids:
+            filename = f"{file_id}{self._config.root_input_ext}"
+            self._finished_dir.joinpath(filename).touch()
+            self._symlinks_dir.joinpath(filename).unlink(missing_ok=True)
+            if self._delete_input:
+                self._input_dir.joinpath(filename).unlink(missing_ok=True)
+
         # Clean up intermediate data for completed files
         for task in self._config.tasks:
             for file_id in completed_file_ids:
                 file = task.output_dir / f"{file_id}{task.output_ext}"
-                file.unlink()
+                file.unlink(missing_ok=True)
 
-        # Record completion
-        for file_id in completed_file_ids:
-            filename = f"{file_id}{self._config.root_input_ext}"
-            self._symlinks_dir.joinpath(filename).unlink()
-            if self._delete_input:
-                self._input_dir.joinpath(filename).unlink(missing_ok=True)
-            self._finished_dir.joinpath(filename).touch()
+        # Log progress
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
             n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())

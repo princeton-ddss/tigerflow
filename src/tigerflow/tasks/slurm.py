@@ -1,4 +1,5 @@
 import asyncio
+import os
 import signal
 import subprocess
 import sys
@@ -19,7 +20,12 @@ from tigerflow.models import (
     TaskStatusKind,
 )
 from tigerflow.settings import settings
-from tigerflow.utils import SetupContext, atomic_write, submit_to_slurm
+from tigerflow.utils import (
+    TEMP_FILE_PREFIX,
+    SetupContext,
+    atomic_write,
+    submit_to_slurm,
+)
 
 from ._base import Task
 from .utils import get_slurm_task_status, log_metrics, write_error_file
@@ -34,6 +40,10 @@ class SlurmTask(Task):
     @logger.catch(reraise=True)
     def __init__(self, config: SlurmTaskConfig):
         self.config = config
+        self._shutdown_event = threading.Event()
+
+    def _signal_handler(self, signum: int, frame: FrameType | None):
+        self._shutdown_event.set()
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
@@ -47,10 +57,12 @@ class SlurmTask(Task):
         self.config.input_dir = input_dir
         self.config.output_dir = output_dir
 
-        # Reference functions and params to use in plugin
-        setup_func = type(self).setup
-        teardown_func = type(self).teardown
+        # Avoid capturing unpicklable `self` in closures sent to workers
         params = self.config.params
+        output_ext = self.config.output_ext
+        setup_func = type(self).setup
+        run_func = type(self).run
+        teardown_func = type(self).teardown
 
         class TaskWorkerPlugin(WorkerPlugin):
             async def setup(self, worker: Worker):
@@ -82,14 +94,14 @@ class SlurmTask(Task):
                 try:
                     logger.info("Starting processing: {}", input_file.name)
                     with atomic_write(output_file) as temp_file:
-                        self.run(context, input_file, temp_file)
+                        run_func(context, input_file, temp_file)
                     logger.info("Successfully processed: {}", input_file.name)
                 except Exception:
                     metrics["status"] = "error"
                     error_fname = (
-                        output_file.name.removesuffix(self.config.output_ext) + ".err"
+                        output_file.name.removesuffix(output_ext) + ".err"
                     )
-                    error_file = self.config.output_dir / error_fname
+                    error_file = output_dir / error_fname
                     write_error_file(error_file, input_file.name)
                     logger.error("Failed processing: {}", input_file.name)
 
@@ -104,8 +116,8 @@ class SlurmTask(Task):
             job_extra_directives=self.config.worker_resources.sbatch_options
             + [
                 f"--job-name={self.config.worker_job_name}",
-                f"--output={self.config.output_dir}/task-%j.out",
-                f"--error={self.config.output_dir}/task-%j.log",
+                f"--output={self.config.log_dir}/task-worker-%j.out",
+                f"--error={self.config.log_dir}/task-worker-%j.log",
                 f"--gres=gpu:{self.config.worker_resources.gpus}"
                 if self.config.worker_resources.gpus
                 else "",
@@ -128,32 +140,40 @@ class SlurmTask(Task):
         # Clean up incomplete temporary files left behind by a prior cluster instance
         self._remove_temporary_files(self.config.output_dir)
 
+        # Register signal handlers
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            signal.signal(sig, self._signal_handler)
+
         # Monitor for new files and enqueue them for processing
         active_futures: dict[Path, Future] = dict()
-        while True:
-            unprocessed_files = self._get_unprocessed_files(
-                input_dir=self.config.input_dir,
-                input_ext=self.config.input_ext,
-                output_dir=self.config.output_dir,
-                output_ext=self.config.output_ext,
-            )
+        try:
+            while not self._shutdown_event.is_set():
+                unprocessed_files = self._get_unprocessed_files(
+                    input_dir=self.config.input_dir,
+                    input_ext=self.config.input_ext,
+                    output_dir=self.config.output_dir,
+                    output_ext=self.config.output_ext,
+                )
 
-            for file in unprocessed_files:
-                if file not in active_futures:  # Exclude in-progress files
-                    output_fname = (
-                        file.name.removesuffix(self.config.input_ext)
-                        + self.config.output_ext
-                    )
-                    output_file = self.config.output_dir / output_fname
-                    future = client.submit(task, file, output_file)
-                    active_futures[file] = future
+                for file in unprocessed_files:
+                    if file not in active_futures:  # Exclude in-progress files
+                        output_fname = (
+                            file.name.removesuffix(self.config.input_ext)
+                            + self.config.output_ext
+                        )
+                        output_file = self.config.output_dir / output_fname
+                        future = client.submit(task, file, output_file)
+                        active_futures[file] = future
 
-            for key in list(active_futures.keys()):
-                if active_futures[key].done():
-                    active_futures[key].release()
-                    del active_futures[key]
+                for key in list(active_futures.keys()):
+                    if active_futures[key].done():
+                        active_futures[key].release()
+                        del active_futures[key]
 
-            time.sleep(settings.task_poll_interval)
+                self._shutdown_event.wait(timeout=settings.task_poll_interval)
+        finally:
+            client.close()
+            cluster.close()
 
     @classmethod
     def cli(cls):
@@ -255,6 +275,14 @@ class SlurmTask(Task):
                     hidden=True,  # Internal use only
                 ),
             ] = False,
+            runner_pid: Annotated[
+                int | None,
+                typer.Option(
+                    "--runner-pid",
+                    help="PID of the orchestrating process",
+                    hidden=True,  # Internal use only
+                ),
+            ] = None,
             _params: dict | None = None,
         ):
             """
@@ -279,6 +307,9 @@ class SlurmTask(Task):
                 worker_resources=worker_resources,
                 params=_params or {},
             )
+
+            if runner_pid is not None:
+                config.runner_pid = runner_pid
 
             if run_directly:
                 task = cls(config)
@@ -368,6 +399,7 @@ class SlurmTaskRunner:
 
         self.config.input_dir = input_dir
         self.config.output_dir = output_dir
+        self.config.runner_pid = os.getpid()
 
         # Register signal handlers for graceful shutdown
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
@@ -385,8 +417,8 @@ class SlurmTaskRunner:
                 self._shutdown_event.wait(timeout=settings.task_poll_interval)
         finally:
             logger.info("Shutting down task")
-            if self._status.is_alive:
-                subprocess.run(["scancel", str(self._job_id)])
+            subprocess.run(["scancel", "-n", self.config.worker_job_name])
+            subprocess.run(["scancel", "-n", self.config.client_job_name])
             while self._status.is_alive:
                 self._check_status()
                 time.sleep(1)
@@ -426,6 +458,7 @@ class SlurmTaskRunner:
             if (
                 file.is_file()
                 and file.name.endswith(self.config.output_ext)
+                and not file.name.startswith(TEMP_FILE_PREFIX)
                 and file.name not in self._processed_filenames
             ):
                 self._processed_filenames.add(file.name)
@@ -439,6 +472,7 @@ class SlurmTaskRunner:
             if (
                 file.is_file()
                 and file.name.endswith(".err")
+                and not file.name.startswith(TEMP_FILE_PREFIX)
                 and file.name not in self._error_filenames
             ):
                 self._error_filenames.add(file.name)

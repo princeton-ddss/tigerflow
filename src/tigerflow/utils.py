@@ -10,6 +10,8 @@ from pathlib import Path
 from subprocess import TimeoutExpired
 from types import SimpleNamespace
 
+TEMP_FILE_PREFIX = ".~tf_"
+
 
 def get_version() -> str:
     from importlib.metadata import PackageNotFoundError, version
@@ -63,9 +65,8 @@ def import_callable(ref: str) -> Callable:
     return obj
 
 
-def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
-    """
-    Check if the given module is a valid task CLI.
+def validate_task_cli(module: str, *, timeout: int = 60):
+    """Validate that the given module is a valid task CLI.
 
     A valid task CLI runs successfully with --help (exit code 0).
     Task subclasses using the built-in cli() method will have the
@@ -76,6 +77,14 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     module : str
         Either a file path ending in .py or a fully qualified module name
         (e.g., 'tigerflow.library.echo')
+
+    Raises
+    ------
+    ValueError
+        If the CLI exits with a non-zero code. The error message includes
+        the stderr (or stdout) output from running ``--help``.
+    TimeoutError
+        If the CLI does not respond within the timeout.
     """
     if module.endswith(".py"):
         args = [sys.executable, module, "--help"]
@@ -92,17 +101,23 @@ def is_valid_task_cli(module: str, *, timeout: int = 60) -> bool:
     except TimeoutExpired:
         raise TimeoutError(f"CLI validation timed out after {timeout}s: {module}")
 
-    return result.returncode == 0
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise ValueError(
+            f"Invalid task CLI '{module}' (exit code {result.returncode}):\n{detail}"
+        )
 
 
 def submit_to_slurm(script: str) -> int:
     result = subprocess.run(
         ["sbatch"],
         capture_output=True,
-        check=True,
         input=script,
         text=True,
     )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise RuntimeError(f"sbatch failed (exit code {result.returncode}):\n{detail}")
 
     match = re.search(r"Submitted batch job (\d+)", result.stdout)
     if not match:
@@ -183,16 +198,23 @@ def has_running_pid(pid_file: Path) -> bool:
 
 
 @contextmanager
-def atomic_write(filepath: os.PathLike):
+def atomic_write(filepath: str | os.PathLike[str]):
     """
     Context manager for atomic writing:
-    1. Creates a temporary file
+    1. Creates a temporary file with the target's suffix
+       (so libraries that inspect the extension behave correctly)
+       and a distinguishable prefix (so downstream tasks that
+       match on extension alone won't pick it up prematurely)
     2. Yields its path for writing
     3. Atomically replaces the target file on success
     """
     filepath = Path(filepath)
 
-    fd, temp_path = tempfile.mkstemp(dir=filepath.parent)
+    fd, temp_path = tempfile.mkstemp(
+        prefix=TEMP_FILE_PREFIX,
+        suffix=filepath.suffix,
+        dir=filepath.parent,
+    )
     os.close(fd)
 
     temp_path = Path(temp_path)

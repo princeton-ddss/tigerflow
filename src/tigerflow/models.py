@@ -66,6 +66,7 @@ class BaseTaskConfig(BaseModel):
     setup_commands: list[str] = []
     _input_dir: Path | None = None
     _output_dir: Path | None = None
+    _runner_pid: int | None = None
 
     @field_validator("module")
     @classmethod
@@ -142,6 +143,21 @@ class BaseTaskConfig(BaseModel):
     def output_dir(self, value: Path):
         self._output_dir = value
 
+    @property
+    def runner_pid(self) -> int | None:
+        return self._runner_pid
+
+    @runner_pid.setter
+    def runner_pid(self, value: int):
+        self._runner_pid = value
+
+    @property
+    def log_dir(self) -> Path:
+        base = self.output_dir / "logs"
+        if self.runner_pid is None:
+            return base
+        return base / str(self.runner_pid)
+
     def to_script(self) -> str:
         """
         Compose a Bash script that executes the task.
@@ -153,7 +169,8 @@ class LocalTaskConfig(BaseTaskConfig):
     kind: Literal["local"]
 
     def to_script(self) -> str:
-        log_file = self.output_dir / "task.log"
+        stdout_file = self.log_dir / "task-$$.out"
+        stderr_file = self.log_dir / "task-$$.log"
         setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
@@ -182,7 +199,8 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
     concurrency_limit: int
 
     def to_script(self) -> str:
-        log_file = self.output_dir / "task.log"
+        stdout_file = self.log_dir / "task-$$.out"
+        stderr_file = self.log_dir / "task-$$.log"
         setup_command = ";".join(self.setup_commands)
         task_command = " ".join(
             [
@@ -218,11 +236,15 @@ class SlurmTaskConfig(BaseTaskConfig):
 
     @property
     def client_job_name(self) -> str:
-        return f"{self.name}-client"
+        if self.runner_pid is None:
+            return f"{self.name}-client"
+        return f"{self.name}-{self.runner_pid}-client"
 
     @property
     def worker_job_name(self) -> str:
-        return f"{self.name}-worker"
+        if self.runner_pid is None:
+            return f"{self.name}-worker"
+        return f"{self.name}-{self.runner_pid}-worker"
 
     def to_script(self) -> str:
         sbatch_account = next(
@@ -251,6 +273,9 @@ class SlurmTaskConfig(BaseTaskConfig):
                 if self.worker_resources.gpus
                 else "",
                 "--run-directly",
+                f"--runner-pid {self.runner_pid}"
+                if self.runner_pid is not None
+                else "",
             ]
             + [
                 f"--sbatch-option {repr(option)}"
@@ -263,8 +288,8 @@ class SlurmTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             #SBATCH --job-name={self.client_job_name}
-            #SBATCH --output={self.output_dir}/task-%j.out
-            #SBATCH --error={self.output_dir}/task-%j.err
+            #SBATCH --output={self.log_dir}/task-client-%j.out
+            #SBATCH --error={self.log_dir}/task-client-%j.log
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=1

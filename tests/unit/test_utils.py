@@ -5,12 +5,14 @@ from pathlib import Path
 import pytest
 
 from tigerflow.utils import (
+    TEMP_FILE_PREFIX,
+    atomic_write,
     has_running_pid,
     import_callable,
     is_process_running,
-    is_valid_task_cli,
     read_pid_file,
     validate_callable_reference,
+    validate_task_cli,
 )
 
 
@@ -36,8 +38,8 @@ class TestTaskCliValidation:
         script.write_text(
             textwrap.dedent(
                 """
-            import sys
-            sys.exit(1)
+            import nonexistent_package
+            nonexistent_package.run()
             """
             )
         )
@@ -57,25 +59,29 @@ class TestTaskCliValidation:
         return script
 
     # File module tests
-    def test_valid_file_module_returns_true(self, valid_cli: Path):
-        assert is_valid_task_cli(str(valid_cli)) is True
+    def test_valid_file_module_passes(self, valid_cli: Path):
+        validate_task_cli(str(valid_cli))  # Should not raise
 
-    def test_file_module_nonzero_exit_returns_false(self, cli_nonzero_exit: Path):
-        assert is_valid_task_cli(str(cli_nonzero_exit)) is False
+    def test_file_module_nonzero_exit_raises_value_error(self, cli_nonzero_exit: Path):
+        with pytest.raises(ValueError, match="Invalid task CLI") as exc_info:
+            validate_task_cli(str(cli_nonzero_exit))
+        assert "ModuleNotFoundError" in str(exc_info.value)
 
     def test_file_module_timeout_raises_timeout_error(self, cli_slow: Path):
         with pytest.raises(TimeoutError, match="timed out after 1s"):
-            is_valid_task_cli(str(cli_slow), timeout=1)
+            validate_task_cli(str(cli_slow), timeout=1)
 
     def test_custom_timeout(self, valid_cli: Path):
-        assert is_valid_task_cli(str(valid_cli), timeout=5) is True
+        validate_task_cli(str(valid_cli), timeout=5)  # Should not raise
 
     # Library module tests
-    def test_valid_library_module_returns_true(self):
-        assert is_valid_task_cli("tigerflow.library.echo") is True
+    def test_valid_library_module_passes(self):
+        validate_task_cli("tigerflow.library.echo")  # Should not raise
 
-    def test_nonexistent_library_module_returns_false(self):
-        assert is_valid_task_cli("nonexistent.module.path") is False
+    def test_nonexistent_library_module_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid task CLI") as exc_info:
+            validate_task_cli("nonexistent.module.path")
+        assert "ModuleNotFoundError" in str(exc_info.value)
 
 
 class TestPidUtilityFunctions:
@@ -163,3 +169,39 @@ class TestImportCallable:
     def test_raises_type_error_for_non_callable(self):
         with pytest.raises(TypeError, match="does not resolve to a callable"):
             import_callable("os.path:sep")
+
+
+class TestAtomicWrite:
+    def test_temp_file_has_prefix_and_suffix(self, tmp_path: Path):
+        target = tmp_path / "output.csv"
+        with atomic_write(target) as temp:
+            assert temp.name.startswith(TEMP_FILE_PREFIX)
+            assert temp.suffix == ".csv"
+            temp.write_text("data")
+        assert target.read_text() == "data"
+        assert not temp.exists(), "Temp file should be replaced by target"
+
+    def test_temp_file_no_suffix(self, tmp_path: Path):
+        target = tmp_path / "noext"
+        with atomic_write(target) as temp:
+            assert temp.name.startswith(TEMP_FILE_PREFIX)
+            assert temp.suffix == ""
+            temp.write_text("data")
+        assert target.read_text() == "data"
+
+    def test_temp_file_cleaned_on_error(self, tmp_path: Path):
+        target = tmp_path / "output.txt"
+        with pytest.raises(RuntimeError):
+            with atomic_write(target) as temp:
+                temp.write_text("partial")
+                raise RuntimeError("boom")
+        assert not temp.exists(), "Temp file should be removed on error"
+        assert not target.exists(), "Target should not be created on error"
+
+    def test_accepts_str_path(self, tmp_path: Path):
+        target = tmp_path / "output.json"
+        with atomic_write(str(target)) as temp:
+            assert temp.name.startswith(TEMP_FILE_PREFIX)
+            assert temp.suffix == ".json"
+            temp.write_text("{}")
+        assert target.read_text() == "{}"
