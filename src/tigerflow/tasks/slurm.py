@@ -98,9 +98,7 @@ class SlurmTask(Task):
                     logger.info("Successfully processed: {}", input_file.name)
                 except Exception:
                     metrics["status"] = "error"
-                    error_fname = (
-                        output_file.name.removesuffix(output_ext) + ".err"
-                    )
+                    error_fname = output_file.name.removesuffix(output_ext) + ".err"
                     error_file = output_dir / error_fname
                     write_error_file(error_file, input_file.name)
                     logger.error("Failed processing: {}", input_file.name)
