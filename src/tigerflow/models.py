@@ -188,7 +188,7 @@ class LocalTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             {setup_command}
-            {task_command} >> {log_file} 2>&1
+            {task_command} > {stdout_file} 2> {stderr_file}
         """)
 
         return script
@@ -219,7 +219,7 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
         script = textwrap.dedent(f"""\
             #!/bin/bash
             {setup_command}
-            {task_command} >> {log_file} 2>&1
+            {task_command} > {stdout_file} 2> {stderr_file}
         """)
 
         return script
@@ -510,13 +510,13 @@ class PipelineOutput:
         """Parse METRICS from task log files.
 
         Reads from:
-        - {task}/task.log (local/local_async tasks, appended across runs)
-        - {task}/task-{job_id}.log (Slurm worker logs)
+        - {task}/logs/{pid}/task-{pid}.log (local/local_async tasks)
+        - {task}/logs/{pid}/task-worker-{job_id}.log (Slurm worker logs)
         """
         metrics: list[FileMetrics] = []
 
         for task_dir in self._get_task_dirs():
-            log_files = list(task_dir.glob("task*.log"))
+            log_files = list(task_dir.glob("logs/**/task*.log"))
 
             for log_file in log_files:
                 try:

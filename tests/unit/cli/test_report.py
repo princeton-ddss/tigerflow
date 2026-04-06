@@ -53,7 +53,8 @@ class TestPipelineOutputReport:
         task_dir.mkdir()
 
         # Write metrics for all 5 files
-        log_file = task_dir / "task.log"
+        log_dir = task_dir / "logs" / "100"
+        log_dir.mkdir(parents=True)
         now = datetime.now()
         lines = []
         for i in range(5):
@@ -64,7 +65,7 @@ class TestPipelineOutputReport:
                 "status": "success",
             }
             lines.append(f"2026-03-10 12:00:00 | METRICS | {json.dumps(metrics)}")
-        log_file.write_text("\n".join(lines))
+        (log_dir / "task-100.log").write_text("\n".join(lines))
 
         output = PipelineOutput(tmp_path)
         report = output.report()
@@ -90,7 +91,8 @@ class TestPipelineOutputReport:
         task_dir.mkdir()
 
         # Write metrics - 7 success, 3 errors
-        log_file = task_dir / "task.log"
+        log_dir = task_dir / "logs" / "100"
+        log_dir.mkdir(parents=True)
         now = datetime.now()
         lines = []
         for i in range(10):
@@ -102,7 +104,7 @@ class TestPipelineOutputReport:
                 "status": status,
             }
             lines.append(f"2026-03-10 12:00:00 | METRICS | {json.dumps(metrics)}")
-        log_file.write_text("\n".join(lines))
+        (log_dir / "task-100.log").write_text("\n".join(lines))
 
         # Create .err files for failed ones
         for i in range(7, 10):
@@ -237,15 +239,18 @@ class TestAllRunsMetrics:
         task_dir = internal / "task1"
         task_dir.mkdir()
 
+        log_dir = task_dir / "logs" / "12345"
+        log_dir.mkdir(parents=True)
+
         now = datetime.now()
 
-        # All metrics appended to single task.log
+        # All metrics appended to single task log
         all_lines = []
         for i in range(5):
             all_lines.append(
                 f"2026-03-10 10:00:01 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
-        (task_dir / "task.log").write_text("\n".join(all_lines))
+        (log_dir / "task-12345.log").write_text("\n".join(all_lines))
 
         output = PipelineOutput(tmp_path)
         metrics = output._parse_all_metrics()
@@ -290,6 +295,8 @@ class TestTaskProgress:
         for i in range(6, 8):
             (task_dir / f"file{i}.err").write_text("Error")
 
+        log_dir = task_dir / "logs" / "100"
+        log_dir.mkdir(parents=True)
         now = datetime.now()
         task_lines = []
         for i in range(8):
@@ -297,7 +304,7 @@ class TestTaskProgress:
             task_lines.append(
                 f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': status})}"
             )
-        (task_dir / "task.log").write_text("\n".join(task_lines))
+        (log_dir / "task-100.log").write_text("\n".join(task_lines))
 
         output = PipelineOutput(tmp_path)
         report = output.report()
@@ -337,6 +344,8 @@ class TestTaskProgress:
         for i in range(8, 10):
             (task1_dir / f"file{i}.err").write_text("Error")
 
+        log_dir1 = task1_dir / "logs" / "100"
+        log_dir1.mkdir(parents=True)
         now = datetime.now()
         lines1 = []
         for i in range(10):
@@ -344,18 +353,20 @@ class TestTaskProgress:
             lines1.append(
                 f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': status})}"
             )
-        (task1_dir / "task.log").write_text("\n".join(lines1))
+        (log_dir1 / "task-100.log").write_text("\n".join(lines1))
 
         # Task2: 5 of 8 available processed
         task2_dir = internal / "task2"
         task2_dir.mkdir()
 
+        log_dir2 = task2_dir / "logs" / "100"
+        log_dir2.mkdir(parents=True)
         lines2 = []
         for i in range(5):
             lines2.append(
                 f"2026-03-10 12:00:02 | METRICS | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
-        (task2_dir / "task.log").write_text("\n".join(lines2))
+        (log_dir2 / "task-100.log").write_text("\n".join(lines2))
 
         output = PipelineOutput(tmp_path)
         report = output.report()
@@ -425,24 +436,27 @@ class TestMultipleRuns:
 
         now = datetime.now()
 
-        # All metrics appended to single task.log
-        all_task_lines = []
-
-        # Run 1: 5 files processed
+        # Run 1: 5 files processed (pid 100)
+        log_dir1 = task_dir / "logs" / "100"
+        log_dir1.mkdir(parents=True)
+        run1_lines = []
         for i in range(5):
-            all_task_lines.append(
+            run1_lines.append(
                 f"2026-03-10 10:00:01 | METRICS | {json.dumps({'file': f'run1_file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
             (finished / f"run1_file{i}.txt").touch()
+        (log_dir1 / "task-100.log").write_text("\n".join(run1_lines))
 
-        # Run 2: 7 files processed
+        # Run 2: 7 files processed (pid 200)
+        log_dir2 = task_dir / "logs" / "200"
+        log_dir2.mkdir(parents=True)
+        run2_lines = []
         for i in range(7):
-            all_task_lines.append(
+            run2_lines.append(
                 f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': f'run2_file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
             (finished / f"run2_file{i}.txt").touch()
-
-        (task_dir / "task.log").write_text("\n".join(all_task_lines))
+        (log_dir2 / "task-200.log").write_text("\n".join(run2_lines))
 
         output = PipelineOutput(tmp_path)
         report = output.report()
@@ -466,16 +480,19 @@ class TestSlurmLogParsing:
         task_dir = internal / "task1"
         task_dir.mkdir()
 
+        log_dir = task_dir / "logs" / "100"
+        log_dir.mkdir(parents=True)
+
         now = datetime.now()
 
         # Worker 1 processed file1
-        worker1_log = task_dir / "task-12345.log"
+        worker1_log = log_dir / "task-worker-12345.log"
         worker1_log.write_text(
             f"2026-03-10 12:00:01 | METRICS | {json.dumps({'file': 'file1.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}\n"
         )
 
         # Worker 2 processed file2 and file3
-        worker2_log = task_dir / "task-12346.log"
+        worker2_log = log_dir / "task-worker-12346.log"
         worker2_log.write_text(
             f"2026-03-10 12:00:02 | METRICS | {json.dumps({'file': 'file2.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}\n"
             f"2026-03-10 12:00:03 | METRICS | {json.dumps({'file': 'file3.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'error'})}\n"
