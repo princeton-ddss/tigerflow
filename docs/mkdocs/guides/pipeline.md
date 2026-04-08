@@ -97,6 +97,7 @@ tasks:
 
 where:
 
+- `name` specifies the task name. Must start with a letter and contain only letters, digits, hyphens, or underscores. Used for directory paths, CLI arguments, and Slurm job names.
 - `kind` specifies the task type (one of: `local`, `local_async`, or `slurm`).
 - `module` specifies the Python module defining task logic. Can be the path to a user-defined task (e.g., `/path/to/transcribe.py`) or the import path of a library task (e.g., `tigerflow.library.echo`). Care should be taken when using a relative file path as it may resolve incorrectly when running the pipeline.
 - `depends_on` specifies the name of the parent task whose output is used as input for the current task.

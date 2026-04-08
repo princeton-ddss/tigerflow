@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+from tigerflow.utils import TEMP_FILE_PREFIX
+
 SLURM_TEST_DIR = os.environ.get("SLURM_TEST_DIR")
 
 # Skip conditions
@@ -87,10 +89,16 @@ def run_slurm_task_until_complete(
             output_files = [
                 f
                 for f in output_dir.iterdir()
-                if f.is_file() and f.suffix == output_ext
+                if f.is_file()
+                and f.suffix == output_ext
+                and not f.name.startswith(TEMP_FILE_PREFIX)
             ]
             err_files = [
-                f for f in output_dir.iterdir() if f.is_file() and f.suffix == ".err"
+                f
+                for f in output_dir.iterdir()
+                if f.is_file()
+                and f.suffix == ".err"
+                and not f.name.startswith(TEMP_FILE_PREFIX)
             ]
             if len(output_files) + len(err_files) >= expected_count:
                 break

@@ -141,6 +141,7 @@ For instance, `run` is a subcommand for running a user-defined pipeline, and its
     ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
     │ --idle-timeout        INTEGER  Terminate after this many minutes of inactivity. [default: 10]    │
     │ --delete-input                 Delete input files after pipeline processing.                     │
+    │ --background    -b             Run the pipeline in the background, detached from the terminal.   │
     │ --help                         Show this message and exit.                                       │
     ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
     ```

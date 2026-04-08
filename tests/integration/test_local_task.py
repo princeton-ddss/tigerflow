@@ -6,6 +6,8 @@ import sys
 import time
 from pathlib import Path
 
+from tigerflow.utils import TEMP_FILE_PREFIX
+
 
 def run_task_until_complete(
     input_dir: Path,
@@ -45,7 +47,11 @@ def run_task_until_complete(
 
     start_time = time.time()
     while time.time() - start_time < timeout:
-        output_files = [f for f in output_dir.iterdir() if f.suffix == output_ext]
+        output_files = [
+            f
+            for f in output_dir.iterdir()
+            if f.suffix == output_ext and not f.name.startswith(TEMP_FILE_PREFIX)
+        ]
         if len(output_files) >= expected_count:
             break
         time.sleep(0.1)
