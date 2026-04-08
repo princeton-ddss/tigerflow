@@ -611,17 +611,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#checking-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checking Status
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#stopping-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -638,24 +627,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#checking-progress" class="md-nav__link">
+  <a href="#monitoring-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Checking Progress
+        Monitoring a Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitoring a Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#watch-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watch Mode
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#checking-errors" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#json-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Checking Errors
+        JSON Output
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -859,17 +865,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#checking-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checking Status
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#stopping-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -886,24 +881,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#checking-progress" class="md-nav__link">
+  <a href="#monitoring-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Checking Progress
+        Monitoring a Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitoring a Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#watch-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watch Mode
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#checking-errors" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#json-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Checking Errors
+        JSON Output
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1302,30 +1314,6 @@ a second pipeline targeting the same output directory will fail with an error in
 that a pipeline is already running.</p>
 </div>
 <h2 id="managing-running-pipelines">Managing Running Pipelines<a class="headerlink" href="#managing-running-pipelines" title="Permanent link">&para;</a></h2>
-<h3 id="checking-status">Checking Status<a class="headerlink" href="#checking-status" title="Permanent link">&para;</a></h3>
-<p>We can check whether a pipeline is running using the <code>status</code> command:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:3"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output (running)</label><label for="__tabbed_3_3">Output (not running)</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>status<span class="w"> </span>path/to/results/
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>Pipeline running (pid 12345)
-45 finished, 44 staged, 2 failed
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>Pipeline stopped
-91 finished, 0 staged, 8 failed
-</code></pre></div>
-</div>
-</div>
-</div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>For scripting, use <code>--json</code> to output machine-readable JSON.</p>
-</div>
 <h3 id="stopping-a-pipeline">Stopping a Pipeline<a class="headerlink" href="#stopping-a-pipeline" title="Permanent link">&para;</a></h3>
 <p>To gracefully stop a running pipeline:</p>
 <div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>stop<span class="w"> </span>path/to/results/
@@ -1346,71 +1334,78 @@ the output directory (i.e., <code>path/to/results/</code>) will look as follows:
 <p class="admonition-title">Warning</p>
 <p><code>.tigerflow/</code> is what enables resuming a previous pipeline run, so it should not be deleted or modified.</p>
 </div>
-<h2 id="checking-progress">Checking Progress<a class="headerlink" href="#checking-progress" title="Permanent link">&para;</a></h2>
-<p>We can check the pipeline's progress at any point by running:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Command</label><label for="__tabbed_4_2">Output</label></div>
+<h2 id="monitoring-a-pipeline">Monitoring a Pipeline<a class="headerlink" href="#monitoring-a-pipeline" title="Permanent link">&para;</a></h2>
+<p>The <code>report</code> command provides a dashboard view of a pipeline's status, progress, metrics,
+and errors:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Command</label><label for="__tabbed_3_2">Output</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>progress<span class="w"> </span>path/to/results/
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>path/to/results/
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>┏━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
-┃ Task       ┃ Processed ┃ Ongoing ┃ Failed ┃
-┡━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━┩
-│ transcribe │        91 │       0 │      0 │
-│ embed      │        83 │       0 │      8 │
-│ ingest     │        83 │       0 │      0 │
-└────────────┴───────────┴─────────┴────────┘
-██████████████████████████████ 91/91 (100.0%)
+<div class="highlight"><pre><span></span><code>╭─ tigerflow report ─────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                            │
+│ Status:  ● running (pid 45760)                                                                             │
+│ Output:  /private/var/folders/_k/1p72bgt14pxf0918h43wfht00000gn/T/tigerflow-test-kre0xlge/output           │
+│                                                                                                            │
+│ Progress: ○ 83 staged → ◐ 1 in progress → ✓ 13 processed, ✗ 3 failed                                       │
+│                                                                                                            │
+│   transcribe  ━━━━━━────────────────────────────────── 16 / 100, 1 failed                                  │
+│   embed       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━─── 13 / 16, 2 failed                                   │
+│   ingest      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13 / 13                                             │
+│                                                                                                            │
+│ Metrics:                                                                                                   │
+│                                                                                                            │
+│   transcribe      ▇▃▃▄▃▃▂▁▃▃▁▂▂▁▄▃  2.0s – 2.0s (2.0s avg)                                                 │
+│   embed              █▂▁▃▁▂▂▁▂▁▃▁▃  501ms – 501ms (501ms avg)                                              │
+│   ingest             █▄▂▅▁▄▃▁▇▄▄▁▄  100ms – 101ms (101ms avg)                                              │
+│                                                                                                            │
+│ Errors: 3                                                                                                  │
+│   transcribe  0016.mp4  ClientResponseError: 400, ...                                                      │
+│   transcribe  0004.mp4  ClientResponseError: 400, ...                                                      │
+│   transcribe  0028.mp4  ClientResponseError: 400, ...                                                      │
+│                                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 </code></pre></div>
+<p>The actual terminal output is colorized (green for processed, yellow for in progress,
+red for errors).</p>
 </div>
 </div>
 </div>
 <p>where <code>path/to/results/</code> must be a valid output directory containing <code>.tigerflow/</code>.</p>
-<h2 id="checking-errors">Checking Errors<a class="headerlink" href="#checking-errors" title="Permanent link">&para;</a></h2>
-<p>If the progress reports any failed files, we can identify them by running:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Command</label><label for="__tabbed_5_2">Output</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>errors<span class="w"> </span>path/to/results/
+<p>The dashboard displays four sections:</p>
+<ul>
+<li><strong>Status</strong> — whether the pipeline is running or stopped, along with its process ID.</li>
+<li><strong>Progress</strong> — a pipeline-level summary (staged → in progress → processed) and per-task
+  progress bars showing how many files each task has processed.</li>
+<li><strong>Metrics</strong> — per-task sparklines with min, max, and average processing durations
+  (only shown when metric data is available).</li>
+<li><strong>Errors</strong> — a count and summary of the first five errors, including the task name,
+  input file, and exception details.</li>
+</ul>
+<h3 id="watch-mode">Watch Mode<a class="headerlink" href="#watch-mode" title="Permanent link">&para;</a></h3>
+<p>Use the <code>--watch</code> (or <code>-w</code>) flag to continuously refresh the dashboard every second,
+providing a live view of pipeline activity:</p>
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>path/to/results/<span class="w"> </span>--watch
 </code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>[embed] 8 failed files (open to view errors):
-  results/.tigerflow/embed/7501863358941940997.err
-  results/.tigerflow/embed/7501867598829702430.err
-  results/.tigerflow/embed/7501869468910423326.err
-  results/.tigerflow/embed/7501869707121757470.err
-  results/.tigerflow/embed/7501870655906860306.err
-  results/.tigerflow/embed/7501870694288985390.err
-  results/.tigerflow/embed/7501870878855154987.err
-  results/.tigerflow/embed/7501870943883545899.err
+<p>Press <code>Ctrl+C</code> to exit watch mode.</p>
+<h3 id="json-output">JSON Output<a class="headerlink" href="#json-output" title="Permanent link">&para;</a></h3>
+<p>For scripting and programmatic access, use the <code>--json</code> flag to output
+machine-readable JSON:</p>
+<div class="highlight"><pre><span></span><code>tigerflow<span class="w"> </span>report<span class="w"> </span>path/to/results/<span class="w"> </span>--json
 </code></pre></div>
-</div>
-</div>
-</div>
-<p>Each error file contains specific error messages that help identify and resolve issues
-in the code or data.</p>
-<div class="admonition example">
-<p class="admonition-title">Example</p>
-<p>In this case, all error files contain the same message:</p>
-<div class="highlight"><pre><span></span><code>Traceback (most recent call last):
-File &quot;/home/sp8538/.conda/envs/tiktok/lib/python3.12/site-packages/tigerflow/tasks/local_async.py&quot;, line 47, in task
-    await self.run(self._context, input_file, temp_file)
-File &quot;/home/sp8538/tiktok/pipeline/tigerflow/demo/code/embed.py&quot;, line 35, in run
-    resp.raise_for_status()  # Raise error if unsuccessful
-    ^^^^^^^^^^^^^^^^^^^^^^^
-File &quot;/home/sp8538/.conda/envs/tiktok/lib/python3.12/site-packages/aiohttp/client_reqrep.py&quot;, line 629, in raise_for_status
-    raise ClientResponseError(
-aiohttp.client_exceptions.ClientResponseError: 400, message=&#39;Bad Request&#39;, url=&#39;https://api.voyageai.com/v1/embeddings&#39;
+<p>The JSON output includes <code>status</code>, <code>progress</code>, <code>metrics</code>, and <code>errors</code> sections.
+Use <code>--include</code> to request only specific sections:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Only status and progress</span>
+tigerflow<span class="w"> </span>report<span class="w"> </span>path/to/results/<span class="w"> </span>--json<span class="w"> </span>--include<span class="w"> </span>status,progress
+
+<span class="c1"># Only errors</span>
+tigerflow<span class="w"> </span>report<span class="w"> </span>path/to/results/<span class="w"> </span>--json<span class="w"> </span>--include<span class="w"> </span>errors
 </code></pre></div>
-<p>which suggests an issue with the embedding API request. However, since the same request was
-successful for other files, the issue likely lies in the input data (i.e., transcription).</p>
-<p>Upon inspection, we find the failed files have empty transcriptions, which explains the API
-request failure. Furthermore, we can confirm that the corresponding videos contain no audio,
-which led to the empty transcriptions in the first place.</p>
-<p>We may then exclude such videos from the pipeline to prevent future errors.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code>--watch</code> flag cannot be combined with <code>--json</code>.</p>
 </div>
 <div class="footnote">
 <hr />
