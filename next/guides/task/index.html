@@ -977,7 +977,10 @@ using the same filename stem and the specified output extension (also <code>.txt
 For example, <code>path/to/data/4.txt</code> produces <code>path/to/results/4.txt</code>.</p>
 <div class="admonition info">
 <p class="admonition-title">Error Files</p>
-<p>If a task encounters an error, TigerFlow generates an error output file, e.g., <code>4.err</code> instead of <code>4.txt</code>. This file contains specific error messages to assist with debugging.</p>
+<p>If a task encounters an error, TigerFlow generates a structured error file alongside
+the expected output, e.g., <code>4.err</code> instead of <code>4.txt</code>. The file is JSON containing the
+input file name, timestamp, exception type, message, and full traceback to assist with
+debugging.</p>
 </div>
 <h2 id="lazy-imports">Lazy Imports<a class="headerlink" href="#lazy-imports" title="Permanent link">&para;</a></h2>
 <p>When working with heavy dependencies like <code>whisper</code>, <code>duckdb</code>, or <code>aiohttp</code>, it is best to import
