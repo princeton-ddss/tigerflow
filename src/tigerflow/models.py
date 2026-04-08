@@ -1,6 +1,8 @@
+import json
 import re
 import shlex
 import textwrap
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -10,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from tigerflow.settings import settings
 from tigerflow.staging import StagingPipeline
-from tigerflow.utils import TEMP_FILE_PREFIX, validate_file_ext
+from tigerflow.utils import is_process_running, read_pid_file, validate_file_ext
 
 
 class TaskStatusKind(Enum):
@@ -26,6 +28,20 @@ class TaskStatus(BaseModel):
     @property
     def is_alive(self) -> bool:
         return self.kind != TaskStatusKind.INACTIVE
+
+
+class FileMetrics(BaseModel):
+    """Timing metrics for a single file processed by a task."""
+
+    file: str
+    task: str
+    started_at: datetime
+    finished_at: datetime
+    status: Literal["success", "error"]
+
+    @property
+    def duration_ms(self) -> float:
+        return (self.finished_at - self.started_at).total_seconds() * 1000
 
 
 class SlurmResourceConfig(BaseModel):
@@ -384,8 +400,14 @@ class PipelineConfig(BaseModel):
         if len(root_input_ext) > 1:  # Cannot be zero due to earlier validations
             raise ValueError("Root tasks must have the same input extension")
 
-        # Sort tasks topologically
-        order_map = {name: index for index, name in enumerate(nx.topological_sort(G))}
+        # Sort tasks in tree order (DFS pre-order from roots)
+        roots = [n for n in G if G.in_degree(n) == 0]
+        order_map = {
+            name: index
+            for index, name in enumerate(
+                node for root in roots for node in nx.dfs_preorder_nodes(G, root)
+            )
+        }
         tasks.sort(key=lambda task: order_map[task.name])
 
         return tasks
@@ -409,22 +431,49 @@ class PipelineConfig(BaseModel):
 
 
 class TaskProgress(BaseModel):
+    """Progress for a single task.
+
+    Note: We don't distinguish staged vs in-progress at the task level
+    because the distinction is fleeting (files are picked up quickly).
+    """
+
     name: str
-    processed: set[Path] = set()
-    ongoing: set[Path] = set()
-    failed: set[Path] = set()
+    processed: int = 0
+    staged: int = 0  # files available but not yet completed (queued + processing)
+    failed: int = 0
 
 
-class PipelineProgress(BaseModel):
-    staged: set[Path] = set()
-    finished: set[Path] = set()
+class FileError(BaseModel):
+    """Error information for a failed file."""
+
+    file: str
+    path: str
+    timestamp: datetime | None = None
+    exception_type: str = ""
+    message: str = ""
+    traceback: str = ""
+
+
+class TaskMeta(BaseModel):
+    """Task metadata from INIT log entry."""
+
+    name: str
+    depends_on: str | None = None
+
+
+class PipelineReport(BaseModel):
+    """Complete pipeline status and progress report."""
+
+    output_dir: Path
+    status: Literal["running", "stopped"]
+    pid: int | None = None
+    processed: int = 0
+    in_progress: int = 0
+    failed: int = 0
+    staged: int | None = None  # None if stopped
     tasks: list[TaskProgress] = []
-
-    @property
-    def failed(self) -> set[Path]:
-        if not self.tasks:
-            return set()
-        return set.union(*(task.failed for task in self.tasks))
+    metrics: dict[str, list[FileMetrics]] = {}
+    errors: dict[str, list[FileError]] = {}
 
 
 class PipelineOutput:
@@ -454,25 +503,202 @@ class PipelineOutput:
         """Create the pipeline directory structure."""
         self.internal.mkdir(parents=True, exist_ok=True)
 
-    def report_progress(self) -> PipelineProgress:
-        """Report progress across pipeline tasks."""
+    def _get_status(self) -> tuple[bool, int | None]:
+        """Return (is_running, pid)."""
+        pid = read_pid_file(self.pid_file)
+        is_running = pid is not None and is_process_running(pid)
+        return is_running, pid if is_running else None
+
+    def _get_task_dirs(self) -> list[Path]:
+        """Get all task directories (non-hidden dirs in .tigerflow)."""
+        return [
+            d
+            for d in self.internal.iterdir()
+            if d.is_dir() and not d.name.startswith(".")
+        ]
+
+    def _get_task_meta(self) -> list[TaskMeta]:
+        """Get task metadata from the most recent INIT entry in run.log."""
+        if not self.log_file.exists():
+            return []
+
+        tasks: list[TaskMeta] = []
+        try:
+            with open(self.log_file) as f:
+                for line in f:
+                    if "INIT" not in line:
+                        continue
+                    start = line.find("{")
+                    if start == -1:
+                        continue
+                    data = json.loads(line[start:])
+                    tasks = [TaskMeta(**t) for t in data.get("tasks", [])]
+        except (OSError, json.JSONDecodeError, KeyError):
+            pass
+        return tasks
+
+    def _parse_all_metrics(self) -> list[FileMetrics]:
+        """Parse METRICS from task log files.
+
+        Reads from:
+        - {task}/logs/{pid}/task-{pid}.log (local/local_async tasks)
+        - {task}/logs/{pid}/task-worker-{job_id}.log (Slurm worker logs)
+        """
+        metrics: list[FileMetrics] = []
+
+        for task_dir in self._get_task_dirs():
+            log_files = list(task_dir.glob("logs/**/task*.log"))
+
+            for log_file in log_files:
+                try:
+                    with open(log_file) as f:
+                        for line in f:
+                            if "METRICS" not in line:
+                                continue
+                            start = line.find("{")
+                            if start == -1:
+                                continue
+                            data = json.loads(line[start:])
+                            metrics.append(
+                                FileMetrics(
+                                    file=data["file"],
+                                    task=task_dir.name,
+                                    started_at=datetime.fromisoformat(
+                                        data["started_at"]
+                                    ),
+                                    finished_at=datetime.fromisoformat(
+                                        data["finished_at"]
+                                    ),
+                                    status=data["status"],
+                                )
+                            )
+                except (OSError, json.JSONDecodeError, KeyError):
+                    continue
+
+        return metrics
+
+    def report(self) -> PipelineReport:
+        """Generate a complete pipeline status report."""
         self.validate()
 
-        result = PipelineProgress()
-        result.staged = {f for f in self.symlinks.iterdir() if f.is_file()}
-        result.finished = {f for f in self.finished.iterdir() if f.is_file()}
+        is_running, pid = self._get_status()
 
-        for folder in self.internal.iterdir():
-            if folder.is_dir() and not folder.name.startswith("."):
-                task = TaskProgress(name=folder.name)
-                for file in folder.iterdir():
-                    if file.is_file():
-                        if file.name.startswith(TEMP_FILE_PREFIX):
-                            task.ongoing.add(file)
-                        elif file.name.endswith(".err"):
-                            task.failed.add(file)
-                        else:
-                            task.processed.add(file)
-                result.tasks.append(task)
+        # === Filesystem Counts ===
 
-        return result
+        # processed = files in .finished/
+        finished_stems: set[str] = set()
+        if self.finished.exists():
+            finished_stems = {f.stem for f in self.finished.iterdir() if f.is_file()}
+
+        # failed = unique .err stems across all task dirs
+        failed_stems: set[str] = set()
+        errors: dict[str, list[FileError]] = {}
+        for task_dir in self._get_task_dirs():
+            task_errors: list[FileError] = []
+            for file in task_dir.iterdir():
+                if file.is_file() and file.name.endswith(".err"):
+                    stem = file.name.removesuffix(".err")
+                    failed_stems.add(stem)
+                    try:
+                        data = json.loads(file.read_text())
+                        task_errors.append(
+                            FileError(
+                                file=data.get("file", stem),
+                                path=str(file),
+                                timestamp=datetime.fromisoformat(data["timestamp"]),
+                                exception_type=data.get("exception_type", ""),
+                                message=data.get("message", ""),
+                                traceback=data.get("traceback", ""),
+                            )
+                        )
+                    except (OSError, json.JSONDecodeError, KeyError):
+                        task_errors.append(FileError(file=stem, path=str(file)))
+            if task_errors:
+                errors[task_dir.name] = task_errors
+
+        # Get symlink stems (excluding finished and failed)
+        symlink_stems: set[str] = set()
+        if self.symlinks.exists():
+            symlink_stems = {
+                f.stem
+                for f in self.symlinks.iterdir()
+                if f.is_symlink()
+                and f.stem not in finished_stems
+                and f.stem not in failed_stems
+            }
+
+        # in_progress = symlinks with any task output file
+        # staged = symlinks without any task output file
+        stems_with_output: set[str] = set()
+        for task_dir in self._get_task_dirs():
+            for file in task_dir.iterdir():
+                if (
+                    file.is_file()
+                    and not file.name.endswith(".err")
+                    and not file.name.endswith(".log")
+                    and not file.name.startswith("task-")
+                ):
+                    stems_with_output.add(file.stem)
+
+        in_progress_stems = symlink_stems & stems_with_output
+        staged_stems = symlink_stems - stems_with_output
+
+        # === Per-Task Progress (from METRICS logs, all runs) ===
+
+        all_metrics = self._parse_all_metrics()
+        task_meta = self._get_task_meta()
+
+        # Group metrics by task
+        metrics_by_task: dict[str, list[FileMetrics]] = {}
+        task_succeeded: dict[str, set[str]] = {}
+        for m in all_metrics:
+            if m.task not in metrics_by_task:
+                metrics_by_task[m.task] = []
+            metrics_by_task[m.task].append(m)
+            if m.status == "success":
+                if m.task not in task_succeeded:
+                    task_succeeded[m.task] = set()
+                task_succeeded[m.task].add(Path(m.file).stem)
+
+        # Compute per-task progress
+        tasks: list[TaskProgress] = []
+        for tm in task_meta:
+            # Available files for this task
+            if tm.depends_on is None:
+                # Root task: all files the pipeline has seen (filesystem)
+                available = (
+                    len(finished_stems)
+                    + len(in_progress_stems)
+                    + len(staged_stems)
+                    + len(failed_stems)
+                )
+            else:
+                # Downstream task: files that succeeded in parent
+                available = len(task_succeeded.get(tm.depends_on, set()))
+
+            # Processed from metrics, failed from filesystem
+            task_metrics = metrics_by_task.get(tm.name, [])
+            task_processed = sum(1 for m in task_metrics if m.status == "success")
+            task_failed = len(errors.get(tm.name, []))
+
+            tasks.append(
+                TaskProgress(
+                    name=tm.name,
+                    processed=task_processed,
+                    staged=max(0, available - task_processed - task_failed),
+                    failed=task_failed,
+                )
+            )
+
+        return PipelineReport(
+            output_dir=self.root,
+            status="running" if is_running else "stopped",
+            pid=pid,
+            processed=len(finished_stems),
+            in_progress=len(in_progress_stems),
+            failed=len(failed_stems),
+            staged=len(staged_stems) if is_running else None,
+            tasks=tasks,
+            metrics=metrics_by_task,
+            errors=errors,
+        )

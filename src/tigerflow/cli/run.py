@@ -108,17 +108,20 @@ def _run_in_background(
     # Child process: detach from terminal
     os.setsid()
 
-    # Redirect stdout/stderr to log file
-    with open(output.log_file, "a") as log:
-        os.dup2(log.fileno(), sys.stdout.fileno())
-        os.dup2(log.fileno(), sys.stderr.fileno())
+    # Redirect stdout/stderr to /dev/null so the daemon does not write to
+    # a detached terminal fd.  Pipeline.run() adds a loguru file sink that
+    # writes directly to run.log, so we no longer need dup2 to the log file.
+    devnull = os.open(os.devnull, os.O_RDWR)
+    os.dup2(devnull, sys.stdout.fileno())
+    os.dup2(devnull, sys.stderr.fileno())
+    os.close(devnull)
 
-        pipeline = Pipeline(
-            config_file=config_file,
-            input_dir=input_dir,
-            output_dir=output.root,
-            idle_timeout=idle_timeout,
-            delete_input=delete_input,
-            pid_file=output.pid_file,
-        )
-        pipeline.run()
+    pipeline = Pipeline(
+        config_file=config_file,
+        input_dir=input_dir,
+        output_dir=output.root,
+        idle_timeout=idle_timeout,
+        delete_input=delete_input,
+        pid_file=output.pid_file,
+    )
+    pipeline.run()

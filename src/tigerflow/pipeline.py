@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import signal
@@ -79,8 +80,7 @@ class Pipeline:
 
         # Create task directories
         for task in self._config.tasks:
-            for path in (task.output_dir, task.log_dir):
-                path.mkdir(parents=True, exist_ok=True)
+            task.output_dir.mkdir(parents=True, exist_ok=True)
             if task.keep_output:
                 self._output_dir.joinpath(task.name).mkdir(exist_ok=True)
 
@@ -130,18 +130,12 @@ class Pipeline:
             task.name: set() for task in self._config.tasks
         }
 
-        # Initialize mapping to track processed files per task
-        self._task_processed_filenames: dict[str, set[str]] = {}
-        for task in self._config.tasks:
-            processed_filenames: set[str] = set()
-            for file in task.output_dir.iterdir():
-                if (
-                    file.is_file()
-                    and file.name.endswith(task.output_ext)
-                    and not file.name.startswith(TEMP_FILE_PREFIX)
-                ):
-                    processed_filenames.add(file.name)
-            self._task_processed_filenames[task.name] = processed_filenames
+        # Initialize mapping to track processed files per task.
+        # Start empty so that existing outputs from a prior run are
+        # detected as "new" and can trigger pipeline completion.
+        self._task_processed_filenames: dict[str, set[str]] = {
+            task.name: set() for task in self._config.tasks
+        }
 
         # Initialize mapping from task name to status
         self._task_status: dict[str, TaskStatus] = {
@@ -168,6 +162,14 @@ class Pipeline:
 
     @logger.catch(reraise=True)
     def run(self):
+        # Add file sink so all log output is written to run.log
+        log_file = self._internal_dir / "run.log"
+        logger.add(
+            log_file,
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+            level="INFO",
+        )
+
         # Register signal handlers for graceful shutdown
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             signal.signal(sig, self._signal_handler)
@@ -212,6 +214,10 @@ class Pipeline:
                 sys.exit(128 + self._received_signal)
 
     def _start_tasks(self):
+        tasks_meta = [
+            {"name": t.name, "depends_on": t.depends_on} for t in self._config.tasks
+        ]
+        logger.log("INIT", json.dumps({"tasks": tasks_meta}))
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())
             task.runner_pid = os.getpid()
@@ -262,8 +268,6 @@ class Pipeline:
         for file in to_stage:
             self._symlinks_dir.joinpath(file.name).symlink_to(file)
             self._filenames.add(file.name)
-        if to_stage:
-            logger.info("Staged {} new files for processing", len(to_stage))
 
     def _check_task_status(self):
         for task in self._config.tasks:
