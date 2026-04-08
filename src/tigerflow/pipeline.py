@@ -162,6 +162,14 @@ class Pipeline:
 
     @logger.catch(reraise=True)
     def run(self):
+        # Add file sink so all log output is written to run.log
+        log_file = self._internal_dir / "run.log"
+        logger.add(
+            log_file,
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+            level="INFO",
+        )
+
         # Register signal handlers for graceful shutdown
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             signal.signal(sig, self._signal_handler)
@@ -206,14 +214,6 @@ class Pipeline:
                 sys.exit(128 + self._received_signal)
 
     def _start_tasks(self):
-        # Add file sink so all log output is written to run.log
-        log_file = self._internal_dir / "run.log"
-        logger.add(
-            log_file,
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
-            level="INFO",
-        )
-
         tasks_meta = [
             {"name": t.name, "depends_on": t.depends_on} for t in self._config.tasks
         ]
