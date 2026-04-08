@@ -365,6 +365,7 @@ class TestSlurmTaskConfig:
         )
         config.input_dir = input_dir
         config.output_dir = output_dir
+
         return config
 
     def test_client_job_name(self, slurm_config: SlurmTaskConfig):

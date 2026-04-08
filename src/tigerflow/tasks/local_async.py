@@ -1,7 +1,6 @@
 import asyncio
 import signal
 import sys
-import traceback
 from abc import abstractmethod
 from pathlib import Path
 from typing import Annotated
@@ -14,6 +13,7 @@ from tigerflow.settings import settings
 from tigerflow.utils import SetupContext, atomic_write
 
 from ._base import Task
+from .utils import log_metrics, write_error_file
 
 
 class LocalAsyncTask(Task):
@@ -33,8 +33,6 @@ class LocalAsyncTask(Task):
 
     @logger.catch(reraise=True)
     def start(self, input_dir: Path, output_dir: Path):
-        import aiofiles
-
         for path in (input_dir, output_dir):
             if not path.exists():
                 raise FileNotFoundError(path)
@@ -43,20 +41,20 @@ class LocalAsyncTask(Task):
         self.config.output_dir = output_dir
 
         async def task(input_file: Path, output_file: Path):
-            try:
-                logger.info("Starting processing: {}", input_file.name)
-                with atomic_write(output_file) as temp_file:
-                    await self.run(self._context, input_file, temp_file)
-                logger.info("Successfully processed: {}", input_file.name)
-            except Exception:
-                error_fname = (
-                    output_file.name.removesuffix(self.config.output_ext) + ".err"
-                )
-                error_file = self.config.output_dir / error_fname
-                with atomic_write(error_file) as temp_file:
-                    async with aiofiles.open(temp_file, "w") as f:
-                        await f.write(traceback.format_exc())
-                logger.error("Failed processing: {}", input_file.name)
+            with log_metrics(input_file.name) as metrics:
+                try:
+                    logger.info("Starting processing: {}", input_file.name)
+                    with atomic_write(output_file) as temp_file:
+                        await self.run(self._context, input_file, temp_file)
+                    logger.info("Successfully processed: {}", input_file.name)
+                except Exception:
+                    metrics["status"] = "error"
+                    error_fname = (
+                        output_file.name.removesuffix(self.config.output_ext) + ".err"
+                    )
+                    error_file = self.config.output_dir / error_fname
+                    write_error_file(error_file, input_file.name)
+                    logger.error("Failed processing: {}", input_file.name)
 
         async def worker():
             while not self._shutdown_event.is_set():

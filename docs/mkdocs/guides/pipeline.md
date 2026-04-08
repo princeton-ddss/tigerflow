@@ -327,34 +327,6 @@ All output is written to `.tigerflow/run.log` in the output directory.
 
 ## Managing Running Pipelines
 
-### Checking Status
-
-We can check whether a pipeline is running using the `status` command:
-
-=== "Command"
-
-    ```bash
-    tigerflow status path/to/results/
-    ```
-
-=== "Output (running)"
-
-    ```
-    Pipeline running (pid 12345)
-    45 finished, 44 staged, 2 failed
-    ```
-
-=== "Output (not running)"
-
-    ```
-    Pipeline stopped
-    91 finished, 0 staged, 8 failed
-    ```
-
-!!! tip
-
-    For scripting, use `--json` to output machine-readable JSON.
-
 ### Stopping a Pipeline
 
 To gracefully stop a running pipeline:
@@ -384,79 +356,91 @@ where `.tigerflow/` is an internal directory storing the pipeline's operational 
 
     `.tigerflow/` is what enables resuming a previous pipeline run, so it should not be deleted or modified.
 
-## Checking Progress
+## Monitoring a Pipeline
 
-We can check the pipeline's progress at any point by running:
+The `report` command provides a dashboard view of a pipeline's status, progress, metrics,
+and errors:
 
 === "Command"
 
     ```bash
-    tigerflow report progress path/to/results/
+    tigerflow report path/to/results/
     ```
 
 === "Output"
 
-    ```log
-    ┏━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
-    ┃ Task       ┃ Processed ┃ Ongoing ┃ Failed ┃
-    ┡━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━┩
-    │ transcribe │        91 │       0 │      0 │
-    │ embed      │        83 │       0 │      8 │
-    │ ingest     │        83 │       0 │      0 │
-    └────────────┴───────────┴─────────┴────────┘
-    ██████████████████████████████ 91/91 (100.0%)
     ```
+    ╭─ tigerflow report ─────────────────────────────────────────────────────────────────────────────────────────╮
+    │                                                                                                            │
+    │ Status:  ● running (pid 45760)                                                                             │
+    │ Output:  /private/var/folders/_k/1p72bgt14pxf0918h43wfht00000gn/T/tigerflow-test-kre0xlge/output           │
+    │                                                                                                            │
+    │ Progress: ○ 83 staged → ◐ 1 in progress → ✓ 13 processed, ✗ 3 failed                                       │
+    │                                                                                                            │
+    │   transcribe  ━━━━━━────────────────────────────────── 16 / 100, 1 failed                                  │
+    │   embed       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━─── 13 / 16, 2 failed                                   │
+    │   ingest      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13 / 13                                             │
+    │                                                                                                            │
+    │ Metrics:                                                                                                   │
+    │                                                                                                            │
+    │   transcribe      ▇▃▃▄▃▃▂▁▃▃▁▂▂▁▄▃  2.0s – 2.0s (2.0s avg)                                                 │
+    │   embed              █▂▁▃▁▂▂▁▂▁▃▁▃  501ms – 501ms (501ms avg)                                              │
+    │   ingest             █▄▂▅▁▄▃▁▇▄▄▁▄  100ms – 101ms (101ms avg)                                              │
+    │                                                                                                            │
+    │ Errors: 3                                                                                                  │
+    │   transcribe  0016.mp4  ClientResponseError: 400, ...                                                      │
+    │   transcribe  0004.mp4  ClientResponseError: 400, ...                                                      │
+    │   transcribe  0028.mp4  ClientResponseError: 400, ...                                                      │
+    │                                                                                                            │
+    ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+    ```
+
+    The actual terminal output is colorized (green for processed, yellow for in progress,
+    red for errors).
 
 where `path/to/results/` must be a valid output directory containing `.tigerflow/`.
 
-## Checking Errors
+The dashboard displays four sections:
 
-If the progress reports any failed files, we can identify them by running:
+- **Status** — whether the pipeline is running or stopped, along with its process ID.
+- **Progress** — a pipeline-level summary (staged → in progress → processed) and per-task
+  progress bars showing how many files each task has processed.
+- **Metrics** — per-task sparklines with min, max, and average processing durations
+  (only shown when metric data is available).
+- **Errors** — a count and summary of the first five errors, including the task name,
+  input file, and exception details.
 
-=== "Command"
+### Watch Mode
 
-    ```bash
-    tigerflow report errors path/to/results/
-    ```
+Use the `--watch` (or `-w`) flag to continuously refresh the dashboard every second,
+providing a live view of pipeline activity:
 
-=== "Output"
+```bash
+tigerflow report path/to/results/ --watch
+```
 
-    ```log
-    [embed] 8 failed files (open to view errors):
-      results/.tigerflow/embed/7501863358941940997.err
-      results/.tigerflow/embed/7501867598829702430.err
-      results/.tigerflow/embed/7501869468910423326.err
-      results/.tigerflow/embed/7501869707121757470.err
-      results/.tigerflow/embed/7501870655906860306.err
-      results/.tigerflow/embed/7501870694288985390.err
-      results/.tigerflow/embed/7501870878855154987.err
-      results/.tigerflow/embed/7501870943883545899.err
-    ```
+Press `Ctrl+C` to exit watch mode.
 
-Each error file contains specific error messages that help identify and resolve issues
-in the code or data.
+### JSON Output
 
-!!! example
+For scripting and programmatic access, use the `--json` flag to output
+machine-readable JSON:
 
-    In this case, all error files contain the same message:
+```bash
+tigerflow report path/to/results/ --json
+```
 
-    ```log
-    Traceback (most recent call last):
-    File "/home/sp8538/.conda/envs/tiktok/lib/python3.12/site-packages/tigerflow/tasks/local_async.py", line 47, in task
-        await self.run(self._context, input_file, temp_file)
-    File "/home/sp8538/tiktok/pipeline/tigerflow/demo/code/embed.py", line 35, in run
-        resp.raise_for_status()  # Raise error if unsuccessful
-        ^^^^^^^^^^^^^^^^^^^^^^^
-    File "/home/sp8538/.conda/envs/tiktok/lib/python3.12/site-packages/aiohttp/client_reqrep.py", line 629, in raise_for_status
-        raise ClientResponseError(
-    aiohttp.client_exceptions.ClientResponseError: 400, message='Bad Request', url='https://api.voyageai.com/v1/embeddings'
-    ```
+The JSON output includes `status`, `progress`, `metrics`, and `errors` sections.
+Use `--include` to request only specific sections:
 
-    which suggests an issue with the embedding API request. However, since the same request was
-    successful for other files, the issue likely lies in the input data (i.e., transcription).
+```bash
+# Only status and progress
+tigerflow report path/to/results/ --json --include status,progress
 
-    Upon inspection, we find the failed files have empty transcriptions, which explains the API
-    request failure. Furthermore, we can confirm that the corresponding videos contain no audio,
-    which led to the empty transcriptions in the first place.
+# Only errors
+tigerflow report path/to/results/ --json --include errors
+```
 
-    We may then exclude such videos from the pipeline to prevent future errors.
+!!! note
+
+    The `--watch` flag cannot be combined with `--json`.

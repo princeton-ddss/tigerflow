@@ -110,7 +110,9 @@ Once the package is installed, `tigerflow` command will be available, like so:
     ╰─────────────────────────────────────────────────────────────────────────────╯
     ╭─ Commands ──────────────────────────────────────────────────────────────────╮
     │ run      Run a pipeline based on the given specification.                   │
-    │ report   Report different types of information about the given pipeline.    │
+    │ report   Report pipeline status, progress, metrics, and errors.             │
+    │ stop     Stop a running pipeline.                                           │
+    │ tasks                                                                       │
     ╰─────────────────────────────────────────────────────────────────────────────╯
     ```
 
