@@ -388,9 +388,9 @@ and errors:
     │   ingest             █▄▂▅▁▄▃▁▇▄▄▁▄  100ms – 101ms (101ms avg)                                              │
     │                                                                                                            │
     │ Errors: 3                                                                                                  │
-    │   transcribe  0016.out1  ClientResponseError: 400, ...                                                     │
-    │   transcribe  0004.out1  ClientResponseError: 400, ...                                                     │
-    │   transcribe  0028.txt  ClientResponseError: 400, ...                                                      │
+    │   transcribe  0016.mp4  ClientResponseError: 400, ...                                                      │
+    │   transcribe  0004.mp4  ClientResponseError: 400, ...                                                      │
+    │   transcribe  0028.mp4  ClientResponseError: 400, ...                                                      │
     │                                                                                                            │
     ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
     ```

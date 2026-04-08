@@ -111,11 +111,9 @@ class Pipeline:
         # Clean up any invalid or unsuccessful task outputs
         for task in self._config.tasks:
             for file in task.output_dir.iterdir():
-                if (
-                    file.is_file()
-                    and not file.name.endswith(task.output_ext)
-                    and not file.name.endswith((".log", ".out"))
-                    and not file.name.startswith(TEMP_FILE_PREFIX)
+                if file.is_file() and (
+                    not file.name.endswith(task.output_ext)
+                    or file.name.startswith(TEMP_FILE_PREFIX)
                 ):
                     file.unlink()
 
@@ -161,15 +159,6 @@ class Pipeline:
         logger.warning("Received signal {}, initiating shutdown", signum)
         self._received_signal = signum
         self._shutdown_event.set()
-
-    def _log_to_file(self, level: str, data: dict):
-        """Write structured log entry to pipeline log file."""
-        if not hasattr(self, "_pipeline_log_file"):
-            return
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        line = f"{timestamp} | {level:<8} | {json.dumps(data)}\n"
-        with open(self._pipeline_log_file, "a") as f:
-            f.write(line)
 
     @logger.catch(reraise=True)
     def run(self):
@@ -217,16 +206,17 @@ class Pipeline:
                 sys.exit(128 + self._received_signal)
 
     def _start_tasks(self):
-        run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-        self._run_id = run_id
-
-        # Write INIT to pipeline log (appended across runs)
-        self._pipeline_log_file = self._internal_dir / "run.log"
+        # Add file sink so all log output is written to run.log
+        log_file = self._internal_dir / "run.log"
+        logger.add(
+            log_file,
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+            level="INFO",
+        )
 
         tasks_meta = [
             {"name": t.name, "depends_on": t.depends_on} for t in self._config.tasks
         ]
-        self._log_to_file("INIT", {"tasks": tasks_meta})
         logger.log("INIT", json.dumps({"tasks": tasks_meta}))
         for task in self._config.tasks:
             logger.info("[{}] Starting as a {} task", task.name, task.kind.upper())

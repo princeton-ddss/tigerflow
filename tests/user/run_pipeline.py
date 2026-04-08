@@ -94,6 +94,10 @@ def main(
         int,
         typer.Option("--max-workers", help="Max workers for slurm"),
     ] = 4,
+    tmp_dir: Annotated[
+        str | None,
+        typer.Option("--tmp-dir", "-t", help="Base directory for temp files"),
+    ] = None,
 ):
     """Start a test pipeline in background mode."""
     # Parse comma-separated values
@@ -115,7 +119,7 @@ def main(
     )
 
     # Create temp directory
-    temp_dir = Path(tempfile.mkdtemp(prefix="tigerflow-test-"))
+    temp_dir = Path(tempfile.mkdtemp(prefix="tigerflow-test-", dir=tmp_dir))
     input_dir = temp_dir / "input"
     output_dir = temp_dir / "output"
     config_file = temp_dir / "config.yaml"
@@ -219,7 +223,7 @@ def _generate_config(
             task["worker_resources"] = {
                 "cpus": 1,
                 "memory": "2G",
-                "time": "00:30:00",
+                "time": "01:30:00",
             }
 
         tasks.append(task)
