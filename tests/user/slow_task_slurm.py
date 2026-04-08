@@ -24,6 +24,10 @@ class SlowTaskSlurm(SlurmTask):
             float,
             typer.Option(help="Seconds of CPU work per file"),
         ] = 1.0
+        delay_variation: Annotated[
+            float,
+            typer.Option(help="Random variation in delay (0-1, as fraction of delay)"),
+        ] = 0.0
         fail_rate: Annotated[
             float,
             typer.Option(help="Probability of random failure (0-1)"),
@@ -33,8 +37,12 @@ class SlowTaskSlurm(SlurmTask):
     def run(context: SetupContext, input_file: Path, output_file: Path):
         content = input_file.read_bytes()
 
+        # Apply random variation to delay
+        variation = getattr(context, "delay_variation", 0.0)
+        actual_delay = context.delay * (1 + random.uniform(-variation, variation))
+
         # Do actual CPU work for the specified duration
-        end_time = time.time() + context.delay
+        end_time = time.time() + actual_delay
         result = content
         while time.time() < end_time:
             result = hashlib.sha256(result).digest()
