@@ -175,6 +175,26 @@ class TestBuildCli:
         assert "input_dir" in error_msg
         assert "reserved" in error_msg
 
+    def test_unsupported_param_type_rejected_by_typer(self):
+        class CustomModel:
+            pass
+
+        class BadTask(Task):
+            @classmethod
+            def cli(cls):
+                pass
+
+            class Params:
+                model: CustomModel = CustomModel()
+
+        def base_main(input_dir: str, _params: dict):
+            pass
+
+        wrapped = BadTask.build_cli(base_main)
+
+        with pytest.raises(RuntimeError, match="Type not yet supported"):
+            typer.run(wrapped)
+
 
 class TestRemoveTemporaryFiles:
     def test_removes_files_with_temp_prefix(self, tmp_path: Path):

@@ -80,6 +80,26 @@ class TestSlurmResourceConfig:
 
 
 class TestBaseTaskConfig:
+    def test_valid_name(self, tmp_module: str):
+        config = BaseTaskConfig(name="MyTask", module=tmp_module, input_ext=".txt")
+        assert config.name == "MyTask"
+
+    def test_valid_name_with_hyphens_and_underscores(self, tmp_module: str):
+        config = BaseTaskConfig(name="my-task_v2", module=tmp_module, input_ext=".txt")
+        assert config.name == "my-task_v2"
+
+    def test_invalid_name_with_spaces(self, tmp_module: str):
+        with pytest.raises(ValidationError, match="Invalid task name"):
+            BaseTaskConfig(name="my task", module=tmp_module, input_ext=".txt")
+
+    def test_invalid_name_starts_with_digit(self, tmp_module: str):
+        with pytest.raises(ValidationError, match="Invalid task name"):
+            BaseTaskConfig(name="2task", module=tmp_module, input_ext=".txt")
+
+    def test_invalid_name_empty(self, tmp_module: str):
+        with pytest.raises(ValidationError, match="Invalid task name"):
+            BaseTaskConfig(name="", module=tmp_module, input_ext=".txt")
+
     def test_module_must_exist(self, tmp_path: Path):
         nonexistent = tmp_path / "nonexistent.py"
         with pytest.raises(ValidationError, match="Module does not exist"):
@@ -199,7 +219,17 @@ class TestBaseTaskConfig:
         )
         assert config.python_command == "python -m tigerflow.library.echo"
 
-    def test_params_as_cli_args_simple(self):
+    def test_params_as_cli_args_underscores_to_hyphens(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"max_length": 512},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--max-length=512" in args
+
+    def test_params_as_cli_args_string(self):
         config = BaseTaskConfig(
             name="test",
             module="tigerflow.library.echo",
@@ -207,7 +237,17 @@ class TestBaseTaskConfig:
             input_ext=".txt",
         )
         args = config.params_as_cli_args
-        assert "--prefix 'Hello'" in args
+        assert "--prefix=Hello" in args
+
+    def test_params_as_cli_args_string_with_spaces(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"prefix": "hello world"},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--prefix='hello world'" in args
 
     def test_params_as_cli_args_boolean_true(self):
         config = BaseTaskConfig(
@@ -229,15 +269,63 @@ class TestBaseTaskConfig:
         args = config.params_as_cli_args
         assert "--uppercase" not in args
 
-    def test_params_as_cli_args_underscores_to_hyphens(self):
+    def test_params_as_cli_args_float(self):
         config = BaseTaskConfig(
             name="test",
             module="tigerflow.library.echo",
-            params={"max_length": 512},
+            params={"threshold": 0.85},
             input_ext=".txt",
         )
         args = config.params_as_cli_args
-        assert "--max-length 512" in args
+        assert "--threshold=0.85" in args
+
+    def test_params_as_cli_args_path(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"model_file": Path("/path/to/model.pt")},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--model-file=/path/to/model.pt" in args
+
+    def test_params_as_cli_args_enum(self):
+        from enum import Enum
+
+        class Color(Enum):
+            RED = "red"
+            BLUE = "blue"
+
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"color": Color.RED},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--color=red" in args
+
+    def test_params_as_cli_args_list(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"tags": ["alpha", "beta"]},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--tags=alpha" in args
+        assert "--tags=beta" in args
+
+    def test_params_as_cli_args_list_of_paths(self):
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"extra_dirs": [Path("/data/a"), Path("/data/b")]},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--extra-dirs=/data/a" in args
+        assert "--extra-dirs=/data/b" in args
 
 
 class TestLocalTaskConfig:
@@ -258,11 +346,11 @@ class TestLocalTaskConfig:
         assert "#!/bin/bash" in script
         assert "exec python" in script
         assert tmp_module in script
-        assert "--task-name my_task" in script
-        assert f"--input-dir {input_dir}" in script
-        assert "--input-ext .json" in script
-        assert f"--output-dir {output_dir}" in script
-        assert "--output-ext .csv" in script
+        assert "--task-name=my_task" in script
+        assert f"--input-dir={input_dir}" in script
+        assert "--input-ext=.json" in script
+        assert f"--output-dir={output_dir}" in script
+        assert "--output-ext=.csv" in script
 
     def test_to_script_with_setup_commands(
         self, tmp_module: str, tmp_dirs: tuple[Path, Path]
@@ -342,7 +430,7 @@ class TestLocalAsyncTaskConfig:
         script = config.to_script()
 
         assert "#!/bin/bash" in script
-        assert "--concurrency-limit 10" in script
+        assert "--concurrency-limit=10" in script
 
 
 class TestSlurmTaskConfig:
@@ -392,11 +480,11 @@ class TestSlurmTaskConfig:
     def test_to_script_contains_task_command(self, slurm_config: SlurmTaskConfig):
         script = slurm_config.to_script()
 
-        assert "--max-workers 4" in script
-        assert "--cpus 8" in script
-        assert "--memory 16G" in script
-        assert "--time 2:00:00" in script
-        assert "--gpus 1" in script
+        assert "--max-workers=4" in script
+        assert "--cpus=8" in script
+        assert "--memory=16G" in script
+        assert "--time=2:00:00" in script
+        assert "--gpus=1" in script
         assert "--run-directly" in script
 
     def test_to_script_without_gpus(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
@@ -445,8 +533,8 @@ class TestSlurmTaskConfig:
 
         script = config.to_script()
 
-        assert "--sbatch-option '--partition=gpu'" in script
-        assert "--sbatch-option '--mail-user=tigerflow@princeton.edu'" in script
+        assert "--sbatch-option=--partition=gpu" in script
+        assert "--sbatch-option=--mail-user=tigerflow@princeton.edu" in script
 
     def test_to_script_with_account_option(
         self, tmp_module: str, tmp_dirs: tuple[Path, Path]
@@ -515,7 +603,7 @@ class TestSlurmTaskConfig:
         slurm_config.runner_pid = 12345
         script = slurm_config.to_script()
         assert "#SBATCH --job-name=slurm_task-12345-client" in script
-        assert "--runner-pid 12345" in script
+        assert "--runner-pid=12345" in script
 
     def test_to_script_without_runner_pid(self, slurm_config: SlurmTaskConfig):
         script = slurm_config.to_script()

@@ -1,4 +1,6 @@
 import json
+import re
+import shlex
 import textwrap
 from datetime import datetime
 from enum import Enum
@@ -68,6 +70,17 @@ class BaseTaskConfig(BaseModel):
     _output_dir: Path | None = None
     _runner_pid: int | None = None
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, name: str) -> str:
+        if not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_-]*", name):
+            raise ValueError(
+                f"Invalid task name: {name!r}. "
+                "Must start with a letter and contain only letters, digits, "
+                "hyphens, or underscores."
+            )
+        return name
+
     @field_validator("module")
     @classmethod
     def validate_module(cls, module: str) -> str:
@@ -96,6 +109,21 @@ class BaseTaskConfig(BaseModel):
         else:
             return f"python -m {self.module}"
 
+    @staticmethod
+    def _serialize_param(value: object) -> str:
+        """Serialize a parameter value to a shell-safe CLI string.
+
+        Param values are limited to Typer-supported types (str, int, float,
+        Path, UUID, datetime, Enum) because Typer rejects unsupported type
+        annotations at runtime. str() produces the format Typer expects when
+        it re-parses the CLI string back into the correct Python type. Enum
+        is the exception: Typer expects the .value string, not the member
+        name that str() would produce.
+        """
+        if isinstance(value, Enum):
+            return shlex.quote(str(value.value))
+        return shlex.quote(str(value))
+
     @property
     def params_as_cli_args(self) -> list[str]:
         """Convert params dict to CLI argument strings."""
@@ -108,9 +136,9 @@ class BaseTaskConfig(BaseModel):
                     args.append(f"--{cli_key}")
             elif isinstance(value, list):
                 for item in value:
-                    args.append(f"--{cli_key} {repr(item)}")
+                    args.append(f"--{cli_key}={self._serialize_param(item)}")
             else:
-                args.append(f"--{cli_key} {repr(value)}")
+                args.append(f"--{cli_key}={self._serialize_param(value)}")
         return args
 
     @field_validator("input_ext")
@@ -176,11 +204,11 @@ class LocalTaskConfig(BaseTaskConfig):
             [
                 "exec",
                 self.python_command,
-                f"--task-name {self.name}",
-                f"--input-dir {self.input_dir}",
-                f"--input-ext {self.input_ext}",
-                f"--output-dir {self.output_dir}",
-                f"--output-ext {self.output_ext}",
+                f"--task-name={self.name}",
+                f"--input-dir={self.input_dir}",
+                f"--input-ext={self.input_ext}",
+                f"--output-dir={self.output_dir}",
+                f"--output-ext={self.output_ext}",
             ]
             + self.params_as_cli_args
         )
@@ -206,12 +234,12 @@ class LocalAsyncTaskConfig(BaseTaskConfig):
             [
                 "exec",
                 self.python_command,
-                f"--task-name {self.name}",
-                f"--input-dir {self.input_dir}",
-                f"--input-ext {self.input_ext}",
-                f"--output-dir {self.output_dir}",
-                f"--output-ext {self.output_ext}",
-                f"--concurrency-limit {self.concurrency_limit}",
+                f"--task-name={self.name}",
+                f"--input-dir={self.input_dir}",
+                f"--input-ext={self.input_ext}",
+                f"--output-dir={self.output_dir}",
+                f"--output-ext={self.output_ext}",
+                f"--concurrency-limit={self.concurrency_limit}",
             ]
             + self.params_as_cli_args
         )
@@ -260,28 +288,31 @@ class SlurmTaskConfig(BaseTaskConfig):
         task_command = " ".join(
             [
                 self.python_command,
-                f"--task-name {self.name}",
-                f"--input-dir {self.input_dir}",
-                f"--input-ext {self.input_ext}",
-                f"--output-dir {self.output_dir}",
-                f"--output-ext {self.output_ext}",
-                f"--max-workers {self.max_workers}",
-                f"--cpus {self.worker_resources.cpus}",
-                f"--memory {self.worker_resources.memory}",
-                f"--time {self.worker_resources.time}",
-                f"--gpus {self.worker_resources.gpus}"
+                f"--task-name={self.name}",
+                f"--input-dir={self.input_dir}",
+                f"--input-ext={self.input_ext}",
+                f"--output-dir={self.output_dir}",
+                f"--output-ext={self.output_ext}",
+                f"--max-workers={self.max_workers}",
+                f"--cpus={self.worker_resources.cpus}",
+                f"--memory={self.worker_resources.memory}",
+                f"--time={self.worker_resources.time}",
+                f"--gpus={self.worker_resources.gpus}"
                 if self.worker_resources.gpus
                 else "",
                 "--run-directly",
-                f"--runner-pid {self.runner_pid}"
+                f"--runner-pid={self.runner_pid}"
                 if self.runner_pid is not None
                 else "",
             ]
             + [
-                f"--sbatch-option {repr(option)}"
+                f"--sbatch-option={shlex.quote(option)}"
                 for option in self.worker_resources.sbatch_options
             ]
-            + [f"--setup-command {repr(command)}" for command in self.setup_commands]
+            + [
+                f"--setup-command={shlex.quote(command)}"
+                for command in self.setup_commands
+            ]
             + self.params_as_cli_args
         )
 
