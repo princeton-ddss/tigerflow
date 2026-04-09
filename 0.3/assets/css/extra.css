@@ -1,0 +1,35 @@
+@import url("https://fonts.googleapis.com/css2?family=Pirata+One&display=swap");
+
+.md-header__button.md-logo img, .md-header__button.md-logo svg {
+    fill: currentcolor;
+    display: block;
+    height: 3.0rem;
+    width:auto
+}
+
+[dir=ltr] .md-header__title {
+    line-height: 2.5rem;
+    margin-left: .0rem;
+}
+
+.md-header__topic span {
+    line-height: 2.75rem;
+    font-family: 'Pirata One', sans-serif;
+    font-size: 2.0rem;
+    font-weight: 300;
+    text-transform: uppercase;
+}
+
+@media screen and (max-width: 1220px) { /* For smaller screens */
+    .md-header__topic span {
+        line-height: 2.6rem;
+        font-family: 'Pirata One', 'Roboto', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 300;
+        text-transform: uppercase;
+    }
+}
+
+.md-main__inner {
+margin-top: 0;
+}
