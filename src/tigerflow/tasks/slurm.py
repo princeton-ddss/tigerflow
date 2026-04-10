@@ -95,9 +95,11 @@ class SlurmTask(Task):
                     logger.exception("Task teardown failed")
 
         def task(input_file: Path, output_file: Path):
+            worker = get_worker()
+            context = getattr(worker, "context", None)
+            if context is None:
+                raise RuntimeError("Skipping file processing: task setup failed")
             with log_metrics(input_file.name) as metrics:
-                worker = get_worker()
-                context = getattr(worker, "context")
                 try:
                     logger.info("Starting processing: {}", input_file.name)
                     with atomic_write(output_file) as temp_file:
@@ -174,8 +176,7 @@ class SlurmTask(Task):
                         future = client.submit(task, file, output_file)
                         active_futures[file] = future
 
-                for key in list(active_futures.keys()):
-                    future = active_futures[key]
+                for key, future in list(active_futures.items()):
                     if future.done():
                         if future.status == "error":
                             logger.error(
