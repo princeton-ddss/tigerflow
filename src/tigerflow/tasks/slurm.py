@@ -58,6 +58,7 @@ class SlurmTask(Task):
         self.config.output_dir = output_dir
 
         # Avoid capturing unpicklable `self` in closures sent to workers
+        setup_failed_sentinel = self.config.log_dir / ".setup-failed"
         params = self.config.params
         output_ext = self.config.output_ext
         setup_func = type(self).setup
@@ -67,25 +68,31 @@ class SlurmTask(Task):
         class TaskWorkerPlugin(WorkerPlugin):
             async def setup(self, worker: Worker):
                 logger.info("Setting up task")
-                context = SetupContext()
-
-                # Inject params into context
-                for key, value in params.items():
-                    setattr(context, key, value)
-
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, setup_func, context)
-                context.freeze()  # Make it read-only
-
-                setattr(worker, "context", context)
-                logger.info("Task setup complete")
+                try:
+                    context = SetupContext()
+                    for key, value in params.items():
+                        setattr(context, key, value)
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, setup_func, context)
+                    context.freeze()  # Make it read-only
+                    setattr(worker, "context", context)
+                    logger.info("Task setup complete")
+                except Exception:
+                    logger.exception("Task setup failed; aborting task")
+                    setup_failed_sentinel.touch()
 
             async def teardown(self, worker: Worker):
-                logger.info("Shutting down task")
-                context = getattr(worker, "context")
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, teardown_func, context)
-                logger.info("Task shutdown complete")
+                logger.info("Tearing down task")
+                context = getattr(worker, "context", None)
+                if context is None:
+                    logger.warning("Skipping teardown: task setup failed")
+                    return
+                try:
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, teardown_func, context)
+                    logger.info("Task teardown complete")
+                except Exception:
+                    logger.exception("Task teardown failed")
 
         def task(input_file: Path, output_file: Path):
             with log_metrics(input_file.name) as metrics:
@@ -131,12 +138,13 @@ class SlurmTask(Task):
             wait_count=settings.slurm_task_scale_wait_count,
         )
 
+        # Clean up stale state from any prior cluster instance
+        self._remove_temporary_files(self.config.output_dir)
+        setup_failed_sentinel.unlink(missing_ok=True)
+
         # Instantiate a cluster client
         client = Client(cluster)
         client.register_plugin(TaskWorkerPlugin())
-
-        # Clean up incomplete temporary files left behind by a prior cluster instance
-        self._remove_temporary_files(self.config.output_dir)
 
         # Register signal handlers
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
@@ -146,6 +154,9 @@ class SlurmTask(Task):
         active_futures: dict[Path, Future] = dict()
         try:
             while not self._shutdown_event.is_set():
+                if setup_failed_sentinel.exists():
+                    raise RuntimeError("Task setup failed on a worker")
+
                 unprocessed_files = self._get_unprocessed_files(
                     input_dir=self.config.input_dir,
                     input_ext=self.config.input_ext,
@@ -164,8 +175,15 @@ class SlurmTask(Task):
                         active_futures[file] = future
 
                 for key in list(active_futures.keys()):
-                    if active_futures[key].done():
-                        active_futures[key].release()
+                    future = active_futures[key]
+                    if future.done():
+                        if future.status == "error":
+                            logger.error(
+                                "Task future errored for {}: {}",
+                                key.name,
+                                future.exception(),
+                            )
+                        future.release()
                         del active_futures[key]
 
                 self._shutdown_event.wait(timeout=settings.task_poll_interval)

@@ -40,20 +40,15 @@ skip_if_no_test_dir = pytest.mark.skipif(
 pytestmark = [skip_if_disabled, skip_if_no_sbatch, skip_if_no_test_dir]
 
 
-def run_slurm_task_until_complete(
+def _build_slurm_task_cmd(
     script: Path,
     input_dir: Path,
     output_dir: Path,
     input_ext: str,
     output_ext: str,
-    expected_count: int,
     extra_args: list[str] | None = None,
-    timeout: float = 180,
-):
-    """Run Slurm task via subprocess and wait for output files.
-
-    Uses SlurmTaskRunner (default mode) which submits to Slurm.
-    """
+) -> list[str]:
+    """Build the command to run a Slurm task via subprocess."""
     # Create logs directory
     log_dir = output_dir / "logs"
     log_dir.mkdir(exist_ok=True)
@@ -81,6 +76,26 @@ def run_slurm_task_until_complete(
     if extra_args:
         cmd.extend(extra_args)
 
+    return cmd
+
+
+def run_slurm_task_until_complete(
+    script: Path,
+    input_dir: Path,
+    output_dir: Path,
+    input_ext: str,
+    output_ext: str,
+    expected_count: int,
+    extra_args: list[str] | None = None,
+    timeout: float = 180,
+):
+    """Run Slurm task via subprocess and wait for output files.
+
+    Uses SlurmTaskRunner (default mode) which submits to Slurm.
+    """
+    cmd = _build_slurm_task_cmd(
+        script, input_dir, output_dir, input_ext, output_ext, extra_args
+    )
     proc = subprocess.Popen(cmd)
 
     try:
@@ -106,6 +121,35 @@ def run_slurm_task_until_complete(
     finally:
         proc.send_signal(signal.SIGTERM)
         proc.wait(timeout=30)
+
+
+def run_slurm_task_until_exit(
+    script: Path,
+    input_dir: Path,
+    output_dir: Path,
+    input_ext: str,
+    output_ext: str,
+    extra_args: list[str] | None = None,
+    timeout: float = 180,
+) -> subprocess.Popen:
+    """Run Slurm task via subprocess and wait for it to exit.
+
+    Unlike run_slurm_task_until_complete, this waits for the process
+    to terminate on its own (e.g., due to a fatal error) rather than
+    waiting for output files.
+    """
+    cmd = _build_slurm_task_cmd(
+        script, input_dir, output_dir, input_ext, output_ext, extra_args
+    )
+    proc = subprocess.Popen(cmd)
+
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.send_signal(signal.SIGTERM)
+        proc.wait(timeout=30)
+
+    return proc
 
 
 @pytest.fixture
@@ -206,3 +250,32 @@ class TestSlurmTaskIntegration:
         err_file = output_dir / "fail.err"
         assert err_file.exists()
         assert "Intentional Slurm failure" in err_file.read_text()
+
+    def test_setup_failure_aborts(self, task_dirs, input_files, tasks_dir):
+        """Test that setup failure writes sentinel and aborts the task."""
+        input_dir, output_dir = task_dirs
+
+        proc = run_slurm_task_until_exit(
+            script=tasks_dir / "slurm_failing_setup.py",
+            input_dir=input_dir,
+            output_dir=output_dir,
+            input_ext=".txt",
+            output_ext=".out",
+        )
+
+        assert proc.returncode != 0
+
+        # Sentinel should exist under the runner's log directory
+        log_base = output_dir / "logs"
+        sentinel_files = list(log_base.rglob(".setup-failed"))
+        assert len(sentinel_files) > 0, "Expected .setup-failed sentinel file"
+
+        # No output files should have been produced
+        output_files = [
+            f
+            for f in output_dir.iterdir()
+            if f.is_file()
+            and f.suffix == ".out"
+            and not f.name.startswith(TEMP_FILE_PREFIX)
+        ]
+        assert len(output_files) == 0
