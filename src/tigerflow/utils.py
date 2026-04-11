@@ -1,11 +1,15 @@
+import dataclasses
 import importlib
+import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import traceback
 from collections.abc import Callable
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from subprocess import TimeoutExpired
 from types import SimpleNamespace
@@ -226,3 +230,48 @@ def atomic_write(filepath: str | os.PathLike[str]):
         raise
     else:
         temp_path.replace(filepath)
+
+
+@dataclasses.dataclass(slots=True)
+class ErrorRecord:
+    """Structured error record for JSON serialization.
+
+    Represents the on-disk schema used by .err and .setup-failed files.
+    """
+
+    timestamp: str
+    exception_type: str
+    message: str
+    traceback: str
+
+    @classmethod
+    def from_exception(cls) -> "ErrorRecord":
+        """Capture error details from the current exception context.
+
+        Must be called from within an exception handler.
+        """
+        exc_type, exc_value, _ = sys.exc_info()
+        return cls(
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            exception_type=exc_type.__name__ if exc_type else "Unknown",
+            message=str(exc_value) if exc_value else "",
+            traceback=traceback.format_exc(),
+        )
+
+    def write(self, path: Path) -> None:
+        """Write error record as JSON to *path* using atomic write."""
+        with atomic_write(path) as temp_path:
+            with open(temp_path, "w") as f:
+                json.dump(dataclasses.asdict(self), f, indent=2)
+
+    @classmethod
+    def read(cls, path: Path) -> "ErrorRecord":
+        """Read error record from a JSON file.
+
+        Raises `ValueError` if the file content is malformed or incomplete.
+        """
+        try:
+            data = json.loads(path.read_text())
+            return cls(**data)
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise ValueError(f"invalid error record: {path}") from exc

@@ -131,8 +131,7 @@ For example, `path/to/data/4.txt` produces `path/to/results/4.txt`.
 
     If a task encounters an error, TigerFlow generates a structured error file alongside
     the expected output, e.g., `4.err` instead of `4.txt`. The file is JSON containing the
-    input file name, timestamp, exception type, message, and full traceback to assist with
-    debugging.
+    timestamp, exception type, message, and full traceback to assist with debugging.
 
 ## Lazy Imports
 

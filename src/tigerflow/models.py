@@ -12,7 +12,12 @@ from pydantic import BaseModel, Field, field_validator
 
 from tigerflow.settings import settings
 from tigerflow.staging import StagingPipeline
-from tigerflow.utils import is_process_running, read_pid_file, validate_file_ext
+from tigerflow.utils import (
+    ErrorRecord,
+    is_process_running,
+    read_pid_file,
+    validate_file_ext,
+)
 
 
 class TaskStatusKind(Enum):
@@ -600,18 +605,18 @@ class PipelineOutput:
                     stem = file.name.removesuffix(".err")
                     failed_stems.add(stem)
                     try:
-                        data = json.loads(file.read_text())
+                        record = ErrorRecord.read(file)
                         task_errors.append(
                             FileError(
-                                file=data.get("file", stem),
+                                file=stem,
                                 path=str(file),
-                                timestamp=datetime.fromisoformat(data["timestamp"]),
-                                exception_type=data.get("exception_type", ""),
-                                message=data.get("message", ""),
-                                traceback=data.get("traceback", ""),
+                                timestamp=datetime.fromisoformat(record.timestamp),
+                                exception_type=record.exception_type,
+                                message=record.message,
+                                traceback=record.traceback,
                             )
                         )
-                    except (OSError, json.JSONDecodeError, KeyError):
+                    except (OSError, ValueError):
                         task_errors.append(FileError(file=stem, path=str(file)))
             if task_errors:
                 errors[task_dir.name] = task_errors

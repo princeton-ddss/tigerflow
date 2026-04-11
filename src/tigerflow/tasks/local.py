@@ -11,10 +11,10 @@ import typer
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalTaskConfig
 from tigerflow.settings import settings
-from tigerflow.utils import SetupContext, atomic_write
+from tigerflow.utils import ErrorRecord, SetupContext, atomic_write
 
 from ._base import Task
-from .utils import log_metrics, write_error_file
+from .utils import log_metrics
 
 
 class LocalTask(Task):
@@ -52,7 +52,7 @@ class LocalTask(Task):
                         output_file.name.removesuffix(self.config.output_ext) + ".err"
                     )
                     error_file = output_dir / error_fname
-                    write_error_file(error_file, input_file.name)
+                    ErrorRecord.from_exception().write(error_file)
                     logger.error("Failed processing: {}", input_file.name)
 
         # Clean up incomplete temporary files left behind by a prior process instance

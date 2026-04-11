@@ -22,13 +22,14 @@ from tigerflow.models import (
 from tigerflow.settings import settings
 from tigerflow.utils import (
     TEMP_FILE_PREFIX,
+    ErrorRecord,
     SetupContext,
     atomic_write,
     submit_to_slurm,
 )
 
 from ._base import Task
-from .utils import get_slurm_task_status, log_metrics, write_error_file
+from .utils import get_slurm_task_status, log_metrics
 
 
 class SlurmTask(Task):
@@ -79,7 +80,8 @@ class SlurmTask(Task):
                     logger.info("Task setup complete")
                 except Exception:
                     logger.exception("Task setup failed; aborting task")
-                    setup_failed_sentinel.touch()
+                    setup_failed_sentinel.touch()  # ensure sentinel exists even if write below fails
+                    ErrorRecord.from_exception().write(setup_failed_sentinel)
 
             async def teardown(self, worker: Worker):
                 logger.info("Tearing down task")
@@ -109,7 +111,7 @@ class SlurmTask(Task):
                     metrics["status"] = "error"
                     error_fname = output_file.name.removesuffix(output_ext) + ".err"
                     error_file = output_dir / error_fname
-                    write_error_file(error_file, input_file.name)
+                    ErrorRecord.from_exception().write(error_file)
                     logger.error("Failed processing: {}", input_file.name)
 
         # Define parameters for each Slurm job
