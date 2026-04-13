@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 from tigerflow.settings import settings
 from tigerflow.staging import StagingPipeline
 from tigerflow.utils import (
+    TEMP_FILE_PREFIX,
     ErrorRecord,
     is_process_running,
     read_pid_file,
@@ -116,14 +117,12 @@ class BaseTaskConfig(BaseModel):
 
     @staticmethod
     def _serialize_param(value: object) -> str:
-        """Serialize a parameter value to a shell-safe CLI string.
+        """Serialize a single scalar param value to a shell-safe CLI string.
 
-        Param values are limited to Typer-supported types (str, int, float,
-        Path, UUID, datetime, Enum) because Typer rejects unsupported type
-        annotations at runtime. str() produces the format Typer expects when
-        it re-parses the CLI string back into the correct Python type. Enum
-        is the exception: Typer expects the .value string, not the member
-        name that str() would produce.
+        `str()` produces the format Typer expects when it re-parses the CLI
+        string back into the correct Python type. `Enum` is the exception:
+        Typer expects the `.value` string, not the member name that `str()`
+        would produce.
         """
         if isinstance(value, Enum):
             return shlex.quote(str(value.value))
@@ -131,9 +130,24 @@ class BaseTaskConfig(BaseModel):
 
     @property
     def params_as_cli_args(self) -> list[str]:
-        """Convert params dict to CLI argument strings."""
+        """Convert params dict to CLI argument strings.
+
+        Param values originate from Typer-parsed CLI options declared on a
+        task's `Params` class, so their runtime types are restricted to
+        Typer-supported types: `str`, `int`, `float`, `bool`, `Path`,
+        `UUID`, `datetime`, `Enum`, `list[...]` of those, or `None` (from
+        `Optional[...]`).
+
+        `None` values are skipped. Bools become presence flags (`--flag`
+        when `True`, omitted when `False`). Lists are expanded into one
+        `--key=item` argument per element, with each item serialized via
+        `_serialize_param`. Any other value is serialized via
+        `_serialize_param` directly.
+        """
         args = []
         for key, value in self.params.items():
+            if value is None:
+                continue
             # Convert underscores to hyphens for CLI convention
             cli_key = key.replace("_", "-")
             if isinstance(value, bool):
@@ -601,7 +615,11 @@ class PipelineOutput:
         for task_dir in self._get_task_dirs():
             task_errors: list[FileError] = []
             for file in task_dir.iterdir():
-                if file.is_file() and file.name.endswith(".err"):
+                if (
+                    file.is_file()
+                    and file.name.endswith(".err")
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
+                ):
                     stem = file.name.removesuffix(".err")
                     failed_stems.add(stem)
                     try:
@@ -640,8 +658,7 @@ class PipelineOutput:
                 if (
                     file.is_file()
                     and not file.name.endswith(".err")
-                    and not file.name.endswith(".log")
-                    and not file.name.startswith("task-")
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
                 ):
                     stems_with_output.add(file.stem)
 
