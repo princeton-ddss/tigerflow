@@ -327,6 +327,31 @@ class TestBaseTaskConfig:
         assert "--extra-dirs=/data/a" in args
         assert "--extra-dirs=/data/b" in args
 
+    def test_params_as_cli_args_none_value_omitted(self):
+        """None params must be skipped entirely — not serialized as the string 'None'."""
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"none-param": None},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert args == []
+        assert "--none-param=None" not in args
+
+    def test_params_as_cli_args_none_mixed_with_non_none(self):
+        """None params are skipped while non-None params are still emitted."""
+        config = BaseTaskConfig(
+            name="test",
+            module="tigerflow.library.echo",
+            params={"none-param": None, "actual-value-param": "valid string"},
+            input_ext=".txt",
+        )
+        args = config.params_as_cli_args
+        assert "--none-param=None" not in args
+        assert any("none-param" in arg for arg in args) is False
+        assert "--actual-value-param='valid string'" in args
+
 
 class TestLocalTaskConfig:
     def test_to_script(self, tmp_module: str, tmp_dirs: tuple[Path, Path]):
