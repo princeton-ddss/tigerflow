@@ -243,12 +243,15 @@ class ErrorRecord:
     exception_type: str
     message: str
     traceback: str
+    file: str | None = None
 
     @classmethod
-    def from_exception(cls) -> "ErrorRecord":
+    def from_exception(cls, file: str | None = None) -> "ErrorRecord":
         """Capture error details from the current exception context.
 
-        Must be called from within an exception handler.
+        Must be called from within an exception handler. *file* is the
+        name of the input file being processed, if any; omit for errors
+        not associated with a specific file (e.g. task setup failures).
         """
         exc_type, exc_value, _ = sys.exc_info()
         return cls(
@@ -256,6 +259,7 @@ class ErrorRecord:
             exception_type=exc_type.__name__ if exc_type else "Unknown",
             message=str(exc_value) if exc_value else "",
             traceback=traceback.format_exc(),
+            file=file,
         )
 
     def write(self, path: Path) -> None:

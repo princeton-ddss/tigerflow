@@ -52,7 +52,7 @@ class LocalTask(Task):
                         output_file.name.removesuffix(self.config.output_ext) + ".err"
                     )
                     error_file = output_dir / error_fname
-                    ErrorRecord.from_exception().write(error_file)
+                    ErrorRecord.from_exception(file=input_file.name).write(error_file)
                     logger.error("Failed processing: {}", input_file.name)
 
         # Clean up incomplete temporary files left behind by a prior process instance

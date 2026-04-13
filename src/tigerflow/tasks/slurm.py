@@ -111,7 +111,7 @@ class SlurmTask(Task):
                     metrics["status"] = "error"
                     error_fname = output_file.name.removesuffix(output_ext) + ".err"
                     error_file = output_dir / error_fname
-                    ErrorRecord.from_exception().write(error_file)
+                    ErrorRecord.from_exception(file=input_file.name).write(error_file)
                     logger.error("Failed processing: {}", input_file.name)
 
         # Define parameters for each Slurm job

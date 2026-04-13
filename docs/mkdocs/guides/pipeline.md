@@ -389,9 +389,9 @@ and errors:
     │   ingest             █▄▂▅▁▄▃▁▇▄▄▁▄  100ms – 101ms (101ms avg)                                              │
     │                                                                                                            │
     │ Errors: 3                                                                                                  │
-    │   transcribe  0016  ClientResponseError: 400, ...                                                          │
-    │   transcribe  0004  ClientResponseError: 400, ...                                                          │
-    │   transcribe  0028  ClientResponseError: 400, ...                                                          │
+    │   transcribe  0016.mp4  ClientResponseError: 400, ...                                                      │
+    │   transcribe  0004.mp4  ClientResponseError: 400, ...                                                      │
+    │   transcribe  0028.mp4  ClientResponseError: 400, ...                                                      │
     │                                                                                                            │
     ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
     ```
@@ -409,7 +409,7 @@ The dashboard displays four sections:
 - **Metrics** — per-task sparklines with min, max, and average processing durations
   (only shown when metric data is available).
 - **Errors** — a count and summary of the first five errors, including the task name,
-  input file ID, and exception details.
+  input file, and exception details.
 
 ### Watch Mode
 

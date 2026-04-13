@@ -225,8 +225,29 @@ class TestErrorRecord:
         record = ErrorRecord.from_exception()
         assert record.exception_type == "Unknown"
         assert record.message == ""
+        assert record.file is None
+
+    def test_from_exception_captures_file(self):
+        try:
+            raise ValueError("test error")
+        except ValueError:
+            record = ErrorRecord.from_exception(file="input.txt")
+        assert record.file == "input.txt"
 
     def test_write_read_roundtrip(self, tmp_path: Path):
+        original = ErrorRecord(
+            timestamp="2026-01-01T00:00:00+00:00",
+            exception_type="RuntimeError",
+            message="boom",
+            traceback="Traceback ...",
+            file="input.txt",
+        )
+        path = tmp_path / "error.err"
+        original.write(path)
+        loaded = ErrorRecord.read(path)
+        assert loaded == original
+
+    def test_write_read_roundtrip_without_file(self, tmp_path: Path):
         original = ErrorRecord(
             timestamp="2026-01-01T00:00:00+00:00",
             exception_type="RuntimeError",
@@ -237,6 +258,7 @@ class TestErrorRecord:
         original.write(path)
         loaded = ErrorRecord.read(path)
         assert loaded == original
+        assert loaded.file is None
 
     def test_read_extra_keys_raises_value_error(self, tmp_path: Path):
         path = tmp_path / "error.err"
@@ -245,11 +267,24 @@ class TestErrorRecord:
             "exception_type": "RuntimeError",
             "message": "boom",
             "traceback": "Traceback ...",
-            "file": "unexpected.txt",
+            "file": "input.txt",
+            "unexpected": "value",
         }
         path.write_text(json.dumps(data))
         with pytest.raises(ValueError, match="invalid error record"):
             ErrorRecord.read(path)
+
+    def test_read_without_file_key(self, tmp_path: Path):
+        path = tmp_path / "error.err"
+        data = {
+            "timestamp": "2026-01-01T00:00:00+00:00",
+            "exception_type": "RuntimeError",
+            "message": "boom",
+            "traceback": "Traceback ...",
+        }
+        path.write_text(json.dumps(data))
+        loaded = ErrorRecord.read(path)
+        assert loaded.file is None
 
     def test_read_missing_keys_raises_value_error(self, tmp_path: Path):
         path = tmp_path / "error.err"

@@ -608,7 +608,7 @@ class PipelineOutput:
                         record = ErrorRecord.read(file)
                         task_errors.append(
                             FileError(
-                                file=stem,
+                                file=record.file or stem,
                                 path=str(file),
                                 timestamp=datetime.fromisoformat(record.timestamp),
                                 exception_type=record.exception_type,
