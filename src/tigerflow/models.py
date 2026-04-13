@@ -12,7 +12,12 @@ from pydantic import BaseModel, Field, field_validator
 
 from tigerflow.settings import settings
 from tigerflow.staging import StagingPipeline
-from tigerflow.utils import is_process_running, read_pid_file, validate_file_ext
+from tigerflow.utils import (
+    TEMP_FILE_PREFIX,
+    is_process_running,
+    read_pid_file,
+    validate_file_ext,
+)
 
 
 class TaskStatusKind(Enum):
@@ -609,7 +614,11 @@ class PipelineOutput:
         for task_dir in self._get_task_dirs():
             task_errors: list[FileError] = []
             for file in task_dir.iterdir():
-                if file.is_file() and file.name.endswith(".err"):
+                if (
+                    file.is_file()
+                    and file.name.endswith(".err")
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
+                ):
                     stem = file.name.removesuffix(".err")
                     failed_stems.add(stem)
                     try:
@@ -648,8 +657,7 @@ class PipelineOutput:
                 if (
                     file.is_file()
                     and not file.name.endswith(".err")
-                    and not file.name.endswith(".log")
-                    and not file.name.startswith("task-")
+                    and not file.name.startswith(TEMP_FILE_PREFIX)
                 ):
                     stems_with_output.add(file.stem)
 
