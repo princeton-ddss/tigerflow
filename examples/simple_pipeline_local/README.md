@@ -14,7 +14,7 @@ including a personal laptop.
 - [ ] Install the package with the additional dependencies required to run the examples:
 
     ```bash
-    pip install tigerflow aiohttp
+    pip install tigerflow aiofiles aiohttp
     ```
 
 ## Running the Pipeline
