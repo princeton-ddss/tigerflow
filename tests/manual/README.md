@@ -6,23 +6,23 @@ Scripts for manually testing long-running pipelines.
 
 ```bash
 # Local task (sequential processing)
-python tests/user/run_pipeline.py --kind local --num-files 10 --delay 2.0
+python tests/manual/run_pipeline.py --kind local --num-files 10 --delay 2.0
 
 # Local async task (concurrent processing)
-python tests/user/run_pipeline.py --kind local_async --num-files 20 --delay 1.0 --concurrency-limit 4
+python tests/manual/run_pipeline.py --kind local_async --num-files 20 --delay 1.0 --concurrency-limit 4
 
 # Slurm task (distributed processing, use uv run on the cluster)
 # Use --tmp-dir to place files on a shared filesystem accessible to compute nodes
-uv run python tests/user/run_pipeline.py --kind slurm --num-files 50 --delay 5.0 --max-workers 4 --tmp-dir /scratch/$USER
+uv run python tests/manual/run_pipeline.py --kind slurm --num-files 50 --delay 5.0 --max-workers 4 --tmp-dir /scratch/$USER
 
 # With random failures (10% failure rate)
-python tests/user/run_pipeline.py --kind local --num-files 20 --fail-rate 0.1
+python tests/manual/run_pipeline.py --kind local --num-files 20 --fail-rate 0.1
 
 # With delay variation (±30% random variation in processing time)
-python tests/user/run_pipeline.py --kind local --num-files 10 --delay 2.0 --delay-variation 0.3
+python tests/manual/run_pipeline.py --kind local --num-files 10 --delay 2.0 --delay-variation 0.3
 
 # Multi-task pipeline (comma-separated values)
-python tests/user/run_pipeline.py --kind local,local_async --delay 1.0,2.0 --fail-rate 0.1,0.2
+python tests/manual/run_pipeline.py --kind local,local_async --delay 1.0,2.0 --fail-rate 0.1,0.2
 ```
 
 ## Options

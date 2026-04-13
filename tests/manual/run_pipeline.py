@@ -4,13 +4,13 @@ Creates a temporary pipeline with configurable task kind, input files,
 and runs it in background mode for manual testing.
 
 Usage:
-    python tests/user/run_pipeline.py --kind local --num-files 10 --delay 2.0
-    python tests/user/run_pipeline.py --kind local_async --num-files 20 --fail-rate 0.1
-    python tests/user/run_pipeline.py --kind slurm --num-files 50 --delay 5.0
+    python tests/manual/run_pipeline.py --kind local --num-files 10 --delay 2.0
+    python tests/manual/run_pipeline.py --kind local_async --num-files 20 --fail-rate 0.1
+    python tests/manual/run_pipeline.py --kind slurm --num-files 50 --delay 5.0
 
 Multi-task pipelines (comma-separated values):
-    python tests/user/run_pipeline.py --kind local,local --delay 1.0,2.0
-    python tests/user/run_pipeline.py --kind local,local_async --delay 1.0 --fail-rate 0.1,0.2
+    python tests/manual/run_pipeline.py --kind local,local --delay 1.0,2.0
+    python tests/manual/run_pipeline.py --kind local,local_async --delay 1.0 --fail-rate 0.1,0.2
 """
 
 import re
