@@ -129,6 +129,8 @@ class BaseTaskConfig(BaseModel):
         """Convert params dict to CLI argument strings."""
         args = []
         for key, value in self.params.items():
+            if value is None:
+                continue
             # Convert underscores to hyphens for CLI convention
             cli_key = key.replace("_", "-")
             if isinstance(value, bool):
