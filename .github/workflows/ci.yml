@@ -17,6 +17,19 @@ env:
   UV_VERSION: "0.7.15"
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            docs:
+              - 'docs/**'
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -30,7 +43,6 @@ jobs:
           cache-dependency-glob: |
             uv.lock
             pyproject.toml
-          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: uv sync --locked --group lint
@@ -85,8 +97,8 @@ jobs:
         run: uv build
 
   docs:
-    needs: test
-    if: github.event_name == 'push'
+    needs: [test, changes]
+    if: github.event_name == 'push' && needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
