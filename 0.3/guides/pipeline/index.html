@@ -1345,29 +1345,29 @@ and errors:</p>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>╭─ tigerflow report ─────────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                                            │
-│ Status:  ● running (pid 45760)                                                                             │
-│ Output:  /private/var/folders/_k/1p72bgt14pxf0918h43wfht00000gn/T/tigerflow-test-kre0xlge/output           │
-│                                                                                                            │
-│ Progress: ○ 83 staged → ◐ 1 in progress → ✓ 13 processed, ✗ 3 failed                                       │
-│                                                                                                            │
-│   transcribe  ━━━━━━────────────────────────────────── 16 / 100, 1 failed                                  │
-│   embed       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━─── 13 / 16, 2 failed                                   │
-│   ingest      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13 / 13                                             │
-│                                                                                                            │
-│ Metrics:                                                                                                   │
-│                                                                                                            │
-│   transcribe      ▇▃▃▄▃▃▂▁▃▃▁▂▂▁▄▃  2.0s – 2.0s (2.0s avg)                                                 │
-│   embed              █▂▁▃▁▂▂▁▂▁▃▁▃  501ms – 501ms (501ms avg)                                              │
-│   ingest             █▄▂▅▁▄▃▁▇▄▄▁▄  100ms – 101ms (101ms avg)                                              │
-│                                                                                                            │
-│ Errors: 3                                                                                                  │
-│   transcribe  0016.mp4  ClientResponseError: 400, ...                                                      │
-│   transcribe  0004.mp4  ClientResponseError: 400, ...                                                      │
-│   transcribe  0028.mp4  ClientResponseError: 400, ...                                                      │
-│                                                                                                            │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+<div class="highlight"><pre><span></span><code>╭─ tigerflow report ──────────────────────────────────────────────────────────────────────────╮
+│                                                                                             │
+│ Status:  ● running (pid 45760)                                                              │
+│ Output:  path/to/results/                                                                   │
+│                                                                                             │
+│ Progress: ○ 83 staged → ◐ 1 in progress → ✓ 13 processed, ✗ 3 failed                        │
+│                                                                                             │
+│   transcribe  ━━━━━━────────────────────────────────── 16 / 100, 1 failed                   │
+│   embed       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━─── 13 / 16, 2 failed                    │
+│   ingest      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13 / 13                              │
+│                                                                                             │
+│ Metrics:                                                                                    │
+│                                                                                             │
+│   transcribe      ▄▂▆▃█▅▂▁▃▇▄▂▅▃▆▁  1.2s – 3.8s (2.1s avg)                                  │
+│   embed              █▃▁▅▂▇▄▂▆▁▃▅▂  318ms – 812ms (497ms avg)                               │
+│   ingest             ▂█▄▁▅▃▇▂▄▆▁▃▅  42ms – 187ms (96ms avg)                                 │
+│                                                                                             │
+│ Errors: 3                                                                                   │
+│   transcribe  0016.mp4  RuntimeError: Failed to load audio: ffmpeg error (see stderr ...    │
+│   embed  0004.txt  RateLimitError: 429 Too Many Requests                                    │
+│   embed  0028.txt  RateLimitError: 429 Too Many Requests                                    │
+│                                                                                             │
+╰─────────────────────────────────────────────────────────────────────────────────────────────╯
 </code></pre></div>
 <p>The actual terminal output is colorized (green for processed, yellow for in progress,
 red for errors).</p>
