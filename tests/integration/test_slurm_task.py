@@ -9,6 +9,7 @@ Run with:
 Set SLURM_TEST_DIR to a shared filesystem path accessible by compute nodes.
 """
 
+import json
 import os
 import shutil
 import signal
@@ -269,6 +270,13 @@ class TestSlurmTaskIntegration:
         log_base = output_dir / "logs"
         sentinel_files = list(log_base.rglob(".setup-failed"))
         assert len(sentinel_files) > 0, "Expected .setup-failed sentinel file"
+
+        # Sentinel should contain expected error details
+        error_data = json.loads(sentinel_files[0].read_text())
+        assert error_data["exception_type"] == "RuntimeError"
+        assert "Intentional setup failure" in error_data["message"]
+        assert "timestamp" in error_data
+        assert "traceback" in error_data
 
         # No output files should have been produced
         output_files = [

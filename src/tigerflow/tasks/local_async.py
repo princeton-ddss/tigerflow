@@ -10,10 +10,10 @@ import typer
 from tigerflow.logconfig import logger
 from tigerflow.models import LocalAsyncTaskConfig
 from tigerflow.settings import settings
-from tigerflow.utils import SetupContext, atomic_write
+from tigerflow.utils import ErrorRecord, SetupContext, atomic_write
 
 from ._base import Task
-from .utils import log_metrics, write_error_file
+from .utils import log_metrics
 
 
 class LocalAsyncTask(Task):
@@ -53,7 +53,7 @@ class LocalAsyncTask(Task):
                         output_file.name.removesuffix(self.config.output_ext) + ".err"
                     )
                     error_file = self.config.output_dir / error_fname
-                    write_error_file(error_file, input_file.name)
+                    ErrorRecord.from_exception(file=input_file.name).write(error_file)
                     logger.error("Failed processing: {}", input_file.name)
 
         async def worker():
