@@ -184,12 +184,7 @@ class Pipeline:
             self._start_tasks()
             logger.info("All tasks started, beginning pipeline tracking loop")
             while not self._shutdown_event.is_set():
-                self._check_task_status()
-                self._handle_task_timeout()
-                self._stage_new_files()
-                self._report_failed_files()
-                self._handle_processed_files()
-                self._check_inactivity()
+                self._run_tracking_cycle()
                 self._shutdown_event.wait(timeout=settings.pipeline_poll_interval)
         finally:
             self._handle_processed_files()
@@ -212,6 +207,20 @@ class Pipeline:
                 self._pid_file.unlink(missing_ok=True)
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
+
+    def _run_tracking_cycle(self):
+        """Run one iteration of the pipeline tracking loop.
+
+        `_handle_task_timeout` reads the task status that `_check_task_status`
+        refreshes, so it must not run before it; a stale status resubmits a
+        Slurm job that has already been replaced.
+        """
+        self._check_task_status()
+        self._handle_task_timeout()
+        self._stage_new_files()
+        self._report_failed_files()
+        self._handle_processed_files()
+        self._check_inactivity()
 
     def _start_tasks(self):
         tasks_meta = [
