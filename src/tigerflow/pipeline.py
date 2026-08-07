@@ -190,7 +190,7 @@ class Pipeline:
             self._handle_processed_files()
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
-                if self._task_status[name].is_alive:
+                if process.poll() is None:
                     logger.info("[{}] Terminating...", name)
                     process.terminate()
             for task in self._config.tasks:
@@ -199,9 +199,7 @@ class Pipeline:
                 logger.info("[{}] Terminating...", task.name)
                 subprocess.run(["scancel", "-n", task.worker_job_name])
                 subprocess.run(["scancel", "-n", task.client_job_name])
-            while any(status.is_alive for status in self._task_status.values()):
-                self._check_task_status()
-                time.sleep(1)
+            self._drain_tasks()
             logger.info("Pipeline shutdown complete")
             if self._pid_file is not None:
                 self._pid_file.unlink(missing_ok=True)
@@ -235,10 +233,12 @@ class Pipeline:
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
+                self._task_status[task.name] = TaskStatus(kind=TaskStatusKind.ACTIVE)
                 logger.info("[{}] Started with PID {}", task.name, process.pid)
             elif isinstance(task, SlurmTaskConfig):
                 job_id = submit_to_slurm(script)
                 self._slurm_task_ids[task.name] = job_id
+                self._task_status[task.name] = TaskStatus(kind=TaskStatusKind.PENDING)
                 logger.info("[{}] Submitted with Slurm job ID {}", task.name, job_id)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
@@ -280,6 +280,13 @@ class Pipeline:
 
     def _check_task_status(self):
         for task in self._config.tasks:
+            # `_start_tasks` may fail partway, leaving later tasks unstarted; polling
+            # one of those would raise inside the shutdown path and mask the real error
+            if (
+                task.name not in self._subprocesses
+                and task.name not in self._slurm_task_ids
+            ):
+                continue
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = self._subprocesses[task.name]
                 status = self._get_subprocess_status(process)
@@ -301,6 +308,29 @@ class Pipeline:
                     status.kind.name,
                     f" ({status.detail})" if status.detail else "",
                 )
+
+    def _drain_tasks(self):
+        """Wait for terminated tasks to actually exit, both local and Slurm.
+
+        The wait is bounded because SIGTERM is a request a task may ignore, and
+        this loop does not check the shutdown event, so a second Ctrl-C could not
+        break out of an unbounded one. On expiry local processes escalate to
+        SIGKILL; Slurm jobs get no equivalent, as `scancel` sends its own SIGKILL
+        follow-up.
+        """
+        deadline = time.monotonic() + settings.pipeline_shutdown_timeout
+        while True:
+            self._check_task_status()
+            if not any(status.is_alive for status in self._task_status.values()):
+                return
+            if time.monotonic() >= deadline:
+                for name, process in self._subprocesses.items():
+                    if process.poll() is None:
+                        logger.warning("[{}] Did not exit in time, killing", name)
+                        process.kill()
+                logger.warning("Shutdown timed out, stopped waiting for tasks")
+                return
+            time.sleep(1)
 
     def _handle_task_timeout(self):
         for task in self._config.tasks:

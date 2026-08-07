@@ -54,7 +54,8 @@ class FakePopen(subprocess.Popen):
     read, so anything Pipeline reaches for beyond `poll`/`terminate`/`pid`
     raises AttributeError instead of acting on a pid that is not ours.
 
-    Set `exit_code` to make a task look like it died.
+    Set `exit_code` to make a task look like it died. Set `ignores_terminate` to
+    model a task that does not honor SIGTERM, which only `kill` then stops.
     """
 
     def __init__(self, *args, **kwargs):
@@ -64,6 +65,8 @@ class FakePopen(subprocess.Popen):
         self.pid = 424242
         self.exit_code: int | None = None
         self.terminate_calls = 0
+        self.kill_calls = 0
+        self.ignores_terminate = False
 
     def poll(self) -> int | None:
         return self.exit_code
@@ -72,16 +75,20 @@ class FakePopen(subprocess.Popen):
         self.terminate_calls += 1
         # A terminated process must stop reporting itself as alive, otherwise
         # the shutdown loop in Pipeline.run() never exits
-        if self.exit_code is None:
+        if self.exit_code is None and not self.ignores_terminate:
             self.exit_code = -15
+
+    def kill(self):
+        self.kill_calls += 1
+        if self.exit_code is None:
+            self.exit_code = -9
 
 
 def start_fake_tasks(pipeline: Pipeline) -> None:
     """Register a fake subprocess per task so a cycle can poll task status.
 
     `_check_task_status()` looks tasks up in `_subprocesses`, which only
-    `_start_tasks()` fills — and tests driving cycles never call it. Status is
-    set separately because the constructor starts tasks INACTIVE.
+    `_start_tasks()` fills — and tests driving cycles never call it.
     """
     for task in pipeline._config.tasks:
         pipeline._subprocesses[task.name] = FakePopen()
