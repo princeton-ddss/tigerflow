@@ -138,6 +138,16 @@ class TestSlurmTimeout:
 class TestSlurmShutdown:
     """Slurm jobs are cancelled when the pipeline shuts down."""
 
+    @staticmethod
+    def _no_such_job(argv, *args, **kwargs) -> subprocess.CompletedProcess:
+        """Stand in for `subprocess.run` with output that reads as a finished job.
+
+        Empty stdout is what `get_slurm_task_status` treats as gone. A bare mock
+        returns a mock from `.stdout`, which reads as live instead and leaves
+        `_drain_tasks` spinning until its timeout expires.
+        """
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
     def test_scancel_issued_for_worker_and_client(
         self, pipeline_factory: PipelineFactory
     ):
@@ -150,7 +160,7 @@ class TestSlurmShutdown:
 
         with (
             patch("tigerflow.pipeline.submit_to_slurm", return_value=111),
-            patch.object(subprocess, "run") as run,
+            patch.object(subprocess, "run", side_effect=self._no_such_job) as run,
         ):
             pipeline.run()
 
