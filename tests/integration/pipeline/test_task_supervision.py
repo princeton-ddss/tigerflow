@@ -127,12 +127,94 @@ class TestSlurmTimeout:
                     slurm_status(TaskStatusKind.PENDING, "Reason: Priority"),
                 ],
             ) as poll,
+            patch("tigerflow.pipeline.get_pending_worker_ids", return_value=[]),
         ):
             pipeline._run_tracking_cycle()
             pipeline._run_tracking_cycle()
 
         assert resubmit.call_count == 1, "Only the timed-out job should be resubmitted"
         assert poll.call_args_list[1].args[0] == 222, "Second poll must use the new ID"
+
+
+class TestPendingWorkerAlerts:
+    """Workers stuck PENDING in the Slurm queue are warned about every 10 minutes."""
+
+    def test_logs_when_worker_crosses_every_ten_minutes(
+        self,
+        pipeline_factory: PipelineFactory,
+        monkeypatch: pytest.MonkeyPatch,
+        pending_worker_logs: list[str],
+    ):
+        pipeline = pipeline_factory([SLURM_TASK])
+        pipeline._slurm_task_ids["gpu"] = 111
+
+        clock = [1000.0]
+        monkeypatch.setattr("tigerflow.pipeline.time.time", lambda: clock[0])
+
+        with (
+            patch(
+                "tigerflow.pipeline.get_slurm_task_status",
+                return_value=slurm_status(TaskStatusKind.ACTIVE),
+            ),
+            patch(
+                "tigerflow.pipeline.get_pending_worker_ids",
+                return_value=[847645, 847649],
+            ),
+        ):
+            pipeline._check_task_status()
+            assert pending_worker_logs == [], "First observation only starts the clock"
+
+            clock[0] += 601
+            pipeline._check_task_status()
+            clock[0] += 600
+            pipeline._check_task_status()
+            clock[0] += 60  # Same threshold must not be logged twice
+            pipeline._check_task_status()
+
+        assert len(pending_worker_logs) == 2
+        assert "[gpu]" in pending_worker_logs[0]
+        assert "10 minutes" in pending_worker_logs[0]
+        assert "20 minutes" in pending_worker_logs[1]
+        assert "847645" in pending_worker_logs[0]
+        assert "847649" in pending_worker_logs[0]
+
+    def test_stops_tracking_once_worker_leaves_the_queue(
+        self,
+        pipeline_factory: PipelineFactory,
+        monkeypatch: pytest.MonkeyPatch,
+        pending_worker_logs: list[str],
+    ):
+        pipeline = pipeline_factory([SLURM_TASK])
+        pipeline._slurm_task_ids["gpu"] = 111
+
+        clock = [1000.0]
+        monkeypatch.setattr("tigerflow.pipeline.time.time", lambda: clock[0])
+
+        with patch(
+            "tigerflow.pipeline.get_slurm_task_status",
+            return_value=slurm_status(TaskStatusKind.ACTIVE),
+        ):
+            with patch(
+                "tigerflow.pipeline.get_pending_worker_ids",
+                return_value=[847645],
+            ):
+                pipeline._check_task_status()
+
+            clock[0] += 601
+            with patch(
+                "tigerflow.pipeline.get_pending_worker_ids",
+                return_value=[],  # Job started running before the 10-minute mark
+            ):
+                pipeline._check_task_status()
+
+            clock[0] += 601
+            with patch(
+                "tigerflow.pipeline.get_pending_worker_ids",
+                return_value=[847645],  # Re-queued later, clock restarts
+            ):
+                pipeline._check_task_status()
+
+        assert pending_worker_logs == []
 
 
 class TestSlurmShutdown:

@@ -6,6 +6,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import FrameType
@@ -23,7 +24,7 @@ from tigerflow.models import (
 )
 from tigerflow.settings import settings
 from tigerflow.staging import StagingContext
-from tigerflow.tasks.utils import get_slurm_task_status
+from tigerflow.tasks.utils import get_pending_worker_ids, get_slurm_task_status
 from tigerflow.utils import TEMP_FILE_PREFIX, submit_to_slurm, validate_task_cli
 
 
@@ -148,6 +149,12 @@ class Pipeline:
 
         # Initialize mapping from task name to Slurm job ID
         self._slurm_task_ids: dict[str, int] = dict()
+
+        # Track how long each currently-pending worker job has been pending,
+        # and the last 10-minute threshold logged for it, so warnings repeat
+        # every 10 minutes instead of flooding every poll cycle
+        self._worker_pending_since: dict[str, dict[int, float]] = defaultdict(dict)
+        self._worker_pending_alerted: dict[str, dict[int, int]] = defaultdict(dict)
 
         # Initialize an event to manage graceful shutdown
         self._shutdown_event = threading.Event()
@@ -301,6 +308,7 @@ class Pipeline:
             elif isinstance(task, SlurmTaskConfig):
                 job_id = self._slurm_task_ids[task.name]
                 status = get_slurm_task_status(job_id, task.worker_job_name)
+                self._check_pending_workers(task)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
@@ -316,6 +324,34 @@ class Pipeline:
                     status.kind.name,
                     f" ({status.detail})" if status.detail else "",
                 )
+
+    def _check_pending_workers(self, task: SlurmTaskConfig):
+        """Warn every 10 minutes a worker job spends stuck in the Slurm queue."""
+        pending_ids = get_pending_worker_ids(task.worker_job_name)
+        since = self._worker_pending_since[task.name]
+        alerted = self._worker_pending_alerted[task.name]
+
+        for job_id in list(since):
+            if job_id not in pending_ids:
+                since.pop(job_id, None)
+                alerted.pop(job_id, None)
+
+        now = time.time()
+        newly_crossed: dict[int, list[int]] = defaultdict(list)
+        for job_id in pending_ids:
+            pending_minutes = (now - since.setdefault(job_id, now)) / 60
+            threshold = int(pending_minutes // 10) * 10
+            if threshold >= 10 and threshold > alerted.get(job_id, 0):
+                alerted[job_id] = threshold
+                newly_crossed[threshold].append(job_id)
+
+        for threshold, job_ids in sorted(newly_crossed.items()):
+            logger.info(
+                "[{}] Workers pending more than {} minutes: {}",
+                task.name,
+                threshold,
+                ", ".join(str(job_id) for job_id in sorted(job_ids)),
+            )
 
     def _drain_tasks(self):
         """Wait for terminated tasks to actually exit, both local and Slurm.
@@ -444,7 +480,7 @@ class Pipeline:
             logger.warning("Idle timeout reached, initiating shutdown")
             self._received_signal = signal.SIGTERM
             self._shutdown_event.set()
-    
+
     def _log_pipeline_summary(self):
         n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
         logger.info(
@@ -453,7 +489,6 @@ class Pipeline:
             n_finished,
             len(self._failed_stems()),
         )
-
 
     @staticmethod
     def _get_subprocess_status(process: subprocess.Popen) -> TaskStatus:
