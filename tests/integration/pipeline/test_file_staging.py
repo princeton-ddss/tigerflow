@@ -224,10 +224,10 @@ class TestStagingContext:
         The tests above each set up one state at a time, so this is the only
         place `waiting`, `staged`, `completed`, and `failed` are all pinned
         against each other. Four files are staged, one completes, one fails:
-        completion removes a symlink and failure does not, so `staged` is 3
-        symlinks minus 1 recorded failure. The counts are deliberately unequal
-        because one file per state lets several wrong formulas land on the
-        right answer.
+        completion removes a symlink and failure does not, so `staged` counts
+        the 3 remaining symlinks excluding the file that failed. The counts are
+        deliberately unequal because one file per state lets several wrong
+        formulas land on the right answer.
         """
         pipeline = pipeline_factory()
         for i in range(4):
@@ -245,13 +245,7 @@ class TestStagingContext:
         counts = (context.waiting, context.staged, context.completed, context.failed)
         assert counts == (0, 2, 1, 1)
 
-    @pytest.mark.xfail(
-        reason="Failures are subtracted as a per-task total, so a file failing "
-        "in two fan-out tasks is discounted twice and staged undercounts the "
-        "files still live",
-        strict=True,
-    )
-    def test_staged_discounts_each_failed_file_once(
+    def test_fan_out_failure_counts_one_file(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):
         """A file failing in several tasks must free one staging slot, not one per task.
@@ -261,21 +255,14 @@ class TestStagingContext:
         because the other tasks read the same directory, so `staged` cannot
         simply be the symlink count.
 
-        The defect is that the exclusion mixes two units. `_build_staging_context`
-        subtracts `failed`, which counts error *files* across tasks, from a
-        symlink count that holds each input *file* once.
-
         Here two files are staged under a cap of 2, and one of them fails in
         `alpha` and `beta` while `gamma` has not processed it yet. The untouched
         file still holds a slot and the failed one frees a single slot however
-        many tasks recorded it, so `staged` should be 1, but 2 - 2 reports 0.
-
-        Note that `failed` reading 2 for one bad input is not itself the bug.
-        It is documented as a count of error files, so 2 is what it should
-        report. Only the subtraction is wrong.
+        many tasks recorded it, so `staged` is 1 and `failed` is 1 even though
+        two error files exist.
 
         `test_fan_out_failures_do_not_cut_the_run_short` in test_lifecycle.py
-        covers the other symptom of this mismatch.
+        pins the same rule for the idle check.
         """
         pipeline = pipeline_factory(
             [task_spec("alpha"), task_spec("beta"), task_spec("gamma")],
@@ -287,7 +274,7 @@ class TestStagingContext:
 
         pipeline._stage_new_files()
         staged = [f.name for f in pipeline._symlinks_dir.iterdir()]
-        assert len(staged) == 2, "Cap should admit exactly 2 on the first pass"
+        assert len(staged) == 2
 
         failed_name = staged[0]
         failed_stem = Path(failed_name).stem
@@ -299,11 +286,34 @@ class TestStagingContext:
             "Failure must not remove the symlink the remaining task reads from"
         )
 
-        assert pipeline._build_staging_context().staged == 1, (
-            "One of the 2 staged files is untouched and the other can no longer "
-            "complete, so one slot is occupied no matter how many tasks recorded "
-            "the failure"
+        context = pipeline._build_staging_context()
+        assert (context.staged, context.failed) == (1, 1)
+
+    def test_failed_file_excluded_under_multi_part_extension(
+        self, pipeline_factory: PipelineFactory, input_dir: Path
+    ):
+        """Failed stems must match symlink stems when the input extension has two parts.
+
+        Workers name error files by stripping the whole `output_ext`, so a
+        `.fastq.gz` input fails to `sample.err`. The symlink stem must therefore
+        be derived by stripping the whole `root_input_ext` as well. `Path.stem`
+        would drop only `.gz` and yield `sample.fastq`, which never matches,
+        silently leaving the failed file counted as staged.
+        """
+        pipeline = pipeline_factory(
+            [task_spec(input_ext=".fastq.gz", output_ext=".fastq.gz")]
         )
+        assert pipeline._config.root_input_ext == ".fastq.gz"
+
+        (input_dir / "sample.fastq.gz").write_text("x")
+        pipeline._stage_new_files()
+
+        task = pipeline._config.tasks[0]
+        (task.output_dir / "sample.err").write_text("boom")
+        pipeline._report_failed_files()
+
+        context = pipeline._build_staging_context()
+        assert (context.staged, context.failed) == (0, 1)
 
 
 class TestFailureReporting:

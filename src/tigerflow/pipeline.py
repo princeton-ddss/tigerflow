@@ -245,9 +245,15 @@ class Pipeline:
 
     def _build_staging_context(self) -> StagingContext:
         """Build the current context for staging middleware."""
+        failed_stems = self._failed_stems()
+
         n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
-        n_failed = sum(len(e) for e in self._task_error_filenames.values())
-        n_staged = sum(1 for f in self._symlinks_dir.iterdir() if f.is_file())
+        n_staged = sum(
+            1
+            for f in self._symlinks_dir.iterdir()
+            if f.is_file()
+            and f.name.removesuffix(self._config.root_input_ext) not in failed_stems
+        )
         n_waiting = sum(
             1
             for f in self._input_dir.iterdir()
@@ -255,11 +261,12 @@ class Pipeline:
             and f.name.endswith(self._config.root_input_ext)
             and f.name not in self._filenames
         )
+
         return StagingContext(
             waiting=n_waiting,
-            staged=n_staged - n_failed,
+            staged=n_staged,
             completed=n_finished,
-            failed=n_failed,
+            failed=len(failed_stems),
             input_dir=self._input_dir,
             output_dir=self._output_dir,
         )
@@ -363,6 +370,18 @@ class Pipeline:
             if n_files > 0:
                 logger.error("[{}] {} failed files", task.name, n_files)
 
+    def _failed_stems(self) -> set[str]:
+        """Stems of input files that failed in at least one task.
+
+        A file failing in several tasks leaves one error file per task, so
+        stems are unioned to count that file once.
+        """
+        return {
+            filename.removesuffix(".err")
+            for filenames in self._task_error_filenames.values()
+            for filename in filenames
+        }
+
     def _handle_processed_files(self):
         # Identify *newly* processed files for each task
         processed_filenames_by_task: dict[str, set[str]] = {
@@ -411,14 +430,12 @@ class Pipeline:
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
             n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
-            n_failed = sum(len(errs) for errs in self._task_error_filenames.values())
-            if (n_finished + n_failed) >= len(self._filenames):
+            if (n_finished + len(self._failed_stems())) >= len(self._filenames):
                 logger.info("No more files to process, starting idle time count")
 
     def _check_inactivity(self):
         n_finished = sum(1 for file in self._finished_dir.iterdir() if file.is_file())
-        n_failed = sum(len(errs) for errs in self._task_error_filenames.values())
-        if (n_finished + n_failed) < len(self._filenames):  # Still in progress
+        if (n_finished + len(self._failed_stems())) < len(self._filenames):
             self._last_active = datetime.now()
 
         inactivity = datetime.now() - self._last_active

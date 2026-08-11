@@ -17,12 +17,16 @@ from tigerflow.utils import (
 
 @dataclass(frozen=True)
 class StagingContext:
-    """Read-only view of pipeline state for staging middleware."""
+    """Read-only view of pipeline state for staging middleware.
+
+    The four counts partition input files by state, so each file is counted
+    in exactly one of them.
+    """
 
     waiting: int  # Files in input_dir not yet staged
-    staged: int  # Files staged but not completed
+    staged: int  # Files staged and still live (failures excluded)
     completed: int  # Files in .finished directory
-    failed: int  # Total error files across tasks
+    failed: int  # Files that failed in at least one task
     input_dir: Path  # Reference for companion lookups
     output_dir: Path  # Reference for capacity checks
 
