@@ -146,25 +146,19 @@ class TestInactivity:
             "Pending work should reset the idle clock"
         )
 
-    @pytest.mark.xfail(
-        reason="Failure counts are per task while the input count holds each "
-        "file once, so a file failing in two fan-out tasks is counted twice "
-        "and the idle check believes the run is done",
-        strict=True,
-    )
     def test_fan_out_failures_do_not_cut_the_run_short(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):
         """Failing in two tasks must count as one failed file, not two.
 
         Two of three files fail, each in both tasks. That produces four `.err`
-        files for two bad inputs, so the pipeline counts 4 accounted-for files
-        against 3 real ones while the third is still staged and healthy.
-        Believing the run is done, `_check_inactivity` skips its reset of the
-        idle clock and shutdown proceeds with work still in flight.
+        files for two bad inputs, so counting error files would account for 4
+        against 3 real inputs while the third is still staged and healthy.
+        `_check_inactivity` would then believe the run is done, skip its reset
+        of the idle clock, and shut down with work still in flight.
 
-        Same unit mismatch as `test_staged_discounts_each_failed_file_once` in
-        test_file_staging.py, which explains it in full.
+        `test_fan_out_failure_counts_one_file` in test_file_staging.py
+        pins the same rule for the staging count.
         """
         pipeline = pipeline_factory(
             [task_spec("alpha"), task_spec("beta")], idle_timeout=1

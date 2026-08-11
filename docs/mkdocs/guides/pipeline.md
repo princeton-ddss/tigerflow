@@ -200,14 +200,16 @@ def my_filter(candidates: list[Path], context: StagingContext) -> list[Path]:
     return candidates
 ```
 
-The `StagingContext` provides a read-only view of the current pipeline state:
+The `StagingContext` provides a read-only view of the current pipeline state. The
+four counts partition input files by state, so each file is counted in exactly one
+of them --- a file that failed in several tasks still counts once:
 
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | `waiting` | `int` | Files in the input directory not yet staged |
-| `staged` | `int` | Files staged but not yet completed |
+| `staged` | `int` | Files staged and still live (failures excluded) |
 | `completed` | `int` | Files that have finished all tasks |
-| `failed` | `int` | Total error files across all tasks |
+| `failed` | `int` | Files that failed in at least one task |
 | `input_dir` | `Path` | The pipeline's input directory |
 | `output_dir` | `Path` | The pipeline's output directory |
 
