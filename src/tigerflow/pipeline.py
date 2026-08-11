@@ -201,6 +201,7 @@ class Pipeline:
                 subprocess.run(["scancel", "-n", task.client_job_name])
             self._drain_tasks()
             logger.info("Pipeline shutdown complete")
+            self._log_pipeline_summary()
             if self._pid_file is not None:
                 self._pid_file.unlink(missing_ok=True)
             if self._received_signal is not None:
@@ -443,6 +444,16 @@ class Pipeline:
             logger.warning("Idle timeout reached, initiating shutdown")
             self._received_signal = signal.SIGTERM
             self._shutdown_event.set()
+    
+    def _log_pipeline_summary(self):
+        n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
+        logger.info(
+            "Pipeline summary: staged={} / completed={} / failed={}",
+            len(self._filenames),
+            n_finished,
+            len(self._failed_stems()),
+        )
+
 
     @staticmethod
     def _get_subprocess_status(process: subprocess.Popen) -> TaskStatus:
