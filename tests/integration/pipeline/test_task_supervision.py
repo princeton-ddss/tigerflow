@@ -138,6 +138,16 @@ class TestSlurmTimeout:
 class TestSlurmShutdown:
     """Slurm jobs are cancelled when the pipeline shuts down."""
 
+    @staticmethod
+    def _no_such_job(argv, *args, **kwargs) -> subprocess.CompletedProcess:
+        """Stand in for `subprocess.run` with output that reads as a finished job.
+
+        Empty stdout is what `get_slurm_task_status` treats as gone. A bare mock
+        returns a mock from `.stdout`, which reads as live instead and leaves
+        `_drain_tasks` spinning until its timeout expires.
+        """
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
     def test_scancel_issued_for_worker_and_client(
         self, pipeline_factory: PipelineFactory
     ):
@@ -150,7 +160,7 @@ class TestSlurmShutdown:
 
         with (
             patch("tigerflow.pipeline.submit_to_slurm", return_value=111),
-            patch.object(subprocess, "run") as run,
+            patch.object(subprocess, "run", side_effect=self._no_such_job) as run,
         ):
             pipeline.run()
 
@@ -159,3 +169,35 @@ class TestSlurmShutdown:
         cancel_argv = [call.args[0] for call in run.call_args_list if call.args]
         assert ["scancel", "-n", task.worker_job_name] in cancel_argv
         assert ["scancel", "-n", task.client_job_name] in cancel_argv
+
+    def test_drain_gives_up_on_job_that_stays_queued(
+        self, pipeline_factory: PipelineFactory, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A job still queued after `scancel` must not hold shutdown open forever.
+
+        The drain re-polls squeue on every pass, so a job that keeps reporting
+        PENDING keeps it looping; `scancel` is asynchronous and the job may
+        outlive the request. Only the deadline ends that, which makes this the
+        Slurm analogue of `test_kills_task_that_ignores_terminate`.
+
+        Zeroing the timeout pins the bound itself: squeue never reports the job
+        gone, so a drain that returns can only have hit its deadline.
+        """
+        monkeypatch.setattr("tigerflow.pipeline.settings.pipeline_shutdown_timeout", 0)
+        pipeline = pipeline_factory([SLURM_TASK])
+        pipeline._shutdown_event.set()
+
+        def still_queued(argv, *args, **kwargs) -> subprocess.CompletedProcess:
+            """Report PENDING for every squeue poll, as if scancel were a no-op."""
+            return subprocess.CompletedProcess(argv, 0, stdout=" PENDING", stderr="")
+
+        with (
+            patch("tigerflow.pipeline.submit_to_slurm", return_value=111),
+            patch.object(subprocess, "run", side_effect=still_queued),
+        ):
+            pipeline.run()
+
+        assert pipeline._task_status["gpu"].kind is TaskStatusKind.PENDING, (
+            "The drain must have exited on its deadline with the job still live, "
+            "not because the job was observed gone"
+        )

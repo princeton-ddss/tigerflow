@@ -10,12 +10,14 @@ pass ahead of the same number of bare cycle calls.
 """
 
 import signal
+import subprocess
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
+from tigerflow.models import TaskStatus, TaskStatusKind
 from tigerflow.pipeline import Pipeline
 
 from .helpers import (
@@ -227,23 +229,16 @@ class TestShutdown:
         assert len(fake_popen) == 1
         assert fake_popen[0].terminate_calls == 1
 
-    @pytest.mark.xfail(
-        reason="Tasks started but never polled stay INACTIVE, so the shutdown "
-        "guard skips terminate() and leaks the subprocess. The test also pins "
-        "that no tracking cycle runs, so both must hold before this marker goes",
-        strict=True,
-    )
-    def test_terminates_tasks_when_shutdown_precedes_first_poll(
+    def test_terminates_tasks_when_shutdown_precedes_first_cycle(
         self,
         pipeline_factory: PipelineFactory,
         fake_popen: list[FakePopen],
         monkeypatch: pytest.MonkeyPatch,
     ):
-        """Tasks must be terminated even if shutdown arrives before any status poll.
+        """Tasks started but never tracked must still be terminated.
 
         `run()` checks the shutdown event before its first cycle, so a signal
-        delivered between task startup and that check skips the cycle entirely
-        and no task is ever polled.
+        delivered between task startup and that check skips the cycle entirely.
 
         Two tasks, because the factory default is a single task and asserting
         over one process would not catch a guard that skips the rest.
@@ -262,9 +257,95 @@ class TestShutdown:
         pipeline.run()
 
         assert [process.terminate_calls for process in fake_popen] == [1, 1]
-        # If a cycle ran, it would mark tasks alive and terminate them for the
-        # wrong reason, so pin that the shutdown path alone did the cleanup.
+        # Pin that the shutdown path alone did the cleanup, with no cycle
+        # having run to reach the tasks first.
         assert cycles == 0
+
+    def test_terminates_task_whose_status_is_stale(
+        self,
+        pipeline_factory: PipelineFactory,
+        fake_popen: list[FakePopen],
+        stop_after_one_cycle: Callable[[Pipeline], None],
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """A running task is terminated even if its cached status says otherwise.
+
+        Status is a cache refreshed by polling, so termination asks the OS via
+        `poll()` instead. Other shutdown tests would pass even on the stale
+        cache, so this one falsifies it deliberately.
+        """
+        pipeline = pipeline_factory()
+        stop_after_one_cycle(pipeline)
+
+        original_check = pipeline._check_task_status
+
+        def check_then_falsify():
+            original_check()
+            for name in pipeline._task_status:
+                pipeline._task_status[name] = TaskStatus(kind=TaskStatusKind.INACTIVE)
+
+        monkeypatch.setattr(pipeline, "_check_task_status", check_then_falsify)
+
+        pipeline.run()
+
+        assert fake_popen[0].terminate_calls == 1
+
+    def test_kills_task_that_ignores_terminate(
+        self,
+        pipeline_factory: PipelineFactory,
+        fake_popen: list[FakePopen],
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """A task that does not honor SIGTERM is killed once the drain expires."""
+        # Expire the deadline on its first check, so the test does not wait it out
+        monkeypatch.setattr("tigerflow.pipeline.settings.pipeline_shutdown_timeout", 0)
+        pipeline = pipeline_factory()
+        pipeline._shutdown_event.set()
+
+        def ignore_terminate(*args, **kwargs) -> FakePopen:
+            process = FakePopen(*args, **kwargs)
+            process.ignores_terminate = True
+            fake_popen.append(process)
+            return process
+
+        monkeypatch.setattr(subprocess, "Popen", ignore_terminate)
+
+        pipeline.run()
+
+        assert fake_popen[0].terminate_calls == 1
+        assert fake_popen[0].kill_calls == 1
+
+    def test_partial_start_failure_propagates(
+        self,
+        pipeline_factory: PipelineFactory,
+        fake_popen: list[FakePopen],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """A task failing to start must not have its error masked by shutdown.
+
+        The first task is already running when the second fails, so shutdown
+        polls task status with the second task absent from `_subprocesses`.
+        """
+        pid_file = tmp_path / "run.pid"
+        pipeline = pipeline_factory(
+            [task_spec("first"), task_spec("second")], pid_file=pid_file
+        )
+
+        def fail_on_second(*args, **kwargs) -> FakePopen:
+            if fake_popen:  # The first task already spawned
+                raise OSError("cannot spawn")
+            process = FakePopen(*args, **kwargs)
+            fake_popen.append(process)
+            return process
+
+        monkeypatch.setattr(subprocess, "Popen", fail_on_second)
+
+        with pytest.raises(OSError, match="cannot spawn"):
+            pipeline.run()
+
+        assert fake_popen[0].terminate_calls == 1
+        assert not pid_file.exists()
 
     def test_pid_file_removed_on_shutdown(
         self,

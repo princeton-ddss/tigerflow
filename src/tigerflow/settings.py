@@ -20,6 +20,12 @@ class TigerflowSettings(BaseSettings):
         description="Pipeline polling interval in seconds",
     )
 
+    pipeline_shutdown_timeout: int = Field(
+        default=30,
+        gt=0,
+        description="Timeout in seconds to wait for tasks to exit during shutdown",
+    )
+
     task_poll_interval: int = Field(
         default=3,
         gt=0,
