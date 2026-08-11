@@ -1166,7 +1166,9 @@ candidates) and a <code>StagingContext</code> --- and return a filtered list of 
         <span class="k">return</span> <span class="p">[]</span>
     <span class="k">return</span> <span class="n">candidates</span>
 </code></pre></div>
-<p>The <code>StagingContext</code> provides a read-only view of the current pipeline state:</p>
+<p>The <code>StagingContext</code> provides a read-only view of the current pipeline state. The
+four counts partition input files by state, so each file is counted in exactly one
+of them --- a file that failed in several tasks still counts once:</p>
 <table>
 <thead>
 <tr>
@@ -1184,7 +1186,7 @@ candidates) and a <code>StagingContext</code> --- and return a filtered list of 
 <tr>
 <td><code>staged</code></td>
 <td><code>int</code></td>
-<td>Files staged but not yet completed</td>
+<td>Files staged and still live (failures excluded)</td>
 </tr>
 <tr>
 <td><code>completed</code></td>
@@ -1194,7 +1196,7 @@ candidates) and a <code>StagingContext</code> --- and return a filtered list of 
 <tr>
 <td><code>failed</code></td>
 <td><code>int</code></td>
-<td>Total error files across all tasks</td>
+<td>Files that failed in at least one task</td>
 </tr>
 <tr>
 <td><code>input_dir</code></td>
