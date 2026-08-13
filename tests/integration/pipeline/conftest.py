@@ -141,7 +141,7 @@ def error_logs() -> Iterator[list[str]]:
 def pending_worker_logs() -> Iterator[list[str]]:
     """Yield a list collecting the message of every "Workers pending" record logged.
 
-    Filtered by message content rather than level: `_check_task_status` also logs
+    Filtered by message content as well as level: `_check_task_status` also logs
     an INFO status-change record on the same call, which a level-only sink would
     mix in and throw off exact-count assertions.
     """
@@ -149,7 +149,7 @@ def pending_worker_logs() -> Iterator[list[str]]:
 
     sink_id = logger.add(
         lambda message: records.append(message.record["message"]),
-        level="INFO",
+        level="WARNING",
         filter=lambda record: "Workers pending" in record["message"],
     )
     try:

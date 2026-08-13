@@ -57,5 +57,11 @@ class TigerflowSettings(BaseSettings):
         description="Timeout in seconds for each Slurm task worker to initialize",
     )
 
+    slurm_task_worker_warning_interval: int = Field(
+        default=10,
+        gt=0,
+        description="Interval in minutes to log a warning when slurm tasks stay pending",
+    )
+
 
 settings = TigerflowSettings()

@@ -111,7 +111,7 @@ def get_pending_worker_ids(worker_job_name: str) -> list[int]:
         text=True,
     ).stdout
 
-    return [int(job_id) for job_id in pending_ids.split()]
+    return [int(job_id) for job_id in pending_ids.split() if job_id.isdigit()]
 
 
 def write_error_file(error_path: Path, input_file: str) -> None:

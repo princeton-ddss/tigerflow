@@ -151,8 +151,7 @@ class Pipeline:
         self._slurm_task_ids: dict[str, int] = dict()
 
         # Track how long each currently-pending worker job has been pending,
-        # and the last 10-minute threshold logged for it, so warnings repeat
-        # every 10 minutes instead of flooding every poll cycle
+        # and the last threshold logged for it
         self._worker_pending_since: dict[str, dict[int, float]] = defaultdict(dict)
         self._worker_pending_alerted: dict[str, dict[int, int]] = defaultdict(dict)
 
@@ -340,13 +339,19 @@ class Pipeline:
         newly_crossed: dict[int, list[int]] = defaultdict(list)
         for job_id in pending_ids:
             pending_minutes = (now - since.setdefault(job_id, now)) / 60
-            threshold = int(pending_minutes // 10) * 10
-            if threshold >= 10 and threshold > alerted.get(job_id, 0):
+            threshold = (
+                int(pending_minutes // settings.slurm_task_worker_warning_interval)
+                * settings.slurm_task_worker_warning_interval
+            )
+            if (
+                threshold >= settings.slurm_task_worker_warning_interval
+                and threshold > alerted.get(job_id, 0)
+            ):
                 alerted[job_id] = threshold
                 newly_crossed[threshold].append(job_id)
 
         for threshold, job_ids in sorted(newly_crossed.items()):
-            logger.info(
+            logger.warning(
                 "[{}] Workers pending more than {} minutes: {}",
                 task.name,
                 threshold,
