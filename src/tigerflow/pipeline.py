@@ -336,16 +336,11 @@ class Pipeline:
 
         now = time.time()
         newly_crossed: dict[int, list[int]] = defaultdict(list)
+        warning_interval = settings.slurm_task_worker_warning_interval
         for job_id in pending_ids:
             pending_minutes = (now - since.setdefault(job_id, now)) / 60
-            threshold = (
-                int(pending_minutes // settings.slurm_task_worker_warning_interval)
-                * settings.slurm_task_worker_warning_interval
-            )
-            if (
-                threshold >= settings.slurm_task_worker_warning_interval
-                and threshold > alerted.get(job_id, 0)
-            ):
+            threshold = int(pending_minutes // warning_interval) * warning_interval
+            if threshold >= warning_interval and threshold > alerted.get(job_id, 0):
                 alerted[job_id] = threshold
                 newly_crossed[threshold].append(job_id)
 
