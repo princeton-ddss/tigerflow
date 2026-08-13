@@ -103,6 +103,17 @@ def get_slurm_task_status(client_job_id: int, worker_job_name: str) -> TaskStatu
         )
 
 
+def get_pending_worker_ids(worker_job_name: str) -> list[int]:
+    """Return the Slurm job IDs of workers currently in the PENDING state."""
+    pending_ids = subprocess.run(
+        ["squeue", "--me", "-n", worker_job_name, "-h", "-t", "PENDING", "-o", "%i"],
+        capture_output=True,
+        text=True,
+    ).stdout
+
+    return [int(job_id) for job_id in pending_ids.split() if job_id.isdigit()]
+
+
 def write_error_file(error_path: Path, input_file: str) -> None:
     """Write structured error JSON for a failed file.
 

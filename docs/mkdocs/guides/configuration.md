@@ -38,6 +38,7 @@ export TIGERFLOW_ENV_FILE=/path/to/custom.env
 | `TIGERFLOW_SLURM_TASK_SCALE_INTERVAL` | `15` | Interval in seconds between Slurm task scaling checks |
 | `TIGERFLOW_SLURM_TASK_SCALE_WAIT_COUNT` | `8` | Number of consecutive idle checks before removing a worker |
 | `TIGERFLOW_SLURM_TASK_WORKER_STARTUP_TIMEOUT` | `600` | Timeout in seconds for each Slurm task worker to initialize |
+| `TIGERFLOW_SLURM_TASK_WORKER_WARNING_INTERVAL` | `10` | Interval in minutes to log a warning when slurm tasks stay pending |
 
 ## Example: Tuning Slurm Task Behavior
 
