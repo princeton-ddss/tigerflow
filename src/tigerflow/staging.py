@@ -19,10 +19,11 @@ from tigerflow.utils import (
 class StagingContext:
     """Read-only view of pipeline state for staging middleware.
 
-    The counts describe files middleware cannot see from its `candidates`
-    argument.
+    The four counts partition input files by state, so each file is counted
+    in exactly one of them.
     """
 
+    waiting: int  # Files in input_dir not yet staged
     staged: int  # Files staged and still live (failures excluded)
     completed: int  # Files in .finished directory
     failed: int  # Files that failed in at least one task

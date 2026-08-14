@@ -135,16 +135,31 @@ class TestStagingSelection:
 class TestStagingContext:
     """Counts handed to middleware must reflect real pipeline state."""
 
-    def test_staged_count_reflects_staging(
+    def test_counts_waiting_files(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):
-        """Staging a file makes it count as staged."""
+        """Unstaged input files are reported as waiting."""
+        pipeline = pipeline_factory()
+        for i in range(3):
+            (input_dir / f"f{i}.txt").write_text("x")
+
+        _, context = pipeline._prepare_staging_inputs()
+
+        assert context.waiting == 3
+        assert context.staged == 0
+        assert context.completed == 0
+
+    def test_counts_shift_after_staging(
+        self, pipeline_factory: PipelineFactory, input_dir: Path
+    ):
+        """Staging moves files from waiting to staged."""
         pipeline = pipeline_factory()
         (input_dir / "a.txt").write_text("x")
 
         pipeline._stage_new_files()
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
+        assert context.waiting == 0
         assert context.staged == 1
 
     def test_counts_completed_files(
@@ -159,7 +174,7 @@ class TestStagingContext:
         (task.output_dir / "a.txt").write_text("done")
         pipeline._handle_processed_files()
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
         assert context.completed == 1
         assert context.staged == 0
@@ -176,7 +191,7 @@ class TestStagingContext:
         (task.output_dir / "a.err").write_text("boom")
         pipeline._report_failed_files()
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
         assert context.failed == 1
         assert context.staged == 0
@@ -204,11 +219,11 @@ class TestStagingContext:
     def test_counts_stay_consistent_in_mixed_state(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):
-        """All counts hold together when staged, completed, and failed coexist.
+        """All four counts hold together when staged, completed, and failed coexist.
 
         The tests above each set up one state at a time, so this is the only
-        place `staged`, `completed`, and `failed` are all pinned against each
-        other. Four files are staged, one completes, one fails:
+        place `waiting`, `staged`, `completed`, and `failed` are all pinned
+        against each other. Four files are staged, one completes, one fails:
         completion removes a symlink and failure does not, so `staged` counts
         the 3 remaining symlinks excluding the file that failed. The counts are
         deliberately unequal because one file per state lets several wrong
@@ -225,10 +240,10 @@ class TestStagingContext:
         pipeline._report_failed_files()
         pipeline._handle_processed_files()
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
-        counts = (context.staged, context.completed, context.failed)
-        assert counts == (2, 1, 1)
+        counts = (context.waiting, context.staged, context.completed, context.failed)
+        assert counts == (0, 2, 1, 1)
 
     def test_fan_out_failure_counts_one_file(
         self, pipeline_factory: PipelineFactory, input_dir: Path
@@ -271,7 +286,7 @@ class TestStagingContext:
             "Failure must not remove the symlink the remaining task reads from"
         )
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
         assert (context.staged, context.failed) == (1, 1)
 
     def test_failed_file_excluded_under_multi_part_extension(
@@ -297,7 +312,7 @@ class TestStagingContext:
         (task.output_dir / "sample.err").write_text("boom")
         pipeline._report_failed_files()
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
         assert (context.staged, context.failed) == (0, 1)
 
 

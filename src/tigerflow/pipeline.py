@@ -249,8 +249,12 @@ class Pipeline:
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
-    def _build_staging_context(self) -> StagingContext:
-        """Build the current context for staging middleware."""
+    def _prepare_staging_inputs(self) -> tuple[list[Path], StagingContext]:
+        """Collect the candidates and context for staging middleware.
+
+        Both are built here so the input directory is scanned once: `waiting`
+        is derived from the same list the middleware chain receives.
+        """
         failed_stems = self._failed_stems()
         n_staged = sum(
             1
@@ -258,16 +262,6 @@ class Pipeline:
             if f.is_file()
             and f.name.removesuffix(self._config.root_input_ext) not in failed_stems
         )
-        return StagingContext(
-            staged=n_staged,
-            completed=self._count_finished(),
-            failed=len(failed_stems),
-            input_dir=self._input_dir,
-            output_dir=self._output_dir,
-        )
-
-    def _stage_new_files(self):
-        context = self._build_staging_context()
         candidates = [
             f
             for f in self._input_dir.iterdir()
@@ -275,6 +269,18 @@ class Pipeline:
             and f.name.endswith(self._config.root_input_ext)
             and f.name not in self._filenames
         ]
+        context = StagingContext(
+            waiting=len(candidates),
+            staged=n_staged,
+            completed=self._count_finished(),
+            failed=len(failed_stems),
+            input_dir=self._input_dir,
+            output_dir=self._output_dir,
+        )
+        return candidates, context
+
+    def _stage_new_files(self):
+        candidates, context = self._prepare_staging_inputs()
         to_stage = self._config.staging.process(candidates, context)
         for file in to_stage:
             self._symlinks_dir.joinpath(file.name).symlink_to(file)
