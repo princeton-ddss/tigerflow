@@ -252,26 +252,15 @@ class Pipeline:
     def _build_staging_context(self) -> StagingContext:
         """Build the current context for staging middleware."""
         failed_stems = self._failed_stems()
-
-        n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
         n_staged = sum(
             1
             for f in self._symlinks_dir.iterdir()
             if f.is_file()
             and f.name.removesuffix(self._config.root_input_ext) not in failed_stems
         )
-        n_waiting = sum(
-            1
-            for f in self._input_dir.iterdir()
-            if f.is_file()
-            and f.name.endswith(self._config.root_input_ext)
-            and f.name not in self._filenames
-        )
-
         return StagingContext(
-            waiting=n_waiting,
             staged=n_staged,
-            completed=n_finished,
+            completed=self._count_finished(),
             failed=len(failed_stems),
             input_dir=self._input_dir,
             output_dir=self._output_dir,
@@ -406,6 +395,19 @@ class Pipeline:
             if n_files > 0:
                 logger.error("[{}] {} failed files", task.name, n_files)
 
+    def _count_finished(self) -> int:
+        return sum(1 for file in self._finished_dir.iterdir() if file.is_file())
+
+    def _all_tracked_files_settled(self) -> bool:
+        """Whether every tracked file has either finished or failed.
+
+        `_filenames` is never pruned, so it covers every file the pipeline has
+        ever tracked.
+        """
+        return self._count_finished() + len(self._failed_stems()) >= len(
+            self._filenames
+        )
+
     def _failed_stems(self) -> set[str]:
         """Stems of input files that failed in at least one task.
 
@@ -465,13 +467,11 @@ class Pipeline:
         # Log progress
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
-            n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
-            if (n_finished + len(self._failed_stems())) >= len(self._filenames):
+            if self._all_tracked_files_settled():
                 logger.info("No more files to process, starting idle time count")
 
     def _check_inactivity(self):
-        n_finished = sum(1 for file in self._finished_dir.iterdir() if file.is_file())
-        if (n_finished + len(self._failed_stems())) < len(self._filenames):
+        if not self._all_tracked_files_settled():
             self._last_active = datetime.now()
 
         inactivity = datetime.now() - self._last_active

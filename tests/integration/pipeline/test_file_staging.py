@@ -135,31 +135,16 @@ class TestStagingSelection:
 class TestStagingContext:
     """Counts handed to middleware must reflect real pipeline state."""
 
-    def test_counts_waiting_files(
+    def test_staged_count_reflects_staging(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):
-        """Unstaged input files are reported as waiting."""
-        pipeline = pipeline_factory()
-        for i in range(3):
-            (input_dir / f"f{i}.txt").write_text("x")
-
-        context = pipeline._build_staging_context()
-
-        assert context.waiting == 3
-        assert context.staged == 0
-        assert context.completed == 0
-
-    def test_counts_shift_after_staging(
-        self, pipeline_factory: PipelineFactory, input_dir: Path
-    ):
-        """Staging moves files from waiting to staged."""
+        """Staging a file makes it count as staged."""
         pipeline = pipeline_factory()
         (input_dir / "a.txt").write_text("x")
 
         pipeline._stage_new_files()
         context = pipeline._build_staging_context()
 
-        assert context.waiting == 0
         assert context.staged == 1
 
     def test_counts_completed_files(
@@ -219,11 +204,11 @@ class TestStagingContext:
     def test_counts_stay_consistent_in_mixed_state(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):
-        """All four counts hold together when staged, completed, and failed coexist.
+        """All counts hold together when staged, completed, and failed coexist.
 
         The tests above each set up one state at a time, so this is the only
-        place `waiting`, `staged`, `completed`, and `failed` are all pinned
-        against each other. Four files are staged, one completes, one fails:
+        place `staged`, `completed`, and `failed` are all pinned against each
+        other. Four files are staged, one completes, one fails:
         completion removes a symlink and failure does not, so `staged` counts
         the 3 remaining symlinks excluding the file that failed. The counts are
         deliberately unequal because one file per state lets several wrong
@@ -242,8 +227,8 @@ class TestStagingContext:
 
         context = pipeline._build_staging_context()
 
-        counts = (context.waiting, context.staged, context.completed, context.failed)
-        assert counts == (0, 2, 1, 1)
+        counts = (context.staged, context.completed, context.failed)
+        assert counts == (2, 1, 1)
 
     def test_fan_out_failure_counts_one_file(
         self, pipeline_factory: PipelineFactory, input_dir: Path

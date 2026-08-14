@@ -24,7 +24,6 @@ from tigerflow.staging import (
 def mock_context(tmp_path: Path) -> StagingContext:
     """Create a mock staging context for testing."""
     return StagingContext(
-        waiting=10,
         staged=5,
         completed=3,
         failed=1,
@@ -200,7 +199,6 @@ class TestMaxStagedLimit:
         for f in files:
             f.touch()
         context = StagingContext(
-            waiting=10,
             staged=8,
             completed=0,
             failed=0,
@@ -216,7 +214,6 @@ class TestMaxStagedLimit:
         for f in files:
             f.touch()
         context = StagingContext(
-            waiting=5,
             staged=10,
             completed=0,
             failed=0,
