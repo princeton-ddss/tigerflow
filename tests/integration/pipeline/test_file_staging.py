@@ -143,7 +143,7 @@ class TestStagingContext:
         for i in range(3):
             (input_dir / f"f{i}.txt").write_text("x")
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
         assert context.waiting == 3
         assert context.staged == 0
@@ -157,7 +157,7 @@ class TestStagingContext:
         (input_dir / "a.txt").write_text("x")
 
         pipeline._stage_new_files()
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
         assert context.waiting == 0
         assert context.staged == 1
@@ -174,7 +174,7 @@ class TestStagingContext:
         (task.output_dir / "a.txt").write_text("done")
         pipeline._handle_processed_files()
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
         assert context.completed == 1
         assert context.staged == 0
@@ -191,7 +191,7 @@ class TestStagingContext:
         (task.output_dir / "a.err").write_text("boom")
         pipeline._report_failed_files()
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
         assert context.failed == 1
         assert context.staged == 0
@@ -240,7 +240,7 @@ class TestStagingContext:
         pipeline._report_failed_files()
         pipeline._handle_processed_files()
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
 
         counts = (context.waiting, context.staged, context.completed, context.failed)
         assert counts == (0, 2, 1, 1)
@@ -286,7 +286,7 @@ class TestStagingContext:
             "Failure must not remove the symlink the remaining task reads from"
         )
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
         assert (context.staged, context.failed) == (1, 1)
 
     def test_failed_file_excluded_under_multi_part_extension(
@@ -312,7 +312,7 @@ class TestStagingContext:
         (task.output_dir / "sample.err").write_text("boom")
         pipeline._report_failed_files()
 
-        context = pipeline._build_staging_context()
+        _, context = pipeline._prepare_staging_inputs()
         assert (context.staged, context.failed) == (0, 1)
 
 
