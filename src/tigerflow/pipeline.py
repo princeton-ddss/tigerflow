@@ -216,15 +216,15 @@ class Pipeline:
     def _run_tracking_cycle(self):
         """Run one iteration of the pipeline tracking loop.
 
-        `_handle_task_timeout` reads the task status that `_check_task_status`
-        refreshes, so a stale status would resubmit an already replaced Slurm job.
-        `_stage_new_files` follows `_report_failed_files` and `_handle_processed_files`
-        so that slots those free up can be filled in the same cycle. `_check_inactivity`
-        runs last because staging adds to `_filenames`, and a cycle that just started
-        work must not be counted as idle.
+        `_resubmit_if_timed_out` acts on the status `_check_task_status` writes,
+        so it must follow it. `_stage_new_files` follows `_report_failed_files` and
+        `_handle_processed_files` so that slots those free up can be filled in the
+        same cycle. `_check_inactivity` runs last because staging adds to
+        `_filenames`, and a cycle that just started work must not be counted as idle.
         """
         self._check_task_status()
-        self._handle_task_timeout()
+        self._check_pending_workers()
+        self._resubmit_if_timed_out()
         self._report_failed_files()
         self._handle_processed_files()
         self._stage_new_files()
@@ -305,7 +305,6 @@ class Pipeline:
             elif isinstance(task, SlurmTaskConfig):
                 job_id = self._slurm_task_ids[task.name]
                 status = get_slurm_task_status(job_id, task.worker_job_name)
-                self._check_pending_workers(task)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
@@ -322,34 +321,53 @@ class Pipeline:
                     f" ({status.detail})" if status.detail else "",
                 )
 
-    def _check_pending_workers(self, task: SlurmTaskConfig):
+    def _check_pending_workers(self):
         """Warn every 10 minutes a worker job spends stuck in the Slurm queue."""
-        pending_ids = get_pending_worker_ids(task.worker_job_name)
-        since = self._worker_pending_since[task.name]
-        alerted = self._worker_pending_alerted[task.name]
+        for task in self._config.tasks:
+            if not isinstance(task, SlurmTaskConfig):
+                continue
+            pending_ids = get_pending_worker_ids(task.worker_job_name)
+            since = self._worker_pending_since[task.name]
+            alerted = self._worker_pending_alerted[task.name]
 
-        for job_id in list(since):
-            if job_id not in pending_ids:
-                since.pop(job_id, None)
-                alerted.pop(job_id, None)
+            for job_id in list(since):
+                if job_id not in pending_ids:
+                    since.pop(job_id, None)
+                    alerted.pop(job_id, None)
 
-        now = time.time()
-        newly_crossed: dict[int, list[int]] = defaultdict(list)
-        warning_interval = settings.slurm_task_worker_warning_interval
-        for job_id in pending_ids:
-            pending_minutes = (now - since.setdefault(job_id, now)) / 60
-            threshold = int(pending_minutes // warning_interval) * warning_interval
-            if threshold >= warning_interval and threshold > alerted.get(job_id, 0):
-                alerted[job_id] = threshold
-                newly_crossed[threshold].append(job_id)
+            now = time.time()
+            newly_crossed: dict[int, list[int]] = defaultdict(list)
+            warning_interval = settings.slurm_task_worker_warning_interval
+            for job_id in pending_ids:
+                pending_minutes = (now - since.setdefault(job_id, now)) / 60
+                threshold = int(pending_minutes // warning_interval) * warning_interval
+                if threshold >= warning_interval and threshold > alerted.get(job_id, 0):
+                    alerted[job_id] = threshold
+                    newly_crossed[threshold].append(job_id)
 
-        for threshold, job_ids in sorted(newly_crossed.items()):
-            logger.warning(
-                "[{}] Workers pending more than {} minutes: {}",
-                task.name,
-                threshold,
-                ", ".join(str(job_id) for job_id in sorted(job_ids)),
-            )
+            for threshold, job_ids in sorted(newly_crossed.items()):
+                logger.warning(
+                    "[{}] Workers pending more than {} minutes: {}",
+                    task.name,
+                    threshold,
+                    ", ".join(str(job_id) for job_id in sorted(job_ids)),
+                )
+
+    def _resubmit_if_timed_out(self):
+        """Resubmit Slurm tasks that Slurm killed for hitting their time limit.
+
+        Callers must refresh `_task_status` first; acting on a stale status
+        replaces a job that is already running.
+        """
+        for task in self._config.tasks:
+            if not isinstance(task, SlurmTaskConfig):
+                continue
+            status = self._task_status[task.name]
+            if not status.is_alive and status.detail and "TIMEOUT" in status.detail:
+                script = task.to_script()
+                job_id = submit_to_slurm(script)
+                self._slurm_task_ids[task.name] = job_id
+                logger.info("[{}] Re-submitted with Slurm job ID {}", task.name, job_id)
 
     def _drain_tasks(self):
         """Wait for terminated tasks to actually exit, both local and Slurm.
@@ -373,22 +391,6 @@ class Pipeline:
                 logger.warning("Shutdown timed out, stopped waiting for tasks")
                 return
             time.sleep(1)
-
-    def _handle_task_timeout(self):
-        for task in self._config.tasks:
-            if isinstance(task, SlurmTaskConfig):
-                task_status = self._task_status[task.name]
-                if (
-                    not task_status.is_alive
-                    and task_status.detail
-                    and "TIMEOUT" in task_status.detail
-                ):
-                    script = task.to_script()
-                    job_id = submit_to_slurm(script)
-                    self._slurm_task_ids[task.name] = job_id
-                    logger.info(
-                        "[{}] Re-submitted with Slurm job ID {}", task.name, job_id
-                    )
 
     def _report_failed_files(self):
         for task in self._config.tasks:
