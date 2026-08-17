@@ -51,6 +51,34 @@ class TestTrackingCycle:
         assert (pipeline._finished_dir / "a.txt").exists()
         assert not (pipeline._symlinks_dir / "a.txt").exists()
 
+    def test_idle_start_logged_once_per_settling(
+        self,
+        pipeline_factory: PipelineFactory,
+        input_dir: Path,
+        idle_start_logs: list[str],
+    ):
+        """The idle clock is announced when work runs out, then stays quiet."""
+        pipeline = pipeline_factory()
+        start_fake_tasks(pipeline)
+
+        (input_dir / "a.txt").write_text("payload")
+        pipeline._run_tracking_cycle()
+        assert idle_start_logs == []
+
+        write_output(pipeline, "a")
+        pipeline._run_tracking_cycle()
+        assert len(idle_start_logs) == 1
+
+        pipeline._run_tracking_cycle()
+        assert len(idle_start_logs) == 1
+
+        # A new file makes the pipeline active again, so settling announces afresh
+        (input_dir / "b.txt").write_text("payload")
+        pipeline._run_tracking_cycle()
+        write_output(pipeline, "b")
+        pipeline._run_tracking_cycle()
+        assert len(idle_start_logs) == 2
+
     def test_file_staged_only_once(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):

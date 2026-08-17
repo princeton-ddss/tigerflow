@@ -60,6 +60,7 @@ class Pipeline:
 
         self._idle_timeout = timedelta(minutes=idle_timeout)
         self._last_active = datetime.now()
+        self._idle_announced = False
 
         self._delete_input = delete_input
 
@@ -216,14 +217,17 @@ class Pipeline:
         """Run one iteration of the pipeline tracking loop.
 
         `_handle_task_timeout` reads the task status that `_check_task_status`
-        refreshes, so it must not run before it; a stale status resubmits a
-        Slurm job that has already been replaced.
+        refreshes, so a stale status would resubmit an already replaced Slurm job.
+        `_stage_new_files` follows `_report_failed_files` and `_handle_processed_files`
+        so that slots those free up can be filled in the same cycle. `_check_inactivity`
+        runs last because staging adds to `_filenames`, and a cycle that just started
+        work must not be counted as idle.
         """
         self._check_task_status()
         self._handle_task_timeout()
-        self._stage_new_files()
         self._report_failed_files()
         self._handle_processed_files()
+        self._stage_new_files()
         self._check_inactivity()
 
     def _start_tasks(self):
@@ -473,12 +477,14 @@ class Pipeline:
         # Log progress
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
-            if self._all_tracked_files_settled():
-                logger.info("No more files to process, starting idle time count")
 
     def _check_inactivity(self):
-        if not self._all_tracked_files_settled():
+        settled = self._all_tracked_files_settled()
+        if not settled:
             self._last_active = datetime.now()
+        elif not self._idle_announced:
+            logger.info("No more files to process, starting idle time count")
+        self._idle_announced = settled
 
         inactivity = datetime.now() - self._last_active
         if inactivity > self._idle_timeout:
