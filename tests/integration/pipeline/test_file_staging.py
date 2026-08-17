@@ -13,7 +13,7 @@ import pytest
 from tigerflow.pipeline import Pipeline
 from tigerflow.staging import StagingContext
 
-from .helpers import PipelineFactory, task_spec
+from .helpers import PipelineFactory, start_fake_tasks, task_spec, write_output
 
 DUPLICATING_STEP = {
     "kind": "callable",
@@ -215,6 +215,37 @@ class TestStagingContext:
         assert staged == first_batch, (
             "Capacity is already full, so no further file should be staged"
         )
+
+    def test_completion_frees_capacity_within_the_same_cycle(
+        self, pipeline_factory: PipelineFactory, input_dir: Path
+    ):
+        """A file completing lets a waiting file take its slot in that same cycle.
+
+        Which two files stage first is left to directory order, so the assertions
+        pin the count and the swap rather than specific names.
+        """
+        pipeline = pipeline_factory(
+            staging={"steps": [{"kind": "max_staged", "count": 2}]}
+        )
+        start_fake_tasks(pipeline)
+        for i in range(3):
+            (input_dir / f"f{i}.txt").write_text("x")
+
+        pipeline._run_tracking_cycle()
+        first_batch = {f.name for f in pipeline._symlinks_dir.iterdir()}
+        assert len(first_batch) == 2
+
+        completed = sorted(first_batch)[0]
+        write_output(pipeline, Path(completed).stem)
+        pipeline._run_tracking_cycle()
+
+        staged = {f.name for f in pipeline._symlinks_dir.iterdir()}
+        assert len(staged) == 2, (
+            "The completed file frees a slot that the waiting file should take "
+            "in the same cycle"
+        )
+        assert completed not in staged
+        assert staged - first_batch, "The waiting file should now be staged"
 
     def test_counts_stay_consistent_in_mixed_state(
         self, pipeline_factory: PipelineFactory, input_dir: Path

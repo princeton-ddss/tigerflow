@@ -138,6 +138,26 @@ def error_logs() -> Iterator[list[str]]:
 
 
 @pytest.fixture
+def idle_start_logs() -> Iterator[list[str]]:
+    """Yield a list collecting the message of every idle-clock-start record logged.
+
+    Filtered by message content as well as level: the tracking cycle logs other
+    INFO records that a level-only sink would mix in and throw off exact counts.
+    """
+    records: list[str] = []
+
+    sink_id = logger.add(
+        lambda message: records.append(message.record["message"]),
+        level="INFO",
+        filter=lambda record: "starting idle time count" in record["message"],
+    )
+    try:
+        yield records
+    finally:
+        logger.remove(sink_id)
+
+
+@pytest.fixture
 def pending_worker_logs() -> Iterator[list[str]]:
     """Yield a list collecting the message of every "Workers pending" record logged.
 
