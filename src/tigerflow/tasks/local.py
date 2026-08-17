@@ -62,7 +62,7 @@ class LocalTask(Task):
         for key, value in self.config.params.items():
             setattr(self._context, key, value)
 
-        # Inject non-custom task params into contex
+        # Inject non-custom task params into context
         setattr(self._context, "input_ext", self.config.input_ext)
         setattr(self._context, "output_ext", self.config.output_ext)
 
