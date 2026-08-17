@@ -93,6 +93,9 @@ class LocalAsyncTask(Task):
             # Inject custom params into context
             for key, value in self.config.params.items():
                 setattr(self._context, key, value)
+            # Inject input_ext and output_ext into context
+            setattr(self._context, "input_ext", self.config.input_ext)
+            setattr(self._context, "output_ext", self.config.output_ext)
 
             # Run common setup
             logger.info("Setting up task")

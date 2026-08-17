@@ -72,6 +72,8 @@ class SlurmTask(Task):
                     context = SetupContext()
                     for key, value in params.items():
                         setattr(context, key, value)
+                    setattr(self._context, "input_ext", self.config.input_ext)
+                    setattr(self._context, "output_ext", self.config.output_ext)
                     loop = asyncio.get_running_loop()
                     await loop.run_in_executor(None, setup_func, context)
                     context.freeze()  # Make it read-only
