@@ -60,6 +60,7 @@ class SlurmTask(Task):
         # Avoid capturing unpicklable `self` in closures sent to workers
         setup_failed_sentinel = self.config.log_dir / ".setup-failed"
         params = self.config.params
+        input_ext = self.config.input_ext
         output_ext = self.config.output_ext
         setup_func = type(self).setup
         run_func = type(self).run
@@ -72,8 +73,8 @@ class SlurmTask(Task):
                     context = SetupContext()
                     for key, value in params.items():
                         setattr(context, key, value)
-                    setattr(self._context, "input_ext", self.config.input_ext)
-                    setattr(self._context, "output_ext", self.config.output_ext)
+                    setattr(context, "input_ext", input_ext)
+                    setattr(context, "output_ext", output_ext)
                     loop = asyncio.get_running_loop()
                     await loop.run_in_executor(None, setup_func, context)
                     context.freeze()  # Make it read-only
