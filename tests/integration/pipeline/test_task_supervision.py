@@ -76,7 +76,7 @@ class TestSlurmTimeout:
         pipeline._task_status["gpu"] = slurm_status(TaskStatusKind.INACTIVE, "TIMEOUT")
 
         with patch("tigerflow.pipeline.submit_to_slurm", return_value=222) as resubmit:
-            pipeline._handle_task_timeout()
+            pipeline._resubmit_if_timed_out()
 
         resubmit.assert_called_once()
         assert pipeline._slurm_task_ids["gpu"] == 222
@@ -87,7 +87,7 @@ class TestSlurmTimeout:
         pipeline._task_status["gpu"] = slurm_status(TaskStatusKind.ACTIVE)
 
         with patch("tigerflow.pipeline.submit_to_slurm") as resubmit:
-            pipeline._handle_task_timeout()
+            pipeline._resubmit_if_timed_out()
 
         resubmit.assert_not_called()
 
@@ -103,7 +103,7 @@ class TestSlurmTimeout:
         pipeline._task_status["gpu"] = slurm_status(TaskStatusKind.INACTIVE, detail)
 
         with patch("tigerflow.pipeline.submit_to_slurm") as resubmit:
-            pipeline._handle_task_timeout()
+            pipeline._resubmit_if_timed_out()
 
         resubmit.assert_not_called()
         assert pipeline._slurm_task_ids["gpu"] == 111
@@ -111,7 +111,7 @@ class TestSlurmTimeout:
     def test_resubmits_once_per_timeout(self, pipeline_factory: PipelineFactory):
         """The replacement job ID is what the next status poll observes.
 
-        `_handle_task_timeout` records the new ID so the following cycle polls
+        `_resubmit_if_timed_out` records the new ID so the following cycle polls
         the replacement; polling the dead job would keep reporting TIMEOUT and
         resubmit on every cycle.
         """
@@ -150,30 +150,23 @@ class TestPendingWorkerAlerts:
         pending_worker_logs: list[str],
     ):
         pipeline = pipeline_factory([SLURM_TASK])
-        pipeline._slurm_task_ids["gpu"] = 111
 
         clock = 1000.0
         monkeypatch.setattr("tigerflow.pipeline.time.time", lambda: clock)
 
-        with (
-            patch(
-                "tigerflow.pipeline.get_slurm_task_status",
-                return_value=slurm_status(TaskStatusKind.ACTIVE),
-            ),
-            patch(
-                "tigerflow.pipeline.get_pending_worker_ids",
-                return_value=[847645, 847649],
-            ),
+        with patch(
+            "tigerflow.pipeline.get_pending_worker_ids",
+            return_value=[847645, 847649],
         ):
-            pipeline._check_task_status()
+            pipeline._check_pending_workers()
             assert pending_worker_logs == [], "First observation only starts the clock"
 
             clock += 601
-            pipeline._check_task_status()
+            pipeline._check_pending_workers()
             clock += 600
-            pipeline._check_task_status()
+            pipeline._check_pending_workers()
             clock += 60  # Same threshold must not be logged twice
-            pipeline._check_task_status()
+            pipeline._check_pending_workers()
 
         assert len(pending_worker_logs) == 2
         assert "[gpu]" in pending_worker_logs[0]
@@ -189,34 +182,29 @@ class TestPendingWorkerAlerts:
         pending_worker_logs: list[str],
     ):
         pipeline = pipeline_factory([SLURM_TASK])
-        pipeline._slurm_task_ids["gpu"] = 111
 
         clock = 1000.0
         monkeypatch.setattr("tigerflow.pipeline.time.time", lambda: clock)
 
         with patch(
-            "tigerflow.pipeline.get_slurm_task_status",
-            return_value=slurm_status(TaskStatusKind.ACTIVE),
+            "tigerflow.pipeline.get_pending_worker_ids",
+            return_value=[847645],
         ):
-            with patch(
-                "tigerflow.pipeline.get_pending_worker_ids",
-                return_value=[847645],
-            ):
-                pipeline._check_task_status()
+            pipeline._check_pending_workers()
 
-            clock += 601
-            with patch(
-                "tigerflow.pipeline.get_pending_worker_ids",
-                return_value=[],  # Job started running before the 10-minute mark
-            ):
-                pipeline._check_task_status()
+        clock += 601
+        with patch(
+            "tigerflow.pipeline.get_pending_worker_ids",
+            return_value=[],  # Job started running before the 10-minute mark
+        ):
+            pipeline._check_pending_workers()
 
-            clock += 601
-            with patch(
-                "tigerflow.pipeline.get_pending_worker_ids",
-                return_value=[847645],  # Re-queued later, clock restarts
-            ):
-                pipeline._check_task_status()
+        clock += 601
+        with patch(
+            "tigerflow.pipeline.get_pending_worker_ids",
+            return_value=[847645],  # Re-queued later, clock restarts
+        ):
+            pipeline._check_pending_workers()
 
         assert pending_worker_logs == []
 
@@ -227,10 +215,38 @@ class TestPendingWorkerAlerts:
         pending_worker_logs: list[str],
     ):
         pipeline = pipeline_factory([SLURM_TASK])
-        pipeline._slurm_task_ids["gpu"] = 111
         monkeypatch.setattr(
             "tigerflow.pipeline.settings.slurm_task_worker_warning_interval", 5
         )
+
+        clock = 1000.0
+        monkeypatch.setattr("tigerflow.pipeline.time.time", lambda: clock)
+
+        with patch(
+            "tigerflow.pipeline.get_pending_worker_ids",
+            return_value=[847645],
+        ):
+            pipeline._check_pending_workers()
+            clock += 301
+            pipeline._check_pending_workers()
+
+        assert len(pending_worker_logs) == 1
+        assert "5 minutes" in pending_worker_logs[0]
+
+    def test_tracking_cycle_checks_pending_workers(
+        self,
+        pipeline_factory: PipelineFactory,
+        monkeypatch: pytest.MonkeyPatch,
+        pending_worker_logs: list[str],
+    ):
+        """The check runs as a tracking cycle step, not only when called directly.
+
+        Every other test in this class calls `_check_pending_workers` itself, so
+        dropping it from `_run_tracking_cycle` would leave them all passing while
+        the warning never fires in a running pipeline.
+        """
+        pipeline = pipeline_factory([SLURM_TASK])
+        pipeline._slurm_task_ids["gpu"] = 111
 
         clock = 1000.0
         monkeypatch.setattr("tigerflow.pipeline.time.time", lambda: clock)
@@ -245,12 +261,12 @@ class TestPendingWorkerAlerts:
                 return_value=[847645],
             ),
         ):
-            pipeline._check_task_status()
-            clock += 301
-            pipeline._check_task_status()
+            pipeline._run_tracking_cycle()
+            clock += 601
+            pipeline._run_tracking_cycle()
 
         assert len(pending_worker_logs) == 1
-        assert "5 minutes" in pending_worker_logs[0]
+        assert "[gpu]" in pending_worker_logs[0]
 
 
 class TestSlurmShutdown:
