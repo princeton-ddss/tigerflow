@@ -433,10 +433,12 @@ class Pipeline:
         }
 
     def _handle_processed_files(self):
-        # Identify *newly* processed files for each task
-        processed_filenames_by_task: dict[str, set[str]] = {
-            task.name: set() for task in self._config.tasks
-        }
+        terminal_tasks = self._config.terminal_tasks
+        terminal_task_names = {task.name for task in terminal_tasks}
+
+        # Identify *newly* processed files. Outputs from a terminal task
+        # become completion candidates.
+        candidate_file_ids: set[str] = set()
         for task in self._config.tasks:
             for file in task.output_dir.iterdir():
                 if (
@@ -446,21 +448,24 @@ class Pipeline:
                     and file.name not in self._task_processed_filenames[task.name]
                 ):
                     self._task_processed_filenames[task.name].add(file.name)
-                    processed_filenames_by_task[task.name].add(file.name)
+                    if task.name in terminal_task_names:
+                        candidate_file_ids.add(file.name.removesuffix(task.output_ext))
                     if task.keep_output:
                         new_file = self._output_dir / task.name / file.name
                         shutil.copy(file, new_file)
 
-        # Identify files that have completed all pipeline tasks
-        completed_file_ids: set[str] = set.intersection(
-            *(
-                {
-                    filename.removesuffix(task.output_ext)
-                    for filename in processed_filenames_by_task[task.name]
-                }
-                for task in self._config.terminal_tasks
+        # Identify files that have completed all pipeline tasks. Terminal tasks
+        # rarely finish a file within the same polling cycle, so candidates are
+        # confirmed against `_task_processed_filenames`, which is never pruned.
+        completed_file_ids: set[str] = {
+            file_id
+            for file_id in candidate_file_ids
+            if all(
+                f"{file_id}{task.output_ext}"
+                in self._task_processed_filenames[task.name]
+                for task in terminal_tasks
             )
-        )
+        }
 
         # Record completion and clean up staged/input files
         for file_id in completed_file_ids:
