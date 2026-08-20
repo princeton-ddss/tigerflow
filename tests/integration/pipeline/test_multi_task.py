@@ -6,8 +6,6 @@ only once every terminal task has finished with it.
 
 from pathlib import Path
 
-import pytest
-
 from .helpers import PipelineFactory, stage_file, task_spec, write_output
 
 CHAIN = [
@@ -185,12 +183,6 @@ class TestFanOutCompletion:
         assert (pipeline._finished_dir / "a.txt").exists()
         assert not (pipeline._symlinks_dir / "a.txt").exists()
 
-    @pytest.mark.xfail(
-        reason="Completion intersects only files seen in the current cycle, so a "
-        "terminal task recorded in an earlier cycle drops out and the file is "
-        "never completed",
-        strict=True,
-    )
     def test_finishes_when_terminal_tasks_finish_on_different_cycles(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):
@@ -213,11 +205,6 @@ class TestFanOutCompletion:
             "File should be completed once every terminal task has finished"
         )
 
-    @pytest.mark.xfail(
-        reason="Same root cause as staggered completion: the file is never "
-        "completed, so its staged symlink and task outputs are never cleaned up",
-        strict=True,
-    )
     def test_staggered_completion_does_not_leak(
         self, pipeline_factory: PipelineFactory, input_dir: Path
     ):
@@ -236,3 +223,47 @@ class TestFanOutCompletion:
         for name in ("leafA", "leafB"):
             task = next(t for t in pipeline._config.tasks if t.name == name)
             assert not (task.output_dir / "a.txt").exists()
+
+    def test_completion_stays_recorded_after_output_cleanup(
+        self, pipeline_factory: PipelineFactory, input_dir: Path
+    ):
+        """A completed file is not reprocessed when its task output reappears.
+
+        Completion cleanup deletes task outputs, but `_task_processed_filenames`
+        keeps the record on purpose: pruning it would let a reappearing output
+        re-complete the file and copy it out a second time.
+        """
+        pipeline = pipeline_factory(
+            [
+                task_spec("root"),
+                task_spec("leafA", depends_on="root", keep_output=True),
+                task_spec("leafB", depends_on="root", keep_output=True),
+            ]
+        )
+
+        stage_file(pipeline, input_dir, "a")
+
+        write_output(pipeline, "a", task="leafA")
+        pipeline._handle_processed_files()
+        write_output(pipeline, "a", task="leafB")
+        pipeline._handle_processed_files()
+
+        assert (pipeline._finished_dir / "a.txt").exists()
+
+        kept_copy = pipeline._output_dir / "leafA" / "a.txt"
+        assert kept_copy.exists(), "keep_output should have copied the output out"
+
+        # Remove the copy so a repeated copy is detectable rather than silently
+        # overwriting the same path
+        kept_copy.unlink()
+
+        write_output(pipeline, "a", task="leafA")
+        pipeline._handle_processed_files()
+
+        assert not kept_copy.exists(), (
+            "A completed file must not be copied out a second time"
+        )
+        for name in ("leafA", "leafB"):
+            assert "a.txt" in pipeline._task_processed_filenames[name], (
+                "Completion must stay recorded after the output is cleaned up"
+            )
