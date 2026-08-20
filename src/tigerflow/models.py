@@ -2,6 +2,7 @@ import json
 import re
 import shlex
 import textwrap
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -14,6 +15,7 @@ from tigerflow.settings import settings
 from tigerflow.staging import StagingPipeline
 from tigerflow.utils import (
     TEMP_FILE_PREFIX,
+    ErrorRecord,
     is_process_running,
     read_pid_file,
     validate_file_ext,
@@ -461,15 +463,16 @@ class TaskProgress(BaseModel):
     failed: int = 0
 
 
-class FileError(BaseModel):
-    """Error information for a failed file."""
+@dataclass(slots=True)
+class FileError:
+    """A failed file's error record paired with where it was found.
 
-    file: str
+    `path` is the location of the .err file itself, which the record does
+    not carry: it is known only to the reader that discovers the file.
+    """
+
     path: str
-    timestamp: datetime | None = None
-    exception_type: str = ""
-    message: str = ""
-    traceback: str = ""
+    record: ErrorRecord
 
 
 class TaskMeta(BaseModel):
@@ -622,19 +625,17 @@ class PipelineOutput:
                     stem = file.name.removesuffix(".err")
                     failed_stems.add(stem)
                     try:
-                        data = json.loads(file.read_text())
-                        task_errors.append(
-                            FileError(
-                                file=data.get("file", stem),
-                                path=str(file),
-                                timestamp=datetime.fromisoformat(data["timestamp"]),
-                                exception_type=data.get("exception_type", ""),
-                                message=data.get("message", ""),
-                                traceback=data.get("traceback", ""),
-                            )
+                        record = ErrorRecord.read(file)
+                        record.file = record.file or stem
+                    except (OSError, ValueError):
+                        record = ErrorRecord(
+                            timestamp="",
+                            exception_type="",
+                            message="",
+                            traceback="",
+                            file=stem,
                         )
-                    except (OSError, json.JSONDecodeError, KeyError):
-                        task_errors.append(FileError(file=stem, path=str(file)))
+                    task_errors.append(FileError(path=str(file), record=record))
             if task_errors:
                 errors[task_dir.name] = task_errors
 

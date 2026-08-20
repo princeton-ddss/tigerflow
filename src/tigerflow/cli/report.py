@@ -168,12 +168,12 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
                 if shown >= 5:
                     break
                 err_detail = (
-                    f"{err.exception_type}: {err.message}"
-                    if err.exception_type
-                    else err.message or "Unknown error"
+                    f"{err.record.exception_type}: {err.record.message}"
+                    if err.record.exception_type
+                    else err.record.message or "Unknown error"
                 )
                 lines.append(
-                    f"  [dim]{task_name}[/dim]  {err.file}  [red]{err_detail}[/red]"
+                    f"  [dim]{task_name}[/dim]  {err.record.file}  [red]{err_detail}[/red]"
                 )
                 shown += 1
             if shown >= 5:
@@ -322,18 +322,18 @@ def report(
             }
         if "errors" in sections:
             result["errors"] = {
-                name: [
+                task: [
                     {
-                        "file": e.file,
-                        "path": e.path,
-                        "timestamp": e.timestamp.isoformat() if e.timestamp else None,
-                        "exception_type": e.exception_type,
-                        "message": e.message,
-                        "traceback": e.traceback,
+                        "file": err.record.file,
+                        "path": err.path,
+                        "timestamp": err.record.timestamp or None,
+                        "exception_type": err.record.exception_type,
+                        "message": err.record.message,
+                        "traceback": err.record.traceback,
                     }
-                    for e in errs
+                    for err in errors
                 ]
-                for name, errs in pipeline_report.errors.items()
+                for task, errors in pipeline_report.errors.items()
             }
 
         print(json.dumps(result, indent=2, default=str))
