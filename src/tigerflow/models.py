@@ -2,6 +2,7 @@ import json
 import re
 import shlex
 import textwrap
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -462,15 +463,16 @@ class TaskProgress(BaseModel):
     failed: int = 0
 
 
-class FileError(BaseModel):
-    """Error information for a failed file."""
+@dataclass(slots=True)
+class FileError:
+    """A failed file's error record paired with where it was found.
 
-    file: str
+    `path` is the location of the .err file itself, which the record does
+    not carry: it is known only to the reader that discovers the file.
+    """
+
     path: str
-    timestamp: datetime | None = None
-    exception_type: str = ""
-    message: str = ""
-    traceback: str = ""
+    record: ErrorRecord
 
 
 class TaskMeta(BaseModel):
@@ -624,18 +626,16 @@ class PipelineOutput:
                     failed_stems.add(stem)
                     try:
                         record = ErrorRecord.read(file)
-                        task_errors.append(
-                            FileError(
-                                file=record.file or stem,
-                                path=str(file),
-                                timestamp=datetime.fromisoformat(record.timestamp),
-                                exception_type=record.exception_type,
-                                message=record.message,
-                                traceback=record.traceback,
-                            )
-                        )
+                        record.file = record.file or stem
                     except (OSError, ValueError):
-                        task_errors.append(FileError(file=stem, path=str(file)))
+                        record = ErrorRecord(
+                            timestamp="",
+                            exception_type="",
+                            message="",
+                            traceback="",
+                            file=stem,
+                        )
+                    task_errors.append(FileError(path=str(file), record=record))
             if task_errors:
                 errors[task_dir.name] = task_errors
 
