@@ -97,3 +97,14 @@ def get_slurm_task_status(client_job_id: int, worker_job_name: str) -> TaskStatu
             kind=TaskStatusKind.INACTIVE,
             detail=f"Reason: {reason.splitlines()[0].strip()}" if reason else None,
         )
+
+
+def get_pending_worker_ids(worker_job_name: str) -> list[int]:
+    """Return the Slurm job IDs of workers currently in the PENDING state."""
+    pending_ids = subprocess.run(
+        ["squeue", "--me", "-n", worker_job_name, "-h", "-t", "PENDING", "-o", "%i"],
+        capture_output=True,
+        text=True,
+    ).stdout
+
+    return [int(job_id) for job_id in pending_ids.split() if job_id.isdigit()]

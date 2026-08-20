@@ -32,11 +32,13 @@ export TIGERFLOW_ENV_FILE=/path/to/custom.env
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `TIGERFLOW_PIPELINE_POLL_INTERVAL` | `10` | Pipeline polling interval in seconds |
+| `TIGERFLOW_PIPELINE_SHUTDOWN_TIMEOUT` | `30` | Timeout in seconds to wait for tasks to exit during shutdown |
 | `TIGERFLOW_TASK_POLL_INTERVAL` | `3` | Task polling interval in seconds |
 | `TIGERFLOW_SLURM_TASK_CLIENT_HOURS` | `24` | Time limit in hours for each Slurm task client job (respawns when expired) |
 | `TIGERFLOW_SLURM_TASK_SCALE_INTERVAL` | `15` | Interval in seconds between Slurm task scaling checks |
 | `TIGERFLOW_SLURM_TASK_SCALE_WAIT_COUNT` | `8` | Number of consecutive idle checks before removing a worker |
 | `TIGERFLOW_SLURM_TASK_WORKER_STARTUP_TIMEOUT` | `600` | Timeout in seconds for each Slurm task worker to initialize |
+| `TIGERFLOW_SLURM_TASK_WORKER_WARNING_INTERVAL` | `10` | Interval in minutes to log a warning when slurm tasks stay pending |
 
 ## Example: Tuning Slurm Task Behavior
 

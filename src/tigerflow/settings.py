@@ -20,6 +20,12 @@ class TigerflowSettings(BaseSettings):
         description="Pipeline polling interval in seconds",
     )
 
+    pipeline_shutdown_timeout: int = Field(
+        default=30,
+        gt=0,
+        description="Timeout in seconds to wait for tasks to exit during shutdown",
+    )
+
     task_poll_interval: int = Field(
         default=3,
         gt=0,
@@ -49,6 +55,12 @@ class TigerflowSettings(BaseSettings):
         default=600,
         gt=0,
         description="Timeout in seconds for each Slurm task worker to initialize",
+    )
+
+    slurm_task_worker_warning_interval: int = Field(
+        default=10,
+        gt=0,
+        description="Interval in minutes to log a warning when slurm tasks stay pending",
     )
 
 

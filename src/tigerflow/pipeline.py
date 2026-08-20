@@ -6,6 +6,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import FrameType
@@ -23,7 +24,7 @@ from tigerflow.models import (
 )
 from tigerflow.settings import settings
 from tigerflow.staging import StagingContext
-from tigerflow.tasks.utils import get_slurm_task_status
+from tigerflow.tasks.utils import get_pending_worker_ids, get_slurm_task_status
 from tigerflow.utils import TEMP_FILE_PREFIX, submit_to_slurm, validate_task_cli
 
 
@@ -59,6 +60,7 @@ class Pipeline:
 
         self._idle_timeout = timedelta(minutes=idle_timeout)
         self._last_active = datetime.now()
+        self._idle_announced = False
 
         self._delete_input = delete_input
 
@@ -149,6 +151,11 @@ class Pipeline:
         # Initialize mapping from task name to Slurm job ID
         self._slurm_task_ids: dict[str, int] = dict()
 
+        # Track how long each currently-pending worker job has been pending,
+        # and the last threshold logged for it
+        self._worker_pending_since: dict[str, dict[int, float]] = defaultdict(dict)
+        self._worker_pending_alerted: dict[str, dict[int, int]] = defaultdict(dict)
+
         # Initialize an event to manage graceful shutdown
         self._shutdown_event = threading.Event()
 
@@ -184,18 +191,13 @@ class Pipeline:
             self._start_tasks()
             logger.info("All tasks started, beginning pipeline tracking loop")
             while not self._shutdown_event.is_set():
-                self._check_task_status()
-                self._handle_task_timeout()
-                self._stage_new_files()
-                self._report_failed_files()
-                self._handle_processed_files()
-                self._check_inactivity()
+                self._run_tracking_cycle()
                 self._shutdown_event.wait(timeout=settings.pipeline_poll_interval)
         finally:
             self._handle_processed_files()
             logger.info("Shutting down pipeline")
             for name, process in self._subprocesses.items():
-                if self._task_status[name].is_alive:
+                if process.poll() is None:
                     logger.info("[{}] Terminating...", name)
                     process.terminate()
             for task in self._config.tasks:
@@ -204,14 +206,29 @@ class Pipeline:
                 logger.info("[{}] Terminating...", task.name)
                 subprocess.run(["scancel", "-n", task.worker_job_name])
                 subprocess.run(["scancel", "-n", task.client_job_name])
-            while any(status.is_alive for status in self._task_status.values()):
-                self._check_task_status()
-                time.sleep(1)
+            self._drain_tasks()
             logger.info("Pipeline shutdown complete")
             if self._pid_file is not None:
                 self._pid_file.unlink(missing_ok=True)
             if self._received_signal is not None:
                 sys.exit(128 + self._received_signal)
+
+    def _run_tracking_cycle(self):
+        """Run one iteration of the pipeline tracking loop.
+
+        `_resubmit_if_timed_out` acts on the status `_check_task_status` writes,
+        so it must follow it. `_stage_new_files` follows `_report_failed_files` and
+        `_handle_processed_files` so that slots those free up can be filled in the
+        same cycle. `_check_inactivity` runs last because staging adds to
+        `_filenames`, and a cycle that just started work must not be counted as idle.
+        """
+        self._check_task_status()
+        self._check_pending_workers()
+        self._resubmit_if_timed_out()
+        self._report_failed_files()
+        self._handle_processed_files()
+        self._stage_new_files()
+        self._check_inactivity()
 
     def _start_tasks(self):
         tasks_meta = [
@@ -226,37 +243,29 @@ class Pipeline:
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = subprocess.Popen(["bash", "-c", script])
                 self._subprocesses[task.name] = process
+                self._task_status[task.name] = TaskStatus(kind=TaskStatusKind.ACTIVE)
                 logger.info("[{}] Started with PID {}", task.name, process.pid)
             elif isinstance(task, SlurmTaskConfig):
                 job_id = submit_to_slurm(script)
                 self._slurm_task_ids[task.name] = job_id
+                self._task_status[task.name] = TaskStatus(kind=TaskStatusKind.PENDING)
                 logger.info("[{}] Submitted with Slurm job ID {}", task.name, job_id)
             else:
                 raise ValueError(f"Unsupported task kind: {type(task)}")
 
-    def _build_staging_context(self) -> StagingContext:
-        """Build the current context for staging middleware."""
-        n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
-        n_failed = sum(len(e) for e in self._task_error_filenames.values())
-        n_staged = sum(1 for f in self._symlinks_dir.iterdir() if f.is_file())
-        n_waiting = sum(
-            1
-            for f in self._input_dir.iterdir()
-            if f.is_file()
-            and f.name.endswith(self._config.root_input_ext)
-            and f.name not in self._filenames
-        )
-        return StagingContext(
-            waiting=n_waiting,
-            staged=n_staged - n_failed,
-            completed=n_finished,
-            failed=n_failed,
-            input_dir=self._input_dir,
-            output_dir=self._output_dir,
-        )
+    def _prepare_staging_inputs(self) -> tuple[list[Path], StagingContext]:
+        """Collect the candidates and context for staging middleware.
 
-    def _stage_new_files(self):
-        context = self._build_staging_context()
+        Both are built here so the input directory is scanned once: `waiting`
+        is derived from the same list the middleware chain receives.
+        """
+        failed_stems = self._failed_stems()
+        n_staged = sum(
+            1
+            for f in self._symlinks_dir.iterdir()
+            if f.is_file()
+            and f.name.removesuffix(self._config.root_input_ext) not in failed_stems
+        )
         candidates = [
             f
             for f in self._input_dir.iterdir()
@@ -264,6 +273,18 @@ class Pipeline:
             and f.name.endswith(self._config.root_input_ext)
             and f.name not in self._filenames
         ]
+        context = StagingContext(
+            waiting=len(candidates),
+            staged=n_staged,
+            completed=self._count_finished(),
+            failed=len(failed_stems),
+            input_dir=self._input_dir,
+            output_dir=self._output_dir,
+        )
+        return candidates, context
+
+    def _stage_new_files(self):
+        candidates, context = self._prepare_staging_inputs()
         to_stage = self._config.staging.process(candidates, context)
         for file in to_stage:
             self._symlinks_dir.joinpath(file.name).symlink_to(file)
@@ -271,6 +292,13 @@ class Pipeline:
 
     def _check_task_status(self):
         for task in self._config.tasks:
+            # `_start_tasks` may fail partway, leaving later tasks unstarted; polling
+            # one of those would raise inside the shutdown path and mask the real error
+            if (
+                task.name not in self._subprocesses
+                and task.name not in self._slurm_task_ids
+            ):
+                continue
             if isinstance(task, (LocalTaskConfig, LocalAsyncTaskConfig)):
                 process = self._subprocesses[task.name]
                 status = self._get_subprocess_status(process)
@@ -293,21 +321,76 @@ class Pipeline:
                     f" ({status.detail})" if status.detail else "",
                 )
 
-    def _handle_task_timeout(self):
+    def _check_pending_workers(self):
+        """Warn every 10 minutes a worker job spends stuck in the Slurm queue."""
         for task in self._config.tasks:
-            if isinstance(task, SlurmTaskConfig):
-                task_status = self._task_status[task.name]
-                if (
-                    not task_status.is_alive
-                    and task_status.detail
-                    and "TIMEOUT" in task_status.detail
-                ):
-                    script = task.to_script()
-                    job_id = submit_to_slurm(script)
-                    self._slurm_task_ids[task.name] = job_id
-                    logger.info(
-                        "[{}] Re-submitted with Slurm job ID {}", task.name, job_id
-                    )
+            if not isinstance(task, SlurmTaskConfig):
+                continue
+            pending_ids = get_pending_worker_ids(task.worker_job_name)
+            since = self._worker_pending_since[task.name]
+            alerted = self._worker_pending_alerted[task.name]
+
+            for job_id in list(since):
+                if job_id not in pending_ids:
+                    since.pop(job_id, None)
+                    alerted.pop(job_id, None)
+
+            now = time.time()
+            newly_crossed: dict[int, list[int]] = defaultdict(list)
+            warning_interval = settings.slurm_task_worker_warning_interval
+            for job_id in pending_ids:
+                pending_minutes = (now - since.setdefault(job_id, now)) / 60
+                threshold = int(pending_minutes // warning_interval) * warning_interval
+                if threshold >= warning_interval and threshold > alerted.get(job_id, 0):
+                    alerted[job_id] = threshold
+                    newly_crossed[threshold].append(job_id)
+
+            for threshold, job_ids in sorted(newly_crossed.items()):
+                logger.warning(
+                    "[{}] Workers pending more than {} minutes: {}",
+                    task.name,
+                    threshold,
+                    ", ".join(str(job_id) for job_id in sorted(job_ids)),
+                )
+
+    def _resubmit_if_timed_out(self):
+        """Resubmit Slurm tasks that Slurm killed for hitting their time limit.
+
+        Callers must refresh `_task_status` first; acting on a stale status
+        replaces a job that is already running.
+        """
+        for task in self._config.tasks:
+            if not isinstance(task, SlurmTaskConfig):
+                continue
+            status = self._task_status[task.name]
+            if not status.is_alive and status.detail and "TIMEOUT" in status.detail:
+                script = task.to_script()
+                job_id = submit_to_slurm(script)
+                self._slurm_task_ids[task.name] = job_id
+                logger.info("[{}] Re-submitted with Slurm job ID {}", task.name, job_id)
+
+    def _drain_tasks(self):
+        """Wait for terminated tasks to actually exit, both local and Slurm.
+
+        The wait is bounded because SIGTERM is a request a task may ignore, and
+        this loop does not check the shutdown event, so a second Ctrl-C could not
+        break out of an unbounded one. On expiry local processes escalate to
+        SIGKILL; Slurm jobs get no equivalent, as `scancel` sends its own SIGKILL
+        follow-up.
+        """
+        deadline = time.monotonic() + settings.pipeline_shutdown_timeout
+        while True:
+            self._check_task_status()
+            if not any(status.is_alive for status in self._task_status.values()):
+                return
+            if time.monotonic() >= deadline:
+                for name, process in self._subprocesses.items():
+                    if process.poll() is None:
+                        logger.warning("[{}] Did not exit in time, killing", name)
+                        process.kill()
+                logger.warning("Shutdown timed out, stopped waiting for tasks")
+                return
+            time.sleep(1)
 
     def _report_failed_files(self):
         for task in self._config.tasks:
@@ -324,11 +407,38 @@ class Pipeline:
             if n_files > 0:
                 logger.error("[{}] {} failed files", task.name, n_files)
 
-    def _handle_processed_files(self):
-        # Identify *newly* processed files for each task
-        processed_filenames_by_task: dict[str, set[str]] = {
-            task.name: set() for task in self._config.tasks
+    def _count_finished(self) -> int:
+        return sum(1 for file in self._finished_dir.iterdir() if file.is_file())
+
+    def _all_tracked_files_settled(self) -> bool:
+        """Whether every tracked file has either finished or failed.
+
+        `_filenames` is never pruned, so it covers every file the pipeline has
+        ever tracked.
+        """
+        return self._count_finished() + len(self._failed_stems()) >= len(
+            self._filenames
+        )
+
+    def _failed_stems(self) -> set[str]:
+        """Stems of input files that failed in at least one task.
+
+        A file failing in several tasks leaves one error file per task, so
+        stems are unioned to count that file once.
+        """
+        return {
+            filename.removesuffix(".err")
+            for filenames in self._task_error_filenames.values()
+            for filename in filenames
         }
+
+    def _handle_processed_files(self):
+        terminal_tasks = self._config.terminal_tasks
+        terminal_task_names = {task.name for task in terminal_tasks}
+
+        # Identify *newly* processed files. Outputs from a terminal task
+        # become completion candidates.
+        candidate_file_ids: set[str] = set()
         for task in self._config.tasks:
             for file in task.output_dir.iterdir():
                 if (
@@ -338,21 +448,24 @@ class Pipeline:
                     and file.name not in self._task_processed_filenames[task.name]
                 ):
                     self._task_processed_filenames[task.name].add(file.name)
-                    processed_filenames_by_task[task.name].add(file.name)
+                    if task.name in terminal_task_names:
+                        candidate_file_ids.add(file.name.removesuffix(task.output_ext))
                     if task.keep_output:
                         new_file = self._output_dir / task.name / file.name
                         shutil.copy(file, new_file)
 
-        # Identify files that have completed all pipeline tasks
-        completed_file_ids: set[str] = set.intersection(
-            *(
-                {
-                    filename.removesuffix(task.output_ext)
-                    for filename in processed_filenames_by_task[task.name]
-                }
-                for task in self._config.terminal_tasks
+        # Identify files that have completed all pipeline tasks. Terminal tasks
+        # rarely finish a file within the same polling cycle, so candidates are
+        # confirmed against `_task_processed_filenames`, which is never pruned.
+        completed_file_ids: set[str] = {
+            file_id
+            for file_id in candidate_file_ids
+            if all(
+                f"{file_id}{task.output_ext}"
+                in self._task_processed_filenames[task.name]
+                for task in terminal_tasks
             )
-        )
+        }
 
         # Record completion and clean up staged/input files
         for file_id in completed_file_ids:
@@ -371,16 +484,14 @@ class Pipeline:
         # Log progress
         if completed_file_ids:
             logger.info("Completed processing {} files", len(completed_file_ids))
-            n_finished = sum(1 for f in self._finished_dir.iterdir() if f.is_file())
-            n_failed = sum(len(errs) for errs in self._task_error_filenames.values())
-            if (n_finished + n_failed) >= len(self._filenames):
-                logger.info("No more files to process, starting idle time count")
 
     def _check_inactivity(self):
-        n_finished = sum(1 for file in self._finished_dir.iterdir() if file.is_file())
-        n_failed = sum(len(errs) for errs in self._task_error_filenames.values())
-        if (n_finished + n_failed) < len(self._filenames):  # Still in progress
+        settled = self._all_tracked_files_settled()
+        if not settled:
             self._last_active = datetime.now()
+        elif not self._idle_announced:
+            logger.info("No more files to process, starting idle time count")
+        self._idle_announced = settled
 
         inactivity = datetime.now() - self._last_active
         if inactivity > self._idle_timeout:
