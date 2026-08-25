@@ -38,11 +38,12 @@ class TaskStatus(BaseModel):
 class FileMetrics(BaseModel):
     """Timing metrics for a single file processed by a task."""
 
-    file: str
+    file: str = ""
     task: str
-    started_at: datetime
-    finished_at: datetime
-    status: Literal["success", "error"]
+    started_at: datetime = datetime.now()
+    finished_at: datetime = datetime.now()
+    status: Literal["success", "error", "pending"] = "pending"
+    num_warnings: int = 0
 
     @property
     def duration_ms(self) -> float:
@@ -570,26 +571,30 @@ class PipelineOutput:
             for log_file in log_files:
                 try:
                     with open(log_file) as f:
+                        current_file = ""
                         for line in f:
-                            if "METRICS" not in line:
+                            if "| INFO     | Starting processing: " in line:
+                                current_file = FileMetrics(task=task_dir.name)  # Update
+                            if not current_file:
                                 continue
-                            start = line.find("{")
-                            if start == -1:
+                            if "| WARNING  |" in line:
+                                current_file.num_warnings += 1
                                 continue
-                            data = json.loads(line[start:])
-                            metrics.append(
-                                FileMetrics(
-                                    file=data["file"],
-                                    task=task_dir.name,
-                                    started_at=datetime.fromisoformat(
-                                        data["started_at"]
-                                    ),
-                                    finished_at=datetime.fromisoformat(
-                                        data["finished_at"]
-                                    ),
-                                    status=data["status"],
+                            if "| METRICS  |" in line:
+                                start = line.find("{")
+                                if start == -1:
+                                    continue
+                                data = json.loads(line[start:])
+                                current_file.file = data["file"]
+                                current_file.started_at = datetime.fromisoformat(
+                                    data["started_at"]
                                 )
-                            )
+                                current_file.finished_at = datetime.fromisoformat(
+                                    data["finished_at"]
+                                )
+                                current_file.status = data["status"]
+                                metrics.append(current_file)
+                                current_file = ""
                 except (OSError, json.JSONDecodeError, KeyError):
                     continue
 
