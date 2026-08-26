@@ -248,9 +248,6 @@ class TestAllRunsMetrics:
         all_lines = []
         for i in range(5):
             all_lines.append(
-                f"2026-03-10 10:00:01 | INFO     | Starting processing:  file{i}.txt"
-            )
-            all_lines.append(
                 f"2026-03-10 10:00:01 | METRICS  | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
         (log_dir / "task-12345.log").write_text("\n".join(all_lines))
@@ -305,9 +302,6 @@ class TestTaskProgress:
         for i in range(8):
             status = "success" if i < 6 else "error"
             task_lines.append(
-                f"2026-03-10 12:00:01 | INFO     | Starting processing:  file{i}.txt"
-            )
-            task_lines.append(
                 f"2026-03-10 12:00:01 | METRICS  | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': status})}"
             )
         (log_dir / "task-100.log").write_text("\n".join(task_lines))
@@ -357,9 +351,6 @@ class TestTaskProgress:
         for i in range(10):
             status = "success" if i < 8 else "error"
             lines1.append(
-                f"2026-03-10 12:00:01 | INFO     | Starting processing:  file{i}.txt"
-            )
-            lines1.append(
                 f"2026-03-10 12:00:01 | METRICS  | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': status})}"
             )
         (log_dir1 / "task-100.log").write_text("\n".join(lines1))
@@ -372,9 +363,6 @@ class TestTaskProgress:
         log_dir2.mkdir(parents=True)
         lines2 = []
         for i in range(5):
-            lines2.append(
-                f"2026-03-10 12:00:02 | INFO     | Starting processing:  file{i}.txt"
-            )
             lines2.append(
                 f"2026-03-10 12:00:02 | METRICS  | {json.dumps({'file': f'file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
@@ -454,9 +442,6 @@ class TestMultipleRuns:
         run1_lines = []
         for i in range(5):
             run1_lines.append(
-                f"2026-03-10 10:00:01 | INFO     | Starting processing:  file{i}.txt"
-            )
-            run1_lines.append(
                 f"2026-03-10 10:00:01 | METRICS  | {json.dumps({'file': f'run1_file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
             (finished / f"run1_file{i}.txt").touch()
@@ -467,9 +452,6 @@ class TestMultipleRuns:
         log_dir2.mkdir(parents=True)
         run2_lines = []
         for i in range(7):
-            run2_lines.append(
-                f"2026-03-10 12:00:01 | INFO     | Starting processing:  file{i}.txt"
-            )
             run2_lines.append(
                 f"2026-03-10 12:00:01 | METRICS  | {json.dumps({'file': f'run2_file{i}.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}"
             )
@@ -506,16 +488,13 @@ class TestSlurmLogParsing:
         # Worker 1 processed file1
         worker1_log = log_dir / "task-worker-12345.log"
         worker1_log.write_text(
-            f"2026-03-10 12:00:01 | INFO     | Starting processing:  file1.txt\n"
             f"2026-03-10 12:00:01 | METRICS  | {json.dumps({'file': 'file1.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}\n"
         )
 
         # Worker 2 processed file2 and file3
         worker2_log = log_dir / "task-worker-12346.log"
         worker2_log.write_text(
-            f"2026-03-10 12:00:02 | INFO     | Starting processing:  file2.txt\n"
             f"2026-03-10 12:00:02 | METRICS  | {json.dumps({'file': 'file2.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'success'})}\n"
-            f"2026-03-10 12:00:03 | INFO     | Starting processing:  file3.txt\n"
             f"2026-03-10 12:00:03 | METRICS  | {json.dumps({'file': 'file3.txt', 'started_at': now.isoformat(), 'finished_at': now.isoformat(), 'status': 'error'})}\n"
         )
 

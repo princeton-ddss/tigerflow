@@ -38,12 +38,11 @@ class TaskStatus(BaseModel):
 class FileMetrics(BaseModel):
     """Timing metrics for a single file processed by a task."""
 
-    file: str = ""
+    file: str
     task: str
-    started_at: datetime = datetime.now()
-    finished_at: datetime = datetime.now()
-    status: Literal["success", "error", "pending"] = "pending"
-    num_warnings: int = 0
+    started_at: datetime
+    finished_at: datetime
+    status: Literal["success", "error"]
 
     @property
     def duration_ms(self) -> float:
@@ -492,6 +491,7 @@ class PipelineReport(BaseModel):
     staged: int | None = None  # None if stopped
     tasks: list[TaskProgress] = []
     metrics: dict[str, list[FileMetrics]] = {}
+    num_warnings: dict[str, dict[str, int]] = {}
     errors: dict[str, list[FileError]] = {}
 
 
@@ -571,34 +571,70 @@ class PipelineOutput:
             for log_file in log_files:
                 try:
                     with open(log_file) as f:
-                        current_file = ""
                         for line in f:
-                            if "| INFO     | Starting processing: " in line:
-                                current_file = FileMetrics(task=task_dir.name)  # Update
-                            if not current_file:
+                            if "METRICS" not in line:
                                 continue
-                            if "| WARNING  |" in line:
-                                current_file.num_warnings += 1
+                            start = line.find("{")
+                            if start == -1:
                                 continue
-                            if "| METRICS  |" in line:
-                                start = line.find("{")
-                                if start == -1:
-                                    continue
-                                data = json.loads(line[start:])
-                                current_file.file = data["file"]
-                                current_file.started_at = datetime.fromisoformat(
-                                    data["started_at"]
+                            data = json.loads(line[start:])
+                            metrics.append(
+                                FileMetrics(
+                                    file=data["file"],
+                                    task=task_dir.name,
+                                    started_at=datetime.fromisoformat(
+                                        data["started_at"]
+                                    ),
+                                    finished_at=datetime.fromisoformat(
+                                        data["finished_at"]
+                                    ),
+                                    status=data["status"],
                                 )
-                                current_file.finished_at = datetime.fromisoformat(
-                                    data["finished_at"]
-                                )
-                                current_file.status = data["status"]
-                                metrics.append(current_file)
-                                current_file = ""
+                            )
                 except (OSError, json.JSONDecodeError, KeyError):
                     continue
 
         return metrics
+
+    def _parse_warnings(self) -> dict[str, dict[str, int]]:
+        """Parse WARNINGS from task log files.
+
+        Reads from:
+        - {task}/logs/{pid}/task-{pid}.log (local/local_async tasks)
+        - {task}/logs/{pid}/task-worker-{job_id}.log (Slurm worker logs)
+        """
+        all_warnings = {}
+
+        for task_dir in self._get_task_dirs():
+            log_files = list(task_dir.glob("logs/**/task*.log"))
+
+            for log_file in log_files:
+                if task_dir.name not in all_warnings:
+                    all_warnings[task_dir.name] = {
+                        "num_files_processed": 0,
+                        "num_warnings": 0,
+                    }
+                try:
+                    with open(log_file) as f:
+                        for line in f:
+                            if "METRICS" in line:
+                                all_warnings[task_dir.name]["num_files_processed"] = (
+                                    all_warnings[task_dir.name]["num_files_processed"]
+                                    + 1
+                                )
+                            if "WARNING" in line:
+                                if re.search(
+                                    r"Received signal \d+, initiating shutdown",
+                                    line,
+                                ):
+                                    continue
+                                all_warnings[task_dir.name]["num_warnings"] = (
+                                    all_warnings[task_dir.name]["num_warnings"] + 1
+                                )
+
+                except OSError:
+                    continue
+        return all_warnings
 
     def report(self) -> PipelineReport:
         """Generate a complete pipeline status report."""
@@ -672,6 +708,7 @@ class PipelineOutput:
         # === Per-Task Progress (from METRICS logs, all runs) ===
 
         all_metrics = self._parse_all_metrics()
+        warnings = self._parse_warnings()
         task_meta = self._get_task_meta()
 
         # Group metrics by task
@@ -726,5 +763,6 @@ class PipelineOutput:
             staged=len(staged_stems) if is_running else None,
             tasks=tasks,
             metrics=metrics_by_task,
+            num_warnings=warnings,
             errors=errors,
         )
