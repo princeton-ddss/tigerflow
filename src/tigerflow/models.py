@@ -491,6 +491,7 @@ class PipelineReport(BaseModel):
     staged: int | None = None  # None if stopped
     tasks: list[TaskProgress] = []
     metrics: dict[str, list[FileMetrics]] = {}
+    num_warnings: dict[str, dict[str, int]] = {}
     errors: dict[str, list[FileError]] = {}
 
 
@@ -595,6 +596,46 @@ class PipelineOutput:
 
         return metrics
 
+    def _parse_warnings(self) -> dict[str, dict[str, int]]:
+        """Parse WARNINGS from task log files.
+
+        Reads from:
+        - {task}/logs/{pid}/task-{pid}.log (local/local_async tasks)
+        - {task}/logs/{pid}/task-worker-{job_id}.log (Slurm worker logs)
+        """
+        all_warnings = {}
+
+        for task_dir in self._get_task_dirs():
+            log_files = list(task_dir.glob("logs/**/task*.log"))
+
+            for log_file in log_files:
+                if task_dir.name not in all_warnings:
+                    all_warnings[task_dir.name] = {
+                        "num_files_processed": 0,
+                        "num_warnings": 0,
+                    }
+                try:
+                    with open(log_file) as f:
+                        for line in f:
+                            if "METRICS" in line:
+                                all_warnings[task_dir.name]["num_files_processed"] = (
+                                    all_warnings[task_dir.name]["num_files_processed"]
+                                    + 1
+                                )
+                            if "WARNING" in line:
+                                if re.search(
+                                    r"Received signal \d+, initiating shutdown",
+                                    line,
+                                ):
+                                    continue
+                                all_warnings[task_dir.name]["num_warnings"] = (
+                                    all_warnings[task_dir.name]["num_warnings"] + 1
+                                )
+
+                except OSError:
+                    continue
+        return all_warnings
+
     def report(self) -> PipelineReport:
         """Generate a complete pipeline status report."""
         self.validate()
@@ -667,6 +708,7 @@ class PipelineOutput:
         # === Per-Task Progress (from METRICS logs, all runs) ===
 
         all_metrics = self._parse_all_metrics()
+        warnings = self._parse_warnings()
         task_meta = self._get_task_meta()
 
         # Group metrics by task
@@ -721,5 +763,6 @@ class PipelineOutput:
             staged=len(staged_stems) if is_running else None,
             tasks=tasks,
             metrics=metrics_by_task,
+            num_warnings=warnings,
             errors=errors,
         )

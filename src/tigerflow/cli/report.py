@@ -182,6 +182,18 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
             lines.append(f"  [dim]... +{total_errors - 5} more[/dim]")
         lines.append("")
 
+    # Warnings summary (for this run)
+    total_warnings = sum(
+        task_warnings["num_warnings"] for task_warnings in report.num_warnings.values()
+    )
+    if total_warnings > 0:
+        lines.append(f"[bold]Warnings:[/bold] {total_warnings}")
+        for task_name, warning_data in report.num_warnings.items():
+            if warning_data["num_warnings"] > 0:
+                lines.append(
+                    f"  [dim]{task_name}[/dim]  [yellow]{warning_data['num_warnings']} warnings across {warning_data['num_files_processed']} file(s)[/yellow]   See logs in .tigerflow/{task_name} for more details"
+                )
+
     content = "\n".join(lines)
     return Panel(content, title="[bold]tigerflow report[/bold]", title_align="left")
 
