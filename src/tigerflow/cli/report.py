@@ -89,18 +89,18 @@ def _compute_warning_summary(metrics: dict[str, list[FileMetrics]]) -> dict:
             warnings[task]["total_num_warnings"] = (
                 warnings[task]["total_num_warnings"] + m.num_warnings
             )
-            warnings[task]["min_num_warnings"] = min(
-                warnings[task]["min_num_warnings"], m.num_warnings
-            )
-            warnings[task]["max_num_warnings"] = max(
-                warnings[task]["max_num_warnings"], m.num_warnings
-            )
+            # warnings[task]["min_num_warnings"] = min(
+            #     warnings[task]["min_num_warnings"], m.num_warnings
+            # )
+            # warnings[task]["max_num_warnings"] = max(
+            #     warnings[task]["max_num_warnings"], m.num_warnings
+            # )
             warnings[task]["total_file_num"] = warnings[task]["total_file_num"] + 1
 
-    for task in warnings.keys():
-        warnings[task]["avg_num_warnings"] = (
-            warnings[task]["total_num_warnings"] / warnings[task]["total_file_num"]
-        )
+    # for task in warnings.keys():
+    #     warnings[task]["avg_num_warnings"] = (
+    #         warnings[task]["total_num_warnings"] / warnings[task]["total_file_num"]
+    #     )
 
     return warnings
 
@@ -215,10 +215,7 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
 
     # Warnings summary (for this run)
     total_warnings = sum(
-        m.num_warnings
-        for metrics in report.metrics.values()
-        for m in metrics
-        if m.status == "success"  # only counts warnings for successful files (?)
+        m.num_warnings for metrics in report.metrics.values() for m in metrics
     )
     if total_warnings > 0:
         lines.append(f"[bold]Warnings:[/bold] {total_warnings}")
@@ -226,7 +223,7 @@ def _build_dashboard_panel(report: PipelineReport) -> Panel:
         for task_name, warning_data in warning_summary.items():
             if warning_data["total_num_warnings"] > 0:
                 lines.append(
-                    f"  [dim]{task_name}[/dim]  [yellow]{warning_data['total_num_warnings']} warnings ({warning_data['min_num_warnings']}-{warning_data['max_num_warnings']}, avg={warning_data['avg_num_warnings']})[/yellow]"
+                    f"  [dim]{task_name}[/dim]  [yellow]{warning_data['total_num_warnings']} warnings across {warning_data['total_file_num']} file(s)[/yellow]   See logs in .tigerflow/{task_name} for more details"
                 )
 
     content = "\n".join(lines)
